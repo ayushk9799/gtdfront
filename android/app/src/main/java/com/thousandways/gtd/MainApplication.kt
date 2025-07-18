@@ -1,4 +1,4 @@
-package com.frontend
+package com.thousandways.gtd
 
 import android.app.Application
 import com.facebook.react.PackageList
