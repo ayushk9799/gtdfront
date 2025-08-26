@@ -16,12 +16,12 @@ import {
 import Game from './src/Game';
 import Login from './src/Login';
 import UserProfile from './src/UserProfile';
+import PrivacyPolicy from './src/PrivacyPolicy';
+import TermsOfServiceScreen from './src/TermsOfService';
 import Feather from 'react-native-vector-icons/Feather';
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
-
-
 
 /* ---------- custom drawer ---------- */
 const CustomDrawerContent = React.memo(function CustomDrawerContent({
@@ -48,10 +48,15 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent({
     >
       {/* User Info Section */}
       <View style={[styles.userInfoSection]}>
-        <View style={[styles.userIconContainer, { backgroundColor: dynamicTextColor }]}>
+        <View
+          style={[
+            styles.userIconContainer,
+            { backgroundColor: dynamicTextColor },
+          ]}
+        >
           <Feather name="user" size={40} color={dynamicBackgroundColor} />
         </View>
-        <Text style={[ { color: dynamicTextColor , fontWeight: 'bold'}]}>
+        <Text style={[{ color: dynamicTextColor, fontWeight: 'bold' }]}>
           {user?.name}
         </Text>
         <Text style={[styles.userEmail, { color: dynamicTextColor }]}>
@@ -67,6 +72,22 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent({
         labelStyle={{ color: dynamicTextColor, fontSize: 16 }}
         icon={({ focused, size }) => (
           <Feather name="play" size={size} color={dynamicTextColor} />
+        )}
+      />
+      <DrawerItem
+        label="Privacy Policy"
+        onPress={() => navigation.navigate('PrivacyPolicy')}
+        labelStyle={{ color: dynamicTextColor, fontSize: 16 }}
+        icon={({ focused, size }) => (
+          <Feather name="shield" size={size} color={dynamicTextColor} />
+        )}
+      />
+      <DrawerItem
+        label="Terms of Service"
+        onPress={() => navigation.navigate('TermsOfService')}
+        labelStyle={{ color: dynamicTextColor, fontSize: 16 }}
+        icon={({ focused, size }) => (
+          <Feather name="file-text" size={size} color={dynamicTextColor} />
         )}
       />
       <DrawerItem
@@ -86,8 +107,8 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
-const dynamicTextColor = colorScheme === 'dark' ? '#ffffff' : '#000000';
-const dynamicBackgroundColor = colorScheme === 'dark' ? '#151718' : '#ffffff';
+  const dynamicTextColor = colorScheme === 'dark' ? '#ffffff' : '#000000';
+  const dynamicBackgroundColor = colorScheme === 'dark' ? '#151718' : '#ffffff';
 
   /* load stored credential once */
   useEffect(() => {
@@ -123,14 +144,13 @@ const dynamicBackgroundColor = colorScheme === 'dark' ? '#151718' : '#ffffff';
             ),
             headerStyle: {
               backgroundColor: dynamicBackgroundColor,
-              height: 40
+              height: 40,
             },
             headerTitle: 'Diagnose It',
             headerTitleStyle: {
               fontWeight: '700',
               fontSize: 18,
               color: dynamicTextColor,
-             
             },
             headerTitleAlign: 'center',
             headerTintColor: '#333',
@@ -142,7 +162,6 @@ const dynamicBackgroundColor = colorScheme === 'dark' ? '#151718' : '#ffffff';
             drawerStyle: {
               backgroundColor: dynamicBackgroundColor,
               width: 280,
-             
             },
             drawerActiveBackgroundColor: dynamicBackgroundColor,
             drawerInactiveBackgroundColor: dynamicBackgroundColor,
@@ -154,7 +173,11 @@ const dynamicBackgroundColor = colorScheme === 'dark' ? '#151718' : '#ffffff';
           )}
         >
           <Drawer.Screen name="Game" component={Game} />
-         
+          <Drawer.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
+          <Drawer.Screen
+            name="TermsOfService"
+            component={TermsOfServiceScreen}
+          />
         </Drawer.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>

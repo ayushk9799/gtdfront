@@ -896,7 +896,7 @@ function Game() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, paddingBottom: 10},
   header: { alignItems: 'center', marginBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
   subtitle: { fontSize: 16, color: '#ffffff' },
@@ -1028,7 +1028,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'gray',
     borderRadius: 24,
+
     paddingLeft: 12,
+    marginHorizontal: 5,
     minHeight: 40,
   },
   input: {
