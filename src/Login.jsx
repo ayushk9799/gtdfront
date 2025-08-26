@@ -91,7 +91,7 @@ function Login({ onLogin }) {
         <Image source={inappicon} style={styles.logo} />
         <Text style={styles.welcomeText}>Welcome</Text>
         <Text style={{ fontSize: 20, fontWeight: 'bold', fontStyle: 'italic' }}>
-          Guess The Disease
+          Diagnose It
         </Text>
         <Text style={styles.subtitleText}>A fun way to engage your mind</Text>
       </View>

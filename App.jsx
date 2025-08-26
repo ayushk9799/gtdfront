@@ -59,7 +59,6 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent({
         </Text>
       </View>
 
-      {/* Divider */}
       <View style={styles.divider} />
 
       <DrawerItem
@@ -126,7 +125,7 @@ const dynamicBackgroundColor = colorScheme === 'dark' ? '#151718' : '#ffffff';
               backgroundColor: dynamicBackgroundColor,
               height: 40
             },
-            headerTitle: 'Guess The Disease',
+            headerTitle: 'Diagnose It',
             headerTitleStyle: {
               fontWeight: '700',
               fontSize: 18,
