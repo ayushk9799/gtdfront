@@ -50,8 +50,6 @@ const TermsOfServiceScreen = () => {
             </Text>
           </View>
 
-         
-
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>3. Account Access</Text>
             <Text style={styles.text}>

@@ -267,10 +267,12 @@ function Game() {
   const [showModal, setShowModal] = useState(false); // Add this
   const [userGuess, setUserGuess] = useState(''); // Add this
   const [keyboardVisible, setKeyboardVisible] = useState(false); // Add this state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null); // keeps TextInput focused
   const colorScheme = useColorScheme();
-
 
   // --- Dynamic table column sizing ---
   // const [colWidths, setColWidths] = useState([0, 0, 0, 0]); // Test, Result, Range, Unit
@@ -416,6 +418,34 @@ function Game() {
     }
   }
 
+  async function submitReport() {
+    if (!reportType) {
+      Alert.alert('Please select a type');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          type: reportType,
+          details: reportDetails,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to submit report');
+      Alert.alert('Success', 'Report submitted successfully');
+      setShowReportModal(false);
+      setReportType('');
+      setReportDetails('');
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to submit report');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const getBodySystemColor = system => {
     const colors = {
       cardiovascular: Colors[colorScheme].red || '#e74c3c',
@@ -551,7 +581,11 @@ function Game() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.sectionTitle, { color: dynamicTextColor }]}>Patient Info</Text>
+                <Text
+                  style={[styles.sectionTitle, { color: dynamicTextColor }]}
+                >
+                  Patient Info
+                </Text>
                 {!showPatientInfo && (
                   <View
                     style={[
@@ -611,8 +645,13 @@ function Game() {
             {showPatientInfo && (
               <View style={styles.vitals}>
                 {currentGameData.age && (
-                  <View style={[styles.chip, { borderColor: Colors[colorScheme].tint }]}>
-                    <Text style={{ color:dynamicTextColor, fontSize: 11 }}>
+                  <View
+                    style={[
+                      styles.chip,
+                      { borderColor: Colors[colorScheme].tint },
+                    ]}
+                  >
+                    <Text style={{ color: dynamicTextColor, fontSize: 11 }}>
                       Age: {currentGameData.age}
                     </Text>
                   </View>
@@ -665,7 +704,9 @@ function Game() {
                       justifyContent: 'space-between',
                     }}
                   >
-                    <Text style={[styles.sectionTitle, { color: dynamicTextColor }]}>
+                    <Text
+                      style={[styles.sectionTitle, { color: dynamicTextColor }]}
+                    >
                       Symptoms
                       {!showCurrentSymptoms && currentGameData.symptoms
                         ? ` (${currentGameData.symptoms.length})`
@@ -734,7 +775,11 @@ function Game() {
 
             {!showModal && revealedDisease.medicalTerm && (
               <View style={styles.diagnosisContainer}>
-                <Text style={[styles.sectionTitle, { color: dynamicTextColor }]}>Diagnosis:</Text>
+                <Text
+                  style={[styles.sectionTitle, { color: dynamicTextColor }]}
+                >
+                  Diagnosis:
+                </Text>
                 <Text
                   style={[styles.diagnosisText, { color: dynamicTextColor }]}
                 >
@@ -752,14 +797,31 @@ function Game() {
           </View>
         )}
 
-        <ScrollView style={styles.chatWindow} ref={bottomRef}>
-          {messages
-            .filter(m => m.data?.responseType !== 'case_presentation')
-            .map(renderMessage)}
-          {loading && (
-            <ActivityIndicator size="large" color={Colors[colorScheme].tint} />
+        <View style={{ flex: 1, position: 'relative' }}>
+          <ScrollView style={styles.chatWindow} ref={bottomRef}>
+            {messages
+              .filter(m => m.data?.responseType !== 'case_presentation')
+              .map(renderMessage)}
+            {loading && (
+              <ActivityIndicator
+                size="large"
+                color={Colors[colorScheme].tint}
+              />
+            )}
+          </ScrollView>
+          {!finished && sessionId && (
+            <TouchableOpacity
+              style={[
+                styles.floatingButton,
+                { backgroundColor: '#e74c3c' }, // Reddish background
+              ]}
+              onPress={() => setShowReportModal(true)}
+            >
+              <Ionicons name="flag-outline" size={16} color="#ffffff" /> //
+              White icon
+            </TouchableOpacity>
           )}
-        </ScrollView>
+        </View>
 
         {revealedDisease && (
           <Modal
@@ -830,6 +892,99 @@ function Game() {
           </Modal>
         )}
 
+        {showReportModal && (
+          <Modal
+            visible={showReportModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowReportModal(false)}
+          >
+            <TouchableWithoutFeedback onPress={() => setShowReportModal(false)}>
+              <View style={styles.modalContainer}>
+                <TouchableWithoutFeedback onPress={() => {}}>
+                  <View
+                    style={[
+                      styles.modalContent,
+                      { backgroundColor: Colors[colorScheme].background },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.modalTitle,
+                        { color: Colors[colorScheme].text },
+                      ]}
+                    >
+                      Report Inappropriate Content
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {['Offensive', 'Inaccurate', 'Harmful', 'Other'].map(
+                        type => (
+                          <TouchableOpacity
+                            key={type}
+                            style={{
+                              padding: 10,
+                              margin: 5,
+                              borderRadius: 5,
+                              backgroundColor:
+                                reportType === type
+                                  ? Colors[colorScheme].tint
+                                  : 'gray',
+                            }}
+                            onPress={() => setReportType(type)}
+                          >
+                            <Text
+                              style={{
+                                color: reportType === type ? 'black' : 'white',
+                              }}
+                            >
+                              {type}
+                            </Text>
+                          </TouchableOpacity>
+                        ),
+                      )}
+                    </View>
+                    <TextInput
+                      style={{
+                        borderWidth: 1,
+                        borderColor: 'gray',
+                        borderRadius: 5,
+                        padding: 10,
+                        margin: 10,
+                        color: Colors[colorScheme].text,
+                        backgroundColor: Colors[colorScheme].background,
+                        width: '90%',
+                      }}
+                      placeholder="Additional details (optional)"
+                      placeholderTextColor="gray"
+                      value={reportDetails}
+                      onChangeText={setReportDetails}
+                      multiline
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.button,
+                        { backgroundColor: Colors[colorScheme].tint },
+                      ]}
+                      onPress={submitReport}
+                      disabled={loading || !reportType}
+                    >
+                      <Text style={{ color: 'black', fontWeight: 'bold' }}>
+                        Submit Report
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
+        )}
+
         <View
           style={[
             styles.controls,
@@ -846,7 +1001,9 @@ function Game() {
               ref={inputRef}
               style={[styles.input, { color: Colors[colorScheme].text }]}
               placeholder={
-                finished ? 'Case completed' : 'guess, ask for tests or anything else'
+                finished
+                  ? 'Case completed'
+                  : 'guess, ask for tests or anything else'
               }
               value={input}
               onChangeText={setInput}
@@ -883,7 +1040,9 @@ function Game() {
                   name="send"
                   size={24}
                   color={
-                    loading || finished || !input.trim() ? 'gray' : dynamicTextColor
+                    loading || finished || !input.trim()
+                      ? 'gray'
+                      : dynamicTextColor
                   }
                 />
               </TouchableOpacity>
@@ -896,7 +1055,7 @@ function Game() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingBottom: 10},
+  container: { flex: 1, paddingBottom: 10 },
   header: { alignItems: 'center', marginBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
   subtitle: { fontSize: 16, color: '#ffffff' },
@@ -1051,11 +1210,11 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: 'absolute',
-    bottom: 80,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    top: 10,
+    left: 10,
+    width: 25,
+    height: 25,
+    borderRadius: 12.5,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
