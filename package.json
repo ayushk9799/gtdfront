@@ -7,7 +7,13 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "watchman:repair": "watchman watch-del . || true && watchman watch-project . || true",
+    "pods": "cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 bundle exec pod install",
+    "run:all": "npm start & npm run android & npm run ios",
+    "build:android:apk": "cd android && ./gradlew assembleRelease",
+    "build:android:aab": "cd android && ./gradlew bundleRelease",
+    "build:ios:release": "npx react-native run-ios --configuration Release"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.4.7",
@@ -27,13 +33,13 @@
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.12.0",
     "react-native-svg": "^15.12.0",
-    "react-native-vector-icons": "^10.2.0"
+    "react-native-vector-icons": "^10.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "19.0.0",
+    "@react-native-community/cli": "^19.0.0",
     "@react-native-community/cli-platform-android": "19.0.0",
     "@react-native-community/cli-platform-ios": "19.0.0",
     "@react-native/babel-preset": "0.80.1",

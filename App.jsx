@@ -129,7 +129,7 @@ export default function App() {
 
   return (
     <NavigationContainer theme={mergedTheme}>
-      {user ? (
+      {!user ? (
         <RootTabs />
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>

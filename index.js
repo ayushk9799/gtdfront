@@ -31,4 +31,4 @@ const Root = () => (
 
 );
 
-AppRegistry.registerComponent("GuessTheDisease", () => Root);
+AppRegistry.registerComponent("frontend", () => Root);
