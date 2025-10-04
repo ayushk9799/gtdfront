@@ -8,6 +8,8 @@ import App from './App';
 import { name as appName } from './app.json';
 import 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 enableScreens();
 
@@ -19,9 +21,14 @@ enableScreens();
  * devices.
  */
 const Root = () => (
-  <GestureHandlerRootView style={{ flex: 1 }}>
+  <SafeAreaProvider>
+    <KeyboardProvider>
+   <GestureHandlerRootView style={{ flex: 1 }}>
     <App />
   </GestureHandlerRootView>
+  </KeyboardProvider>
+  </SafeAreaProvider>
+
 );
 
 AppRegistry.registerComponent("GuessTheDisease", () => Root);

@@ -6,7 +6,7 @@ import {
 import React, { useState } from 'react';
 import { API_BASE } from '../constants/Api.jsx';
 import inappicon from '../constants/inappicon.png';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MMKV } from 'react-native-mmkv';
 import {
   View,
   TouchableOpacity,
@@ -17,6 +17,9 @@ import {
   Image,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+
+// Initialize MMKV storage
+const storage = new MMKV();
 
 async function platformSpecificSignUp() {
   try {
@@ -73,7 +76,7 @@ function Login({ onLogin }) {
       const credential = await platformSpecificSignUp();
     
       // Persist user credential
-      await AsyncStorage.setItem('user', JSON.stringify(credential?.user));
+      storage.set('user', JSON.stringify(credential?.user));
       if (typeof onLogin === 'function') {
         onLogin(credential?.user);
       }
