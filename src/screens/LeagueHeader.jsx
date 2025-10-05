@@ -4,7 +4,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 export default function LeagueHeader({ onPressPro }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.96)', flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 10, flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 10 }}>
         <StatPill icon="coin" iconBg="#FFE8B0" iconColor="#CC8A00" label="2600" style={{ marginRight: 6 }} />
         <StatPill icon="heart" iconBg="#FFD1E1" iconColor="#C2185B" label="2" style={{ marginRight: 6 }} />

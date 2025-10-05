@@ -18,10 +18,12 @@ export default function LeagueScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top','left','right']}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }} stickyHeaderIndices={[0]}>
-        {/* sticky header */}
+      {/* fixed header outside scroll */}
+      {/* <View style={{ paddingHorizontal: 16 }}> */}
         <LeagueHeader onPressPro={() => {}} />
+      {/* </View> */}
 
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
         {/* big heart badge placeholder */}
         <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 18 }}>
           <View style={{ width: 220, height: 220, borderRadius: 110, backgroundColor: '#FFD1E1', alignItems: 'center', justifyContent: 'center', shadowColor: '#C2185B', shadowOpacity: 0.25, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 }}>

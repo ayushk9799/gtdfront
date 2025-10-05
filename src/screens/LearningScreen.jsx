@@ -3,6 +3,7 @@ import { useColorScheme, View, Text, ScrollView, Image, StyleSheet } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
+import LeagueHeader from './LeagueHeader';
 
 const DUMMY = [
   {
@@ -45,6 +46,7 @@ export default function LearningScreen() {
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
+      <LeagueHeader onPressPro={() => {}} />
       <ScrollView contentContainerStyle={styles.learnScroll}>
         <View style={styles.learnHeaderRow}>
           <Text style={[styles.learnHeaderCount, { color: themeColors.text }]}>{totalCount} Learnings</Text>

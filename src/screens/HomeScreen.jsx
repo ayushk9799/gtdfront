@@ -6,6 +6,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import { styles } from './styles';
+import LeagueHeader from './LeagueHeader';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -13,6 +14,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
+      <LeagueHeader onPressPro={() => {}} />
       <ScrollView contentContainerStyle={styles.screenScroll}>
         <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
           <View style={styles.cardContent}>
