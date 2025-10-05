@@ -9,7 +9,6 @@ import { name as appName } from './app.json';
 import 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 enableScreens();
 
@@ -22,13 +21,10 @@ enableScreens();
  */
 const Root = () => (
   <SafeAreaProvider>
-    <KeyboardProvider>
-   <GestureHandlerRootView style={{ flex: 1 }}>
-    <App />
-  </GestureHandlerRootView>
-  </KeyboardProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <App />
+    </GestureHandlerRootView>
   </SafeAreaProvider>
-
 );
 
 AppRegistry.registerComponent("frontend", () => Root);
