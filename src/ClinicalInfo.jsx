@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, Touchab
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors } from '../constants/Colors';
+import { Colors } from '@Colors.jsx';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 

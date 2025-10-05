@@ -16,6 +16,7 @@
     "build:ios:release": "npx react-native run-ios --configuration Release"
   },
   "dependencies": {
+    "@react-native-community/blur": "^4.4.1",
     "@react-navigation/bottom-tabs": "^7.4.7",
     "@react-navigation/drawer": "^7.2.3",
     "@react-navigation/material-top-tabs": "^7.3.8",
@@ -52,6 +53,7 @@
     "@types/jest": "^29.5.13",
     "@types/react": "^19.1.0",
     "@types/react-test-renderer": "^19.1.0",
+    "babel-plugin-module-resolver": "^5.0.2",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
     "prettier": "2.8.8",

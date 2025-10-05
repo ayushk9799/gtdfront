@@ -1650,6 +1650,35 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - SocketRocket
+  - react-native-blur (4.4.1):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - react-native-credentials-manager (0.6.2):
     - boost
     - DoubleConversion
@@ -2704,6 +2733,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - "react-native-blur (from `../node_modules/@react-native-community/blur`)"
   - react-native-credentials-manager (from `../node_modules/react-native-credentials-manager`)
   - react-native-keyboard-controller (from `../node_modules/react-native-keyboard-controller`)
   - react-native-mmkv (from `../node_modules/react-native-mmkv`)
@@ -2835,6 +2865,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-blur:
+    :path: "../node_modules/@react-native-community/blur"
   react-native-credentials-manager:
     :path: "../node_modules/react-native-credentials-manager"
   react-native-keyboard-controller:
@@ -2960,6 +2992,7 @@ SPEC CHECKSUMS:
   React-logger: 984ebd897afad067555d081deaf03f57c4315723
   React-Mapbuffer: 0c045c844ce6d85cde53e85ab163294c6adad349
   React-microtasksnativemodule: d9499269ad1f484ae71319bac1d9231447f2094e
+  react-native-blur: 477fac85a42b5506232ef1d2b82aad359feadd26
   react-native-credentials-manager: 0c4f107ad932bff0aac011d592b857ea4c21a5f2
   react-native-keyboard-controller: 519a2646dbb3f569c35a620af4308dc21fc0b9f4
   react-native-mmkv: b189248d0ad153f44ef126270c201a1828a056fd
@@ -3005,4 +3038,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 646eddf264453d8008754c0f8202b71b0420a3a0
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.15.2
