@@ -1,13 +1,18 @@
 import React from 'react';
-import { useColorScheme, useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useColorScheme, useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { TabView, TabBar } from 'react-native-tab-view';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Svg, { Line } from 'react-native-svg';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
+import LinearGradient from 'react-native-linear-gradient';
 
 const ORANGE = '#FF8A00';
+
+// Match the app's subtle pink gradient
+const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
 const SUCCESS_COLOR = '#12A77A';
 const SUCCESS_BG = '#EAF7F2';
@@ -16,57 +21,94 @@ const ERROR_BG = '#FDEAEA';
 const INFO_COLOR = '#6E4A13';
 const INFO_BG = '#F6EFE4';
 
-const TEST_SECTIONS = [
-  {
-    kind: 'success',
-    title: 'Efficient Test Choices',
-    items: [
-      'Bacterial conjunctival swab and culture',
-      'Viral conjunctival swab (PCR) (Supportive)',
+const CASE_DATA = {
+  id: 'case_001',
+  title: 'Bacterial conjunctivitis',
+  subtitle: 'Classic Red Eye Case',
+  sections: {
+    tests: [
+      {
+        kind: 'success',
+        title: 'Efficient Test Choices',
+        items: [
+          'Bacterial conjunctival swab and culture',
+          'Viral conjunctival swab (PCR) (Supportive)',
+        ],
+      },
+      {
+        kind: 'error',
+        title: 'Unnecessary Tests Ordered',
+        items: ['Orbital CT scan', 'Serum IgE'],
+      },
+      {
+        kind: 'info',
+        title: 'Missed Key Tests',
+        items: ['Gram stain of conjunctival discharge'],
+      },
+    ],
+    diagnosis: [
+      {
+        kind: 'error',
+        title: 'Incorrect Diagnoses Considered',
+        items: ['Allergic conjunctivitis'],
+      },
+      {
+        kind: 'info',
+        title: 'Missed Differential Diagnoses',
+        items: ['Bacterial conjunctivitis'],
+      },
+    ],
+    treatment: [
+      {
+        kind: 'success',
+        title: 'Correct Treatments Given',
+        items: ['Topical antibiotic eye drops (e.g., erythromycin)'],
+      },
+      {
+        kind: 'error',
+        title: 'Unnecessary Treatments Given',
+        items: ['IV antibiotics'],
+      },
+      {
+        kind: 'info',
+        title: 'Missed Treatments',
+        items: ['Topical broad-spectrum antibiotic ointment'],
+      },
     ],
   },
-  {
-    kind: 'error',
-    title: 'Unnecessary Tests Ordered',
-    items: ['Orbital CT scan', 'Serum IgE'],
-  },
-  {
-    kind: 'info',
-    title: 'Missed Key Tests',
-    items: ['Gram stain of conjunctival discharge'],
-  },
-];
-
-const DIAGNOSIS_SECTIONS = [
-  {
-    kind: 'error',
-    title: 'Incorrect Diagnoses Considered',
-    items: ['Allergic conjunctivitis'],
-  },
-  {
-    kind: 'info',
-    title: 'Missed Differential Diagnoses',
-    items: ['Bacterial conjunctivitis'],
-  },
-];
-
-const TREATMENT_SECTIONS = [
-  {
-    kind: 'success',
-    title: 'Correct Treatments Given',
-    items: ['Topical antibiotic eye drops (e.g., erythromycin)'],
-  },
-  {
-    kind: 'error',
-    title: 'Unnecessary Treatments Given',
-    items: ['IV antibiotics'],
-  },
-  {
-    kind: 'info',
-    title: 'Missed Treatments',
-    items: ['Topical broad-spectrum antibiotic ointment'],
-  },
-];
+  insights: [
+    {
+      title: 'Correct Diagnosis',
+      bullets: [
+        'Acute bacterial conjunctivitis (left eye) due to Staphylococcus aureus.',
+      ],
+    },
+    {
+      title: 'Key Clues',
+      bullets: [
+        'Acute unilateral purulent discharge with conjunctival injection, normal cornea/vision, and absent preauricular LAD favors bacterial over viral/ allergic causes.',
+      ],
+    },
+    {
+      title: 'Essential Tests',
+      bullets: [
+        'Conjunctival Gram stain and bacterial culture to confirm etiology and guide antibiotics', 'Reserve PCR panels for atypical/severe cases or STI risk.',
+      ],
+    },
+    {
+      title: 'Immediate Management',
+      bullets: [
+        'Begin topical broad-spectrum antibiotic (e.g., erythromycin or trimethoprim-polymyxin B), enforce strict hand hygiene, use cold compresses, and avoid contact lenses until resolved.',
+      ],
+    },
+    {
+      title: 'Pitfalls to avoid',
+      bullets: [
+        'Avoid topical steroids or unnecessary imaging/ systemic antibiotics in uncomplicated conjunctivitis.',
+      ],
+    },
+  ],
+};
 
 const TABS = ['Tests', 'Diagnosis', 'Treatment'];
 
@@ -87,17 +129,23 @@ export default function ClinicalInsight() {
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
+      <LinearGradient
+        colors={SUBTLE_PINK_GRADIENT}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtnInline} hitSlop={10}>
           <MaterialCommunityIcons name="chevron-left" size={26} color="#223148" />
         </Pressable>
         <View style={styles.topWrap}>
           <Image source={inappicon} style={styles.topImage} />
-          <Text style={styles.caseTitle}>Bacterial conjunctivitis</Text>
-          <Text style={styles.caseSubtitle}>Classic Red Eye Case</Text>
+          <Text style={styles.caseTitle}>{CASE_DATA.title}</Text>
+          <Text style={styles.caseSubtitle}>{CASE_DATA.subtitle}</Text>
         </View>
         {/* case review card */}
-        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, minHeight: 500, }]}>
+        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, minHeight: 600, }]}>
           <View style={styles.caseHeader}>
             <View style={styles.caseIconWrap}>
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
@@ -113,9 +161,9 @@ export default function ClinicalInsight() {
             renderTabBar={(tabBarProps) => (
               <TabBar
                 {...tabBarProps}
-                activeColor={ORANGE}
+                activeColor={Colors.brand.darkPink}
                 inactiveColor="#5C6C83"
-                indicatorStyle={{ backgroundColor: ORANGE, height: 3, borderRadius: 2 }}
+                indicatorStyle={{ backgroundColor: Colors.brand.darkPink, height: 3, borderRadius: 2 }}
                 style={{ backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0, borderBottomWidth: 1, borderBottomColor: '#E6EAF0' }}
                 // tabStyle={{ width: layout.width / 3 }}
                 renderLabel={({ route: r, focused }) => (
@@ -125,7 +173,7 @@ export default function ClinicalInsight() {
             )}
             renderScene={({ route: r }) => {
               const key = r.key;
-              const currentSections = key === 'tests' ? TEST_SECTIONS : key === 'treatment' ? TREATMENT_SECTIONS : DIAGNOSIS_SECTIONS;
+              const currentSections = CASE_DATA.sections[key];
               return (
                 <View style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
                   {currentSections.map((section, idx) => (
@@ -158,40 +206,13 @@ export default function ClinicalInsight() {
           {insightsExpanded && (
             <>
               <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-                <InsightSection
-                  title="Correct Diagnosis"
-                  bullets={[
-                    'Acute bacterial conjunctivitis (left eye) due to Staphylococcus aureus.',
-                  ]}
-                />
-
-                <InsightSection
-                  title="Key Clues"
-                  bullets={[
-                    'Acute unilateral purulent discharge with conjunctival injection, normal cornea/vision, and absent preauricular LAD favors bacterial over viral/ allergic causes.',
-                  ]}
-                />
-
-                <InsightSection
-                  title="Essential Tests"
-                  bullets={[
-                    'Conjunctival Gram stain and bacterial culture to confirm etiology and guide antibiotics; reserve PCR panels for atypical/severe cases or STI risk.',
-                  ]}
-                />
-
-                <InsightSection
-                  title="Immediate Management"
-                  bullets={[
-                    'Begin topical broad-spectrum antibiotic (e.g., erythromycin or trimethoprim-polymyxin B), enforce strict hand hygiene, use cold compresses, and avoid contact lenses until resolved.',
-                  ]}
-                />
-
-                <InsightSection
-                  title="Pitfalls to avoid"
-                  bullets={[
-                    'Avoid topical steroids or unnecessary imaging/ systemic antibiotics in uncomplicated conjunctivitis.',
-                  ]}
-                />
+                {CASE_DATA.insights.map((insight, idx) => (
+                  <InsightSection
+                    key={idx}
+                    title={insight.title}
+                    bullets={insight.bullets}
+                  />
+                ))}
               </View>
             </>
           )}
@@ -223,8 +244,16 @@ function Section({ kind, title, items, showDivider }) {
         <Text key={i} style={styles.bulletText}>{`\u2022 ${text}`}</Text>
       ))}
 
-      {showDivider && <View style={styles.dashedDivider} />}
+      {showDivider && <DashedDivider />}
     </View>
+  );
+}
+
+function DashedDivider() {
+  return (
+    <Svg width="100%" height={1} style={{ marginTop: 10 }}>
+      <Line x1="0" y1="0.5" x2="100%" y2="0.5" stroke="#E6EAF0" strokeWidth={StyleSheet.hairlineWidth} strokeDasharray="4 4" />
+    </Svg>
   );
 }
 
@@ -252,8 +281,8 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     backgroundColor: '#F3F6FA',
   },
-  caseTitle: { fontSize: 34, fontWeight: '900', color: ORANGE, textAlign: 'center' },
-  caseSubtitle: { fontSize: 22, fontWeight: '800', color: '#223148', textAlign: 'center', marginTop: 8, marginBottom: 8 },
+  caseTitle: { fontSize: 24, fontWeight: '900', color: '#FF407D', textAlign: 'center' },
+  caseSubtitle: { fontSize: 18, fontWeight: '500', color: '#223148', textAlign: 'center', marginTop: 8, marginBottom: 8 },
   card: {
     borderRadius: 18,
     borderWidth: 1,
@@ -268,12 +297,11 @@ const styles = StyleSheet.create({
   caseHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8, justifyContent: 'center' },
   caseIconWrap: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#E9EEF6', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   caseHeaderText: { fontSize: 16, fontWeight: '800', color: '#5C6C83'},
-  tabText: { fontSize: 20, fontWeight: '800', color: '#5C6C83' },
-  tabTextActive: { color: ORANGE },
+  tabText: { fontSize: 20, fontWeight: '800', color : Colors.brand.darkPink },
+  tabTextActive: { color: Colors.brand.darkPink },
   sectionIconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '800' },
   bulletText: { fontSize: 16, color: '#223148', marginVertical: 8, marginLeft: 6 },
-  dashedDivider: { marginTop: 10, height: 1, borderTopWidth: 1, borderTopColor: '#E6EAF0', borderStyle: 'dashed' },
   // removed fixed-position back button
   backBtnInline: {
     alignSelf: 'flex-start',

@@ -71,8 +71,8 @@ export default function LearningScreen() {
             {section.items.map((item, i) => (
               <Pressable
                 key={i}
-                 onPress={() => openSheet(item)}
-                // onPress={() => navigation.navigate('ClinicalInsight')}
+                //  onPress={() => openSheet(item)}
+                onPress={() => navigation.navigate('ClinicalInsight')}
                 style={[styles.learnCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
               >
                 <View style={styles.learnCardRow}>
