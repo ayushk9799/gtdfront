@@ -1,15 +1,130 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors } from '@Colors.jsx';
+import { Colors } from '../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
+// Card height as a percentage of the screen height
+const CARD_HEIGHT_PCT = 0.70;
+const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
+
+// Sample case fallback if no route params are provided
+const SAMPLE_CASE =
+{
+    "caseId": "PE_001",
+    "caseTitle": "34-year-old female with sharp chest pain",
+    "initialPresentation": {
+      "patient": {
+        "name": "Jane Doe",
+        "age": 34,
+        "sex": "Female"
+      },
+      "chiefComplaint": "Sudden, sharp right-sided chest pain & shortness of breath.",
+      "patientHistory": [
+        "Pain is sharp, one-sided, and significantly worse with deep inspiration (pleuritic).",
+        "Returned from a 14-hour international flight three days ago.",
+        "Currently taking daily oral contraceptive pills."
+      ],
+      "physicalExamination": [
+        "Lungs are completely clear to auscultation bilaterally.",
+        "Left calf is visibly swollen, firm, and tender compared to the right.",
+        "Patient is visibly anxious and breathing rapidly.",    
+        "Patient is breathing rapidly.",
+        "Patient is breathing rapidly.",
+        "Patient is breathing rapidly.",
+        "Patient is breathing rapidly.",
+        "Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.",
+        "Patient is visibly anxious and breathing rapidly."
+      ],
+      "vitals": [
+        { "name": "Heart Rate", "value": "125 bpm" },
+        { "name": "Respiratory Rate", "value": "24/min" },
+        { "name": "O2 Saturation", "value": "91% (RA)" },
+        { "name": "Blood Pressure", "value": "110/70 mmHg" },
+        { "name": "Temperature", "value": "99.1°F" }
+      ]
+    },
+    "diagnosticWorkup": {
+      "availableTests": [
+        { "id": "hem_cbc", "name": "Complete Blood Count (CBC)", "category": "Hematology" },
+        { "id": "hem_ddimer", "name": "D-Dimer", "category": "Hematology" },
+        { "id": "path_bmp", "name": "Basic Metabolic Panel (BMP)", "category": "Clinical Pathology" },
+        { "id": "path_trop", "name": "Troponin I", "category": "Clinical Pathology" },
+        { "id": "card_ekg", "name": "Electrocardiogram (EKG)", "category": "Cardiology" },
+        { "id": "rad_cxr", "name": "Chest X-Ray (CXR)", "category": "Radiology" },
+        { "id": "rad_cta", "name": "CT Angiogram (CTA) of Chest", "category": "Radiology" },
+        { "id": "rad_us", "name": "Ultrasound, Lower Extremity", "category": "Radiology" }
+      ],
+      "testResults": {
+        "hem_cbc": "WBC: 8.5 k/uL, Hgb: 13.1 g/dL. Within normal limits.",
+        "hem_ddimer": "Result: 4,500 ng/mL. CRITICALLY HIGH (Ref < 500).",
+        "path_bmp": "Creatinine: 0.8 mg/dL. Normal kidney function.",
+        "path_trop": "Result: <0.02 ng/mL. Negative for myocardial infarction.",
+        "card_ekg": "Rhythm: Sinus Tachycardia at 122 bpm. No acute ST changes.",
+        "rad_cxr": "Impression: Lungs are clear. No acute cardiopulmonary process identified.",
+        "rad_us": "Impression: Acute Deep Vein Thrombosis (DVT) of the left leg.",
+        "rad_cta": "Impression: Acute, extensive bilateral pulmonary embolism with right ventricular strain."
+      }
+    },
+    "diagnosisOptions": [
+      { "id": "diag_pe", "name": "Acute Pulmonary Embolism" },
+      { "id": "diag_mi", "name": "Myocardial Infarction (Heart Attack)" },
+      { "id": "diag_pna", "name": "Pneumonia" },
+      { "id": "diag_ptx", "name": "Pneumothorax (Collapsed Lung)" },
+      { "id": "diag_anx", "name": "Anxiety Attack" }
+    ],
+    "correctDiagnosisId": "diag_pe",
+    "treatmentPlan": {
+      "medications": [
+        { "id": "med_o2", "name": "Administer Supplemental Oxygen", "rationale": "Corrects low oxygen levels (hypoxia)." },
+        { "id": "med_heparin", "name": "Start IV Heparin Drip", "rationale": "Provides immediate anticoagulation to prevent clot progression." },
+        { "id": "med_tpa", "name": "Administer Alteplase (tPA) IV Infusion", "rationale": "A 'clot-busting' drug to dissolve a life-threatening embolism." },
+        { "id": "med_morphine", "name": "Administer IV Morphine", "rationale": "For severe pleuritic chest pain and to reduce anxiety." }
+      ],
+      "interventionalAndSurgical": [
+          { "id": "proc_ir", "name": "Consult Interventional Radiology (IR)", "rationale": "For consideration of Catheter-Directed Thrombolysis." },
+          { "id": "proc_ctsurg", "name": "Consult Cardiothoracic (CT) Surgery", "rationale": "For consideration of Surgical Embolectomy." }
+      ],
+      "disposition": [
+          { "id": "disp_icu", "name": "Admit to Intensive Care Unit (ICU)", "rationale": "For continuous monitoring of a high-risk, unstable patient." },
+          { "id": "disp_floor", "name": "Admit to General Medical Floor", "rationale": "For patients who are stable and do not require intensive monitoring." }
+      ]
+    },
+    "optimalTreatmentPlanIds": [ "med_o2", "med_heparin", "med_tpa", "proc_ir", "disp_icu" ],
+    "caseReview": {
+      "coreInsights": {
+          "title": "Core Clinical Insights",
+          "content": "Correct Diagnosis: Acute Pulmonary Embolism (PE). Key Clues: Pleuritic chest pain, hypoxia with clear lungs, unilateral leg swelling, and major risk factors (travel, OCPs). Essential Tests: CT Angiogram is the gold standard for diagnosis. Immediate Management: Oxygen, immediate anticoagulation (Heparin), and consideration of thrombolytics (tPA) for a high-risk PE."
+      },
+      "howWeLanded": {
+          "title": "How We Landed on the Diagnosis",
+          "content": "The diagnosis was made by recognizing the classic risk profile (prolonged immobility, estrogen use) combined with the textbook presentation of pleuritic chest pain and hypoxia. While a D-Dimer was highly suggestive, the DVT found on ultrasound was the smoking gun for the clot's source, and the CT Angiogram provided definitive visual confirmation of the clots in the lungs."
+      },
+      "whyOthersDidntFit": {
+          "title": "Why Other Diagnoses Didn't Fit",
+          "content": "Myocardial Infarction was ruled out by a negative Troponin and a non-ischemic EKG. Pneumonia was ruled out by the lack of fever and the clear Chest X-Ray. Pneumothorax was ruled out by the clear Chest X-Ray. While the patient was anxious, her profound hypoxia (O2 91%) was objective evidence of a severe physiological problem, not just an anxiety attack."
+      },
+      "treatmentPriorities": {
+          "title": "Treatment Priorities & Sequencing",
+          "content": [
+            "1. Oxygenation: Immediately correct the hypoxia by administering supplemental oxygen.",
+            "2. Anticoagulation: Start an IV Heparin drip without delay to prevent the clot from worsening. This is the most critical life-saving step.",
+            "3. Reperfusion Therapy: Because the CT showed right heart strain, this is a high-risk PE. The patient needs immediate consideration for advanced therapy to remove the clot, making thrombolytics (tPA) the next priority.",
+            "4. Disposition: This patient is critically ill and requires admission to an ICU for close monitoring and management."
+          ]
+      },
+      "clinicalTraps": {
+          "title": "Clinical Traps to Avoid",
+          "content": "The 'Anxiety' Trap: Never attribute profound hypoxia and tachycardia to anxiety alone without ruling out life-threatening causes first. The 'Fluid' Trap: In a patient with a massive PE causing right heart strain, giving a large IV fluid bolus can worsen the strain and cause cardiovascular collapse. The 'Delayed Anticoagulation' Trap: Hesitating to start anticoagulation is a critical error. Time is of the essence to prevent clot propagation and death."
+      }
+    }
+  }
 function ECGUnderline({ color = Colors.brand.darkPink }) {
   return (
     <Svg width={160} height={14} viewBox="0 0 160 14" style={styles.ecgSvg}>
@@ -38,7 +153,15 @@ function Section({ title, children }) {
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{title}</Text>
           <ECGUnderline />
         </View>
-        <View>{children}</View>
+        <ScrollView
+          style={styles.sectionScroll}
+          contentContainerStyle={styles.sectionScrollContent}
+          showsVerticalScrollIndicator
+          nestedScrollEnabled
+          scrollEventThrottle={16}
+        >
+          {children}
+        </ScrollView>
       </View>
     </View>
   );
@@ -101,12 +224,17 @@ function BulletItem({ children }) {
   );
 }
 
-function StatTile({ label, value }) {
+function StatTile({ label, value, icon }) {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   return (
     <View style={[styles.statTile, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
-      <Text style={styles.statValue}>{value}</Text>
+      <View style={styles.statHeaderRow}>
+        {icon ? (
+          <MaterialCommunityIcons name={icon} size={18} color={Colors.brand.darkPink} style={styles.statIcon} />
+        ) : null}
+        <Text style={styles.statValue}>{value}</Text>
+      </View>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
@@ -145,10 +273,88 @@ export default function ClinicalInfo() {
   const { width } = Dimensions.get('window');
   const [index, setIndex] = useState(0);
   const navigation = useNavigation();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const scrollRef = useRef(null);
+  const SLIDE_COUNT = 5; // Basic, Vitals, Hx, PE, Tests
+
+  // Layout calculations for platform-consistent nav button positioning
+  const slidePaddingTop = Math.max(36, insets.top + 24);
+  const screenHeight = Dimensions.get('window').height;
+  const buttonSize = 48;
+  const gapBelowCard = 12;
+  const desiredTop = slidePaddingTop + CARD_HEIGHT_PX + gapBelowCard;
+  const maxTop = screenHeight - insets.bottom - (buttonSize + 8);
+  const navButtonTop = Math.min(desiredTop, maxTop);
+
+  const caseData = (route?.params && route.params.caseData) ? route.params.caseData : SAMPLE_CASE;
+  const p = caseData?.initialPresentation?.patient || {};
+  const chief = caseData?.initialPresentation?.chiefComplaint || '';
+  const historyItems = caseData?.initialPresentation?.patientHistory || [];
+  const examItems = caseData?.initialPresentation?.physicalExamination || [];
+  const vitalsArray = caseData?.initialPresentation?.vitals || [];
+  const availableTests = caseData?.diagnosticWorkup?.availableTests || [];
+  const testResults = caseData?.diagnosticWorkup?.testResults || {};
+  const [selectedTests, setSelectedTests] = useState([]); // store ids
+  const [evaluatedResults, setEvaluatedResults] = useState([]);
+
+  const testsById = useMemo(() => {
+    const map = new Map();
+    for (const t of availableTests) map.set(t.id, t);
+    return map;
+  }, [availableTests]);
+
+  const iconForTest = (t) => {
+    if (!t) return 'beaker-outline';
+    // Prefer id-specific icons where sensible, then fall back to category
+    switch (t.id) {
+      case 'card_ekg':
+        return 'heart-pulse';
+      case 'rad_cxr':
+        return 'x-ray';
+      case 'rad_cta':
+        return 'radiology-box';
+      case 'rad_us':
+        return 'image';
+      case 'hem_ddimer':
+        return 'beaker-outline';
+      case 'path_trop':
+        return 'blood-bag';
+      case 'path_bmp':
+        return 'beaker';
+      default:
+        break;
+    }
+    if (t.category === 'Cardiology') return 'heart-pulse';
+    if (t.category === 'Radiology') return 'image';
+    if (t.category === 'Clinical Pathology') return 'beaker';
+    if (t.category === 'Hematology') return 'beaker-outline';
+    return 'beaker-outline';
+  };
+
+  const toggleTest = (id) => {
+    setSelectedTests((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
+  };
+
+  const handleEvaluate = () => {
+    const results = selectedTests.map((id) => {
+      const meta = testsById.get(id);
+      return {
+        id,
+        name: meta?.name || id,
+        value: testResults?.[id],
+      };
+    });
+    setEvaluatedResults(results);
+  };
+
+  // Normalize vitals ordering to a friendly display
+  const vitalsOrder = ['Temperature', 'Heart Rate', 'Blood Pressure', 'Respiratory Rate', 'O2 Saturation', 'Weight'];
+  const displayVitals = vitalsOrder
+    .map((label) => vitalsArray.find((v) => v.name === label))
+    .filter(Boolean);
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -179,88 +385,148 @@ export default function ClinicalInfo() {
           const i = Math.round(x / width);
           if (i !== index) setIndex(i);
         }}
-        contentContainerStyle={[styles.carousel, { width: width * 4 }]}
+        contentContainerStyle={[styles.carousel, { width: width * SLIDE_COUNT }]}
       >
-        <View style={[styles.slide, { width }]}>
+        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section title="Basic Info & Chief Complaint">
             <Image source={require('../constants/inappicon.png')} style={styles.heroImage} />
             <View style={styles.infoGrid}>
-              <InfoColumn icon="badge-account" label="Name" value="Lina" />
-              <InfoColumn icon="gender-female" label="Gender" value="Female" />
-              <InfoColumn icon="calendar" label="Age" value="2 Y" />
+              <InfoColumn icon="badge-account" label="Name" value={p?.name ?? '—'} />
+              <InfoColumn icon="gender-male-female" label="Sex" value={p?.sex ?? '—'} />
+              <InfoColumn icon="calendar" label="Age" value={p?.age != null ? String(p.age) : '—'} />
             </View>
-            <View style={styles.subHeaderRow}>
-              <MaterialCommunityIcons name="clipboard-text-outline" size={18} color={Colors.brand.darkPink} />
-              <Text style={styles.subHeaderText}>Chief Complaints</Text>
+            <View style={styles.chiefContainer}>
+              <View style={styles.subHeaderRow}>
+                <MaterialCommunityIcons name="clipboard-text-outline" size={18} color={Colors.brand.darkPink} />
+                <Text style={styles.subHeaderText}>Chief Complaint</Text>
+              </View>
+              <Text style={styles.chiefText}>{chief || '—'}</Text>
             </View>
-            <Text style={styles.chiefText}>Frequent watery stools for 2 days</Text>
-            <TipCard title="Learn as you play" subtitle="Unlock Mentor mode and get step-by-step teaching during the case. Understand why each choice matters — not just the final" />
           </Section>
         </View>
-        <View style={[styles.slide, { width }]}>
+        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section title="Vitals">
             <View style={styles.statsRow}>
-              <StatTile icon="thermometer" label="Temperature" value="37.2°C (98.96°F)" />
-              <StatTile icon="heart" label="Heart Rate" value="132 bpm" />
-              <StatTile icon="blood-bag" label="Blood Pressure" value="88/54 mmHg" />
-              <StatTile icon="lungs" label="Respiratory Rate" value="28/min" />
-              <StatTile icon="oxygen-tank" label="Oxygen Saturation" value="99%" />
-              <StatTile icon="scale-bathroom" label="Weight" value="12 kg" />
+              {displayVitals.map((v) => (
+                <StatTile
+                  key={v.name}
+                  icon={
+                    v.name === 'Temperature' ? 'thermometer' :
+                    v.name === 'Heart Rate' ? 'heart' :
+                    v.name === 'Blood Pressure' ? 'blood-bag' :
+                    v.name === 'Respiratory Rate' ? 'lungs' :
+                    v.name?.includes('O2') ? 'oxygen-tank' : 'dots-horizontal'
+                  }
+                  label={v.name}
+                  value={v.value}
+                />
+              ))}
             </View>
-            <TipCard title="Never feel lost in a case" subtitle="Your Mentor guides you through every step — explaining tests, diagnoses, and treatments as you solve the case." />
           </Section>
         </View>
-        <View style={[styles.slide, { width }]}>
-          <Section title="History">
-            <BulletItem>Onset gradual</BulletItem>
-            <BulletItem>Sore throat</BulletItem>
-            <BulletItem>Mild fatigue</BulletItem>
-            <BulletItem>No recent travel</BulletItem>
-            <BulletItem>No chronic conditions</BulletItem>
-            <BulletItem>Fully vaccinated including rotavirus</BulletItem>
-            <BulletItem>Daycare attendance</BulletItem>
-            <BulletItem>No recent antibiotic use</BulletItem>
-            <BulletItem>Normal growth and development</BulletItem>
-            <BulletItem>No prior hospitalizations</BulletItem>
-            <TipCard title="Choose your path" subtitle="Hard mode = solve on your own. Guided mode = learn with Mentor at your side. Turn every case into a mini-lesson." cta="Unlock for 300 coins" />
+        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
+          <Section title="History (Hx)">
+            {historyItems.map((h, i) => (
+              <BulletItem key={i}>{h}</BulletItem>
+            ))}
           </Section>
         </View>
-        <View style={[styles.slide, { width }]}>
-          <Section title="Physical Examination">
-            <BulletItem>Alert and oriented</BulletItem>
-            <BulletItem>Mild pharyngeal erythema</BulletItem>
-            <BulletItem>Lungs clear to auscultation</BulletItem>
-            <BulletItem>No rashes</BulletItem>
+        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
+          <Section title="Physical Examination (PE)">
+            {examItems.map((e, i) => (
+              <BulletItem key={i}>{e}</BulletItem>
+            ))}
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.primaryButton}
+              activeOpacity={0.9}
+              onPress={() => {
+                scrollRef.current?.scrollTo({ x: width * 4, animated: true });
+                setIndex(4);
+              }}
+            >
+              <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+              <Text style={styles.primaryButtonText}>Send for tests</Text>
+            </TouchableOpacity>
           </Section>
+        </View>
+        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
+          <Section title="Select Tests">
+            <View style={styles.testGrid}>
+              {availableTests.map((t) => {
+                const selected = selectedTests.includes(t.id);
+                const icon = iconForTest(t);
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    accessibilityRole="button"
+                    onPress={() => toggleTest(t.id)}
+                    style={[styles.testCard, selected && styles.testCardSelected]}
+                    activeOpacity={0.9}
+                  >
+                    <MaterialCommunityIcons name={icon} size={28} color={selected ? Colors.brand.darkPink : '#687076'} />
+                    <Text style={[styles.testName, selected && styles.testNameSelected]}>{t.name}</Text>
+                    {selected ? (
+                      <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} style={styles.selectedCheck} />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {evaluatedResults && evaluatedResults.length > 0 ? (
+              <View style={{ marginTop: 16 }}>
+                <Text style={{ fontWeight: '800', marginBottom: 8 }}>Results</Text>
+                {evaluatedResults.map((r) => (
+                  <View key={r.id} style={{ marginBottom: 10 }}>
+                    <Text style={{ fontWeight: '800' }}>{testsById.get(r.id)?.name || r.id}</Text>
+                    <Text style={{ marginTop: 4 }}>{r?.value || 'Result not available for this test.'}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </Section>
+         
         </View>
       </ScrollView>
-      <View style={[styles.dotsContainer, { bottom: Math.max(70, insets.bottom + 20) }]} pointerEvents="none">
-        {[0,1,2,3].map((d) => (
-          <View
-            key={d}
-            style={[
-              styles.dot,
-              { backgroundColor: d === index ? Colors.brand.darkPink : 'rgba(0,0,0,0.2)' },
-            ]}
-          />
-        ))}
-      </View>
+      {(index < SLIDE_COUNT - 2)&& (
+        <View style={[styles.dotsContainer, { bottom: Math.max(70, insets.bottom + 20) }]} pointerEvents="none">
+          {Array.from({ length: SLIDE_COUNT }, (_, d) => d).map((d) => (
+            <View
+              key={d}
+              style={[
+                styles.dot,
+                { backgroundColor: d === index ? Colors.brand.darkPink : 'rgba(0,0,0,0.2)' },
+              ]}
+            />
+          ))}
+        </View>
+      )}
       <TouchableOpacity
         accessibilityRole="button"
-        onPress={() => scrollRef.current?.scrollTo({ x: width * Math.max(0, index - 1), animated: true })}
-        style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 10) }]}
+        onPress={() => {
+          const newIndex = Math.max(0, index - 1);
+          scrollRef.current?.scrollTo({ x: width * newIndex, animated: true });
+          setIndex(newIndex);
+        }}
+        style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
       </TouchableOpacity>
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() => scrollRef.current?.scrollTo({ x: width * Math.min(3, index + 1), animated: true })}
-        style={[styles.navButton, styles.navRight, { bottom: Math.max(22, insets.bottom + 10) }]}
-        activeOpacity={0.8}
-      >
-        <MaterialCommunityIcons name="chevron-right" size={28} color={Colors.brand.darkPink} />
-      </TouchableOpacity>
+      {index < SLIDE_COUNT - 1 && (
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => {
+            const newIndex = Math.min(SLIDE_COUNT - 1, index + 1);
+            scrollRef.current?.scrollTo({ x: width * newIndex, animated: true });
+            setIndex(newIndex);
+          }}
+          style={[styles.navButton, styles.navRight, { bottom: Math.max(22, insets.bottom + 25) }]}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="chevron-right" size={28} color={Colors.brand.darkPink} />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
@@ -268,7 +534,7 @@ export default function ClinicalInfo() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
   carousel: { },
-  slide: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120, height: '100%', justifyContent: 'center', alignItems: 'stretch' },
+  slide: { paddingHorizontal: 16, paddingTop: 36, paddingBottom: 120, height: '100%', justifyContent: 'center', alignItems: 'stretch' },
   sectionBlock: { marginBottom: 20, alignItems: 'center' },
   card: {
     borderRadius: 16,
@@ -282,27 +548,34 @@ const styles = StyleSheet.create({
     elevation: 6,
     width: '100%',
     maxWidth: 700,
+    height: CARD_HEIGHT_PX,
   },
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
   ecgSvg: { marginTop: 6, marginBottom: 6 },
   sectionBody: { fontSize: 14, lineHeight: 20, color: '#333' },
+  sectionScroll: { flex: 1 },
+  sectionScrollContent: { paddingBottom: 8 },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 6 },
   fieldLabel: { fontSize: 14, fontWeight: '800', opacity: 0.9 },
   fieldValue: { fontSize: 14 },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 4 },
   bulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.brand.darkPink, marginTop: 6, marginRight: 8 },
   bulletText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
   statTile: {
     borderWidth: 1,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    minWidth: 110,
+    minWidth: '47%',
+    maxWidth: '47%',
+    height: 96,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
+  statHeaderRow: { flexDirection: 'row', alignItems: 'center' },
+  statIcon: { marginRight: 8 },
   statValue: { fontSize: 18, fontWeight: '800' },
   statLabel: { marginTop: 4, fontSize: 12, color: '#687076', fontWeight: '700' },
   dotsContainer: {
@@ -332,12 +605,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 0,
   },
-  heroImage: { width: '100%', height: 150, borderRadius: 16, marginBottom: 14, resizeMode: 'cover' },
+  heroImage: { width: '100%', height: 200, borderRadius: 16, marginBottom: 12, resizeMode: 'cover' },
   infoGrid: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
   infoCol: { flex: 1 },
   infoLabel: { marginTop: 6, fontSize: 12, fontWeight: '800' },
   infoValue: { marginTop: 2, fontSize: 16, fontWeight: '800' },
-  subHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  subHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chiefContainer: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'rgba(255, 209, 224, 0.15)',
+    borderRadius: 12,
+    padding: 10,
+  },
   subHeaderText: { fontSize: 14, fontWeight: '800', color: '#11181C' },
   chiefText: { marginTop: 6, fontSize: 16, fontWeight: '800' },
   tipCard: { borderWidth: 1, borderRadius: 14, marginTop: 16, padding: 12 },
@@ -346,6 +627,37 @@ const styles = StyleSheet.create({
   tipTitle: { fontSize: 16, fontWeight: '800', marginBottom: 4 },
   tipSubtitle: { fontSize: 12, color: '#333' },
   tipCta: { marginTop: 8, fontSize: 14, fontWeight: '800', color: Colors.brand.blue },
+  primaryButton: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.brand.darkPink,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  primaryButtonText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  testGrid: { flexDirection: 'column', gap: 12 },
+  testCard: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    minHeight: 56,
+  },
+  testCardSelected: {
+    borderColor: Colors.brand.darkPink,
+    backgroundColor: 'rgba(255, 0, 102, 0.08)'
+  },
+  testName: { marginTop: 0, marginLeft: 12, textAlign: 'left', fontWeight: '700', flex: 1 },
+  testNameSelected: { color: Colors.brand.darkPink },
+  selectedCheck: { position: 'absolute', top: 8, right: 8 },
   navButton: {
     position: 'absolute',
     width: 48,
