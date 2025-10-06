@@ -5,7 +5,7 @@
 
 const brand = {
   lightPink: "#FFC0CB",
-  darkPink: "#C2185B",
+  darkPink: "#FF407D",
   blue: "#1E88E5",
 };
 
