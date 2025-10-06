@@ -1,9 +1,11 @@
 import React from 'react';
-import { useColorScheme, View, Text, ScrollView, Image, StyleSheet } from 'react-native';
+import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import LeagueHeader from './LeagueHeader';
+import { LearningDetailSheetForwarded as LearningDetailSheet } from '../components/LearningDetailSheet';
+import { useNavigation } from '@react-navigation/native';
 
 const DUMMY = [
   {
@@ -41,8 +43,17 @@ const DUMMY = [
 export default function LearningScreen() {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
-
+  const navigation = useNavigation();
   const totalCount = DUMMY.reduce((sum, sec) => sum + sec.items.length, 0);
+  const detailSheetRef = React.useRef(null);
+
+  const openSheet = (item) => {
+    detailSheetRef.current?.present(item);
+  };
+
+  const closeSheet = () => {
+    detailSheetRef.current?.dismiss();
+  };
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
@@ -58,8 +69,10 @@ export default function LearningScreen() {
             <Text style={[styles.learnDate, { color: themeColors.text }]}>{section.dateLabel}</Text>
 
             {section.items.map((item, i) => (
-              <View
+              <Pressable
                 key={i}
+                // onPress={() => openSheet(item)}
+                onPress={() => navigation.navigate('ClinicalInsight')}
                 style={[styles.learnCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
               >
                 <View style={styles.learnCardRow}>
@@ -69,11 +82,12 @@ export default function LearningScreen() {
                   </View>
                   <Image source={inappicon} style={styles.learnThumb} />
                 </View>
-              </View>
+              </Pressable>
             ))}
           </View>
         ))}
       </ScrollView>
+      <LearningDetailSheet ref={detailSheetRef} themeColors={themeColors} snapPoints={['45%','90%']} />
     </SafeAreaView>
   );
 }
@@ -109,6 +123,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     backgroundColor: '#F3F6FA',
   },
+  // removed local sheet styles; handled inside component
 });
 
 

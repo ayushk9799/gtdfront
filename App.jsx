@@ -22,6 +22,8 @@ import HomeScreen from './src/screens/HomeScreen';
 import LearningScreen from './src/screens/LearningScreen';
 import LeagueScreen from './src/screens/LeagueScreen';
 import AccountScreen from './src/screens/AccountScreen';
+import ClinicalInsight from './src/screens/ClinicalInsight';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -142,48 +144,59 @@ export default function App() {
 
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient
-        colors={SUBTLE_PINK_GRADIENT}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <NavigationContainer theme={mergedTheme}>
-        {!user ? (
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: 'transparent' },
-              animation: 'fade',
-              statusBarTranslucent: true,
-            }}
-          >
-            <Stack.Screen name="Tabs" component={RootTabs} />
-            <Stack.Screen
-              name="ClinicalInfo"
-              component={ClinicalInfo}
-              options={{
-                animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
-                presentation: 'card',
+      <BottomSheetModalProvider>
+        <LinearGradient
+          colors={SUBTLE_PINK_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <NavigationContainer theme={mergedTheme}>
+          {!user ? (
+            <Stack.Navigator
+              screenOptions={{
+                headerShown: false,
                 contentStyle: { backgroundColor: 'transparent' },
+                animation: 'fade',
+                statusBarTranslucent: true,
               }}
-            />
-          </Stack.Navigator>
-        ) : (
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: 'transparent' },
-              animation: 'fade',
-              statusBarTranslucent: true,
-            }}
-          >
-            <Stack.Screen name="Login">
-              {() => <Login onLogin={setUser} />}
-            </Stack.Screen>
-          </Stack.Navigator>
-        )}
-      </NavigationContainer>
+            >
+              <Stack.Screen name="Tabs" component={RootTabs} />
+              <Stack.Screen
+                name="ClinicalInfo"
+                component={ClinicalInfo}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="ClinicalInsight"
+                component={ClinicalInsight}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+            </Stack.Navigator>
+          ) : (
+            <Stack.Navigator
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: 'transparent' },
+                animation: 'fade',
+                statusBarTranslucent: true,
+              }}
+            >
+              <Stack.Screen name="Login">
+                {() => <Login onLogin={setUser} />}
+              </Stack.Screen>
+            </Stack.Navigator>
+          )}
+        </NavigationContainer>
+      </BottomSheetModalProvider>
     </View>
   );
 }
