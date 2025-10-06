@@ -380,7 +380,7 @@ export default function ClinicalInfo() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
-        onScroll={(e) => {
+        onMomentumScrollEnd={(e) => {
           const x = e?.nativeEvent?.contentOffset?.x || 0;
           const i = Math.round(x / width);
           if (i !== index) setIndex(i);
@@ -442,7 +442,6 @@ export default function ClinicalInfo() {
               activeOpacity={0.9}
               onPress={() => {
                 scrollRef.current?.scrollTo({ x: width * 4, animated: true });
-                setIndex(4);
               }}
             >
               <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
@@ -506,7 +505,6 @@ export default function ClinicalInfo() {
         onPress={() => {
           const newIndex = Math.max(0, index - 1);
           scrollRef.current?.scrollTo({ x: width * newIndex, animated: true });
-          setIndex(newIndex);
         }}
         style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
         activeOpacity={0.8}
@@ -519,7 +517,6 @@ export default function ClinicalInfo() {
           onPress={() => {
             const newIndex = Math.min(SLIDE_COUNT - 1, index + 1);
             scrollRef.current?.scrollTo({ x: width * newIndex, animated: true });
-            setIndex(newIndex);
           }}
           style={[styles.navButton, styles.navRight, { bottom: Math.max(22, insets.bottom + 25) }]}
           activeOpacity={0.8}
