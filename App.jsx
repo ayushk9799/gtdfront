@@ -23,6 +23,8 @@ import LearningScreen from './src/screens/LearningScreen';
 import LeagueScreen from './src/screens/LeagueScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import ClinicalInsight from './src/screens/ClinicalInsight';
+import SelectTests from './src/screens/SelectTests';
+import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
@@ -174,6 +176,24 @@ export default function App() {
               <Stack.Screen
                 name="ClinicalInsight"
                 component={ClinicalInsight}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="SelectTests"
+                component={SelectTests}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="SelectDiagnosis"
+                component={SelectDiagnosis}
                 options={{
                   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
                   presentation: 'card',

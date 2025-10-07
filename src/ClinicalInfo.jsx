@@ -278,7 +278,7 @@ export default function ClinicalInfo() {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const scrollRef = useRef(null);
-  const SLIDE_COUNT = 5; // Basic, Vitals, Hx, PE, Tests
+  const SLIDE_COUNT = 4; // Basic, Vitals, Hx, PE
 
   // Layout calculations for platform-consistent nav button positioning
   const slidePaddingTop = Math.max(36, insets.top + 24);
@@ -295,60 +295,7 @@ export default function ClinicalInfo() {
   const historyItems = caseData?.initialPresentation?.patientHistory || [];
   const examItems = caseData?.initialPresentation?.physicalExamination || [];
   const vitalsArray = caseData?.initialPresentation?.vitals || [];
-  const availableTests = caseData?.diagnosticWorkup?.availableTests || [];
-  const testResults = caseData?.diagnosticWorkup?.testResults || {};
-  const [selectedTests, setSelectedTests] = useState([]); // store ids
-  const [evaluatedResults, setEvaluatedResults] = useState([]);
-
-  const testsById = useMemo(() => {
-    const map = new Map();
-    for (const t of availableTests) map.set(t.id, t);
-    return map;
-  }, [availableTests]);
-
-  const iconForTest = (t) => {
-    if (!t) return 'beaker-outline';
-    // Prefer id-specific icons where sensible, then fall back to category
-    switch (t.id) {
-      case 'card_ekg':
-        return 'heart-pulse';
-      case 'rad_cxr':
-        return 'x-ray';
-      case 'rad_cta':
-        return 'radiology-box';
-      case 'rad_us':
-        return 'image';
-      case 'hem_ddimer':
-        return 'beaker-outline';
-      case 'path_trop':
-        return 'blood-bag';
-      case 'path_bmp':
-        return 'beaker';
-      default:
-        break;
-    }
-    if (t.category === 'Cardiology') return 'heart-pulse';
-    if (t.category === 'Radiology') return 'image';
-    if (t.category === 'Clinical Pathology') return 'beaker';
-    if (t.category === 'Hematology') return 'beaker-outline';
-    return 'beaker-outline';
-  };
-
-  const toggleTest = (id) => {
-    setSelectedTests((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
-  };
-
-  const handleEvaluate = () => {
-    const results = selectedTests.map((id) => {
-      const meta = testsById.get(id);
-      return {
-        id,
-        name: meta?.name || id,
-        value: testResults?.[id],
-      };
-    });
-    setEvaluatedResults(results);
-  };
+  
 
   // Normalize vitals ordering to a friendly display
   const vitalsOrder = ['Temperature', 'Heart Rate', 'Blood Pressure', 'Respiratory Rate', 'O2 Saturation', 'Weight'];
@@ -436,58 +383,11 @@ export default function ClinicalInfo() {
             {examItems.map((e, i) => (
               <BulletItem key={i}>{e}</BulletItem>
             ))}
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={styles.primaryButton}
-              activeOpacity={0.9}
-              onPress={() => {
-                scrollRef.current?.scrollTo({ x: width * 4, animated: true });
-              }}
-            >
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
-              <Text style={styles.primaryButtonText}>Send for tests</Text>
-            </TouchableOpacity>
           </Section>
         </View>
-        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
-          <Section title="Select Tests">
-            <View style={styles.testGrid}>
-              {availableTests.map((t) => {
-                const selected = selectedTests.includes(t.id);
-                const icon = iconForTest(t);
-                return (
-                  <TouchableOpacity
-                    key={t.id}
-                    accessibilityRole="button"
-                    onPress={() => toggleTest(t.id)}
-                    style={[styles.testCard, selected && styles.testCardSelected]}
-                    activeOpacity={0.9}
-                  >
-                    <MaterialCommunityIcons name={icon} size={28} color={selected ? Colors.brand.darkPink : '#687076'} />
-                    <Text style={[styles.testName, selected && styles.testNameSelected]}>{t.name}</Text>
-                    {selected ? (
-                      <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} style={styles.selectedCheck} />
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            {evaluatedResults && evaluatedResults.length > 0 ? (
-              <View style={{ marginTop: 16 }}>
-                <Text style={{ fontWeight: '800', marginBottom: 8 }}>Results</Text>
-                {evaluatedResults.map((r) => (
-                  <View key={r.id} style={{ marginBottom: 10 }}>
-                    <Text style={{ fontWeight: '800' }}>{testsById.get(r.id)?.name || r.id}</Text>
-                    <Text style={{ marginTop: 4 }}>{r?.value || 'Result not available for this test.'}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </Section>
-         
-        </View>
+        
       </ScrollView>
-      {(index < SLIDE_COUNT - 2)&& (
+      {(index < SLIDE_COUNT - 1) && (
         <View style={[styles.dotsContainer, { bottom: Math.max(70, insets.bottom + 20) }]} pointerEvents="none">
           {Array.from({ length: SLIDE_COUNT }, (_, d) => d).map((d) => (
             <View
@@ -511,7 +411,7 @@ export default function ClinicalInfo() {
       >
         <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
       </TouchableOpacity>
-      {index < SLIDE_COUNT - 1 && (
+      {index < SLIDE_COUNT - 1 && index !== 3 && (
         <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
@@ -524,6 +424,20 @@ export default function ClinicalInfo() {
           <MaterialCommunityIcons name="chevron-right" size={28} color={Colors.brand.darkPink} />
         </TouchableOpacity>
       )}
+      {index === 3 && (
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => {
+            navigation.navigate('SelectTests', { caseData });
+          }}
+          style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }]}
+          activeOpacity={0.9}
+        >
+          <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+          <Text style={styles.primaryButtonText}>Send for Tests</Text>
+        </TouchableOpacity>
+      )}
+      
     </SafeAreaView>
   );
 }
@@ -655,6 +569,26 @@ const styles = StyleSheet.create({
   testName: { marginTop: 0, marginLeft: 12, textAlign: 'left', fontWeight: '700', flex: 1 },
   testNameSelected: { color: Colors.brand.darkPink },
   selectedCheck: { position: 'absolute', top: 8, right: 8 },
+  // Diagnosis card styles
+  diagnosisCard: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    minHeight: 56,
+    backgroundColor: '#fff',
+  },
+  diagnosisCardSelected: {
+    borderColor: Colors.brand.darkPink,
+    backgroundColor: 'rgba(255, 0, 102, 0.08)'
+  },
+  diagnosisName: { marginTop: 0, marginLeft: 12, textAlign: 'left', fontWeight: '700', flex: 1 },
+  diagnosisNameSelected: { color: Colors.brand.darkPink },
   navButton: {
     position: 'absolute',
     width: 48,
@@ -672,6 +606,28 @@ const styles = StyleSheet.create({
   },
   navLeft: { left: 16 },
   navRight: { right: 16 },
+  navRightCta: { position: 'absolute', right: 16, paddingHorizontal: 16 },
+  // Bottom sheet styles
+  sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sheetHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#11181C' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)', backgroundColor: '#fff' },
+  chipActive: { backgroundColor: 'rgba(255, 0, 102, 0.10)', borderColor: Colors.brand.darkPink },
+  chipText: { fontSize: 12, fontWeight: '700', color: '#11181C' },
+  chipTextActive: { color: Colors.brand.darkPink },
+  reportCard: { borderRadius: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', padding: 14, minHeight: 160, justifyContent: 'flex-start' },
+  reportHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  reportIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(30, 136, 229, 0.10)', borderWidth: 1, borderColor: 'rgba(30, 136, 229, 0.25)', alignItems: 'center', justifyContent: 'center' },
+  simpleReportCard: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', backgroundColor: '#fff', padding: 16, minHeight: 120, justifyContent: 'flex-start' },
+  reportTitle: { fontSize: 16, fontWeight: '800', color: '#11181C', flex: 1, flexWrap: 'wrap' , color: Colors.brand.darkPink},
+  reportValueText: { marginTop: 6, fontSize: 14, lineHeight: 20, color: '#333', fontWeight: '800' },
+  sheetDotsContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
+  sheetDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
+  sheetDotActive: { backgroundColor: Colors.brand.darkPink },
+  sheetActionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  secondaryButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)', backgroundColor: '#fff' },
+  secondaryButtonText: { fontWeight: '800', color: Colors.brand.darkPink },
+  sheetPrimaryInRow: { paddingHorizontal: 16 },
 });
 
 
