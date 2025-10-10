@@ -1,7 +1,8 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
@@ -13,118 +14,6 @@ const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 // Card height as a percentage of the screen height
 const CARD_HEIGHT_PCT = 0.70;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
-
-// Sample case fallback if no route params are provided
-const SAMPLE_CASE =
-{
-    "caseId": "PE_001",
-    "caseTitle": "34-year-old female with sharp chest pain",
-    "initialPresentation": {
-      "patient": {
-        "name": "Jane Doe",
-        "age": 34,
-        "sex": "Female"
-      },
-      "chiefComplaint": "Sudden, sharp right-sided chest pain & shortness of breath.",
-      "patientHistory": [
-        "Pain is sharp, one-sided, and significantly worse with deep inspiration (pleuritic).",
-        "Returned from a 14-hour international flight three days ago.",
-        "Currently taking daily oral contraceptive pills."
-      ],
-      "physicalExamination": [
-        "Lungs are completely clear to auscultation bilaterally.",
-        "Left calf is visibly swollen, firm, and tender compared to the right.",
-        "Patient is visibly anxious and breathing rapidly.",    
-        "Patient is breathing rapidly.",
-        "Patient is breathing rapidly.",
-        "Patient is breathing rapidly.",
-        "Patient is breathing rapidly.",
-        "Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.","Patient is breathing rapidly.",
-        "Patient is visibly anxious and breathing rapidly."
-      ],
-      "vitals": [
-        { "name": "Heart Rate", "value": "125 bpm" },
-        { "name": "Respiratory Rate", "value": "24/min" },
-        { "name": "O2 Saturation", "value": "91% (RA)" },
-        { "name": "Blood Pressure", "value": "110/70 mmHg" },
-        { "name": "Temperature", "value": "99.1°F" }
-      ]
-    },
-    "diagnosticWorkup": {
-      "availableTests": [
-        { "id": "hem_cbc", "name": "Complete Blood Count (CBC)", "category": "Hematology" },
-        { "id": "hem_ddimer", "name": "D-Dimer", "category": "Hematology" },
-        { "id": "path_bmp", "name": "Basic Metabolic Panel (BMP)", "category": "Clinical Pathology" },
-        { "id": "path_trop", "name": "Troponin I", "category": "Clinical Pathology" },
-        { "id": "card_ekg", "name": "Electrocardiogram (EKG)", "category": "Cardiology" },
-        { "id": "rad_cxr", "name": "Chest X-Ray (CXR)", "category": "Radiology" },
-        { "id": "rad_cta", "name": "CT Angiogram (CTA) of Chest", "category": "Radiology" },
-        { "id": "rad_us", "name": "Ultrasound, Lower Extremity", "category": "Radiology" }
-      ],
-      "testResults": {
-        "hem_cbc": "WBC: 8.5 k/uL, Hgb: 13.1 g/dL. Within normal limits.",
-        "hem_ddimer": "Result: 4,500 ng/mL. CRITICALLY HIGH (Ref < 500).",
-        "path_bmp": "Creatinine: 0.8 mg/dL. Normal kidney function.",
-        "path_trop": "Result: <0.02 ng/mL. Negative for myocardial infarction.",
-        "card_ekg": "Rhythm: Sinus Tachycardia at 122 bpm. No acute ST changes.",
-        "rad_cxr": "Impression: Lungs are clear. No acute cardiopulmonary process identified.",
-        "rad_us": "Impression: Acute Deep Vein Thrombosis (DVT) of the left leg.",
-        "rad_cta": "Impression: Acute, extensive bilateral pulmonary embolism with right ventricular strain."
-      }
-    },
-    "diagnosisOptions": [
-      { "id": "diag_pe", "name": "Acute Pulmonary Embolism" },
-      { "id": "diag_mi", "name": "Myocardial Infarction (Heart Attack)" },
-      { "id": "diag_pna", "name": "Pneumonia" },
-      { "id": "diag_ptx", "name": "Pneumothorax (Collapsed Lung)" },
-      { "id": "diag_anx", "name": "Anxiety Attack" }
-    ],
-    "correctDiagnosisId": "diag_pe",
-    "treatmentPlan": {
-      "medications": [
-        { "id": "med_o2", "name": "Administer Supplemental Oxygen", "rationale": "Corrects low oxygen levels (hypoxia)." },
-        { "id": "med_heparin", "name": "Start IV Heparin Drip", "rationale": "Provides immediate anticoagulation to prevent clot progression." },
-        { "id": "med_tpa", "name": "Administer Alteplase (tPA) IV Infusion", "rationale": "A 'clot-busting' drug to dissolve a life-threatening embolism." },
-        { "id": "med_morphine", "name": "Administer IV Morphine", "rationale": "For severe pleuritic chest pain and to reduce anxiety." }
-      ],
-      "interventionalAndSurgical": [
-          { "id": "proc_ir", "name": "Consult Interventional Radiology (IR)", "rationale": "For consideration of Catheter-Directed Thrombolysis." },
-          { "id": "proc_ctsurg", "name": "Consult Cardiothoracic (CT) Surgery", "rationale": "For consideration of Surgical Embolectomy." }
-      ],
-      "disposition": [
-          { "id": "disp_icu", "name": "Admit to Intensive Care Unit (ICU)", "rationale": "For continuous monitoring of a high-risk, unstable patient." },
-          { "id": "disp_floor", "name": "Admit to General Medical Floor", "rationale": "For patients who are stable and do not require intensive monitoring." }
-      ]
-    },
-    "optimalTreatmentPlanIds": [ "med_o2", "med_heparin", "med_tpa", "proc_ir", "disp_icu" ],
-    "caseReview": {
-      "coreInsights": {
-          "title": "Core Clinical Insights",
-          "content": "Correct Diagnosis: Acute Pulmonary Embolism (PE). Key Clues: Pleuritic chest pain, hypoxia with clear lungs, unilateral leg swelling, and major risk factors (travel, OCPs). Essential Tests: CT Angiogram is the gold standard for diagnosis. Immediate Management: Oxygen, immediate anticoagulation (Heparin), and consideration of thrombolytics (tPA) for a high-risk PE."
-      },
-      "howWeLanded": {
-          "title": "How We Landed on the Diagnosis",
-          "content": "The diagnosis was made by recognizing the classic risk profile (prolonged immobility, estrogen use) combined with the textbook presentation of pleuritic chest pain and hypoxia. While a D-Dimer was highly suggestive, the DVT found on ultrasound was the smoking gun for the clot's source, and the CT Angiogram provided definitive visual confirmation of the clots in the lungs."
-      },
-      "whyOthersDidntFit": {
-          "title": "Why Other Diagnoses Didn't Fit",
-          "content": "Myocardial Infarction was ruled out by a negative Troponin and a non-ischemic EKG. Pneumonia was ruled out by the lack of fever and the clear Chest X-Ray. Pneumothorax was ruled out by the clear Chest X-Ray. While the patient was anxious, her profound hypoxia (O2 91%) was objective evidence of a severe physiological problem, not just an anxiety attack."
-      },
-      "treatmentPriorities": {
-          "title": "Treatment Priorities & Sequencing",
-          "content": [
-            "1. Oxygenation: Immediately correct the hypoxia by administering supplemental oxygen.",
-            "2. Anticoagulation: Start an IV Heparin drip without delay to prevent the clot from worsening. This is the most critical life-saving step.",
-            "3. Reperfusion Therapy: Because the CT showed right heart strain, this is a high-risk PE. The patient needs immediate consideration for advanced therapy to remove the clot, making thrombolytics (tPA) the next priority.",
-            "4. Disposition: This patient is critically ill and requires admission to an ICU for close monitoring and management."
-          ]
-      },
-      "clinicalTraps": {
-          "title": "Clinical Traps to Avoid",
-          "content": "The 'Anxiety' Trap: Never attribute profound hypoxia and tachycardia to anxiety alone without ruling out life-threatening causes first. The 'Fluid' Trap: In a patient with a massive PE causing right heart strain, giving a large IV fluid bolus can worsen the strain and cause cardiovascular collapse. The 'Delayed Anticoagulation' Trap: Hesitating to start anticoagulation is a critical error. Time is of the essence to prevent clot propagation and death."
-      }
-    }
-  }
 function ECGUnderline({ color = Colors.brand.darkPink }) {
   return (
     <Svg width={160} height={14} viewBox="0 0 160 14" style={styles.ecgSvg}>
@@ -233,9 +122,11 @@ function StatTile({ label, value, icon }) {
         {icon ? (
           <MaterialCommunityIcons name={icon} size={18} color={Colors.brand.darkPink} style={styles.statIcon} />
         ) : null}
-        <Text style={styles.statValue}>{value}</Text>
+              <Text style={styles.statLabel}>{label}</Text>
+
       </View>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+
     </View>
   );
 }
@@ -278,6 +169,7 @@ export default function ClinicalInfo() {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const scrollRef = useRef(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
   const SLIDE_COUNT = 4; // Basic, Vitals, Hx, PE
 
   // Layout calculations for platform-consistent nav button positioning
@@ -289,19 +181,70 @@ export default function ClinicalInfo() {
   const maxTop = screenHeight - insets.bottom - (buttonSize + 8);
   const navButtonTop = Math.min(desiredTop, maxTop);
 
-  const caseData = (route?.params && route.params.caseData) ? route.params.caseData : SAMPLE_CASE;
-  const p = caseData?.initialPresentation?.patient || {};
-  const chief = caseData?.initialPresentation?.chiefComplaint || '';
-  const historyItems = caseData?.initialPresentation?.patientHistory || [];
-  const examItems = caseData?.initialPresentation?.physicalExamination || [];
-  const vitalsArray = caseData?.initialPresentation?.vitals || [];
+  const caseDataFromRoute = route?.params?.caseData;
+  const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
+  const caseData = caseDataFromRoute || caseDataFromStore || {};
   
+  // Extract data from the CASES_ARRAY structure (steps[0].data)
+  const step1Data = caseData?.steps?.[0]?.data || {};
+  
+  const p = step1Data?.basicInfo || {};
+  const chief = step1Data?.chiefComplaint || '';
+  const historyItems = step1Data?.history || [];
+  const examItems = step1Data?.physicalExamination || [];
+  const vitalsData = step1Data?.vitals || {};
+  
+  // Convert vitals object to array format for display
+  const vitalsArray = [
+    { name: 'Temperature', value: vitalsData.temperature },
+    { name: 'Heart Rate', value: vitalsData.heartRate },
+    { name: 'Blood Pressure', value: vitalsData.bloodPressure },
+    { name: 'Respiratory Rate', value: vitalsData.respiratoryRate },
+    { name: 'O2 Saturation', value: vitalsData.oxygenSaturation }
+  ].filter(v => v.value);
 
   // Normalize vitals ordering to a friendly display
   const vitalsOrder = ['Temperature', 'Heart Rate', 'Blood Pressure', 'Respiratory Rate', 'O2 Saturation', 'Weight'];
   const displayVitals = vitalsOrder
     .map((label) => vitalsArray.find((v) => v.name === label))
     .filter(Boolean);
+
+  const getSlideStyle = (i) => {
+    const inputRange = [
+      (i - 1) * width,
+      i * width,
+      (i + 1) * width,
+    ];
+    const rotateY = scrollX.interpolate({
+      inputRange,
+      outputRange: ['18deg', '0deg', '-18deg'],
+      extrapolate: 'clamp',
+    });
+    const scale = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.92, 1, 0.92],
+      extrapolate: 'clamp',
+    });
+    const translateX = scrollX.interpolate({
+      inputRange,
+      outputRange: [24, 0, -24],
+      extrapolate: 'clamp',
+    });
+    const opacity = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.85, 1, 0.85],
+      extrapolate: 'clamp',
+    });
+    return {
+      transform: [
+        { perspective: 900 },
+        { rotateY },
+        { scale },
+        { translateX },
+      ],
+      opacity,
+    };
+  };
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -320,13 +263,17 @@ export default function ClinicalInfo() {
           <MaterialCommunityIcons name="close" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
-      <ScrollView
+      <Animated.ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: true }
+        )}
         onMomentumScrollEnd={(e) => {
           const x = e?.nativeEvent?.contentOffset?.x || 0;
           const i = Math.round(x / width);
@@ -334,12 +281,12 @@ export default function ClinicalInfo() {
         }}
         contentContainerStyle={[styles.carousel, { width: width * SLIDE_COUNT }]}
       >
-        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
+        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(0)]}>
           <Section title="Basic Info & Chief Complaint">
             <Image source={require('../constants/inappicon.png')} style={styles.heroImage} />
             <View style={styles.infoGrid}>
-              <InfoColumn icon="badge-account" label="Name" value={p?.name ?? '—'} />
-              <InfoColumn icon="gender-male-female" label="Sex" value={p?.sex ?? '—'} />
+              <InfoColumn icon="badge-account" label="Name" value={p?.name || '—'} />
+              <InfoColumn icon="gender-male-female" label="Sex" value={p?.gender || '—'} />
               <InfoColumn icon="calendar" label="Age" value={p?.age != null ? String(p.age) : '—'} />
             </View>
             <View style={styles.chiefContainer}>
@@ -350,8 +297,8 @@ export default function ClinicalInfo() {
               <Text style={styles.chiefText}>{chief || '—'}</Text>
             </View>
           </Section>
-        </View>
-        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
+        </Animated.View>
+        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(1)]}>
           <Section title="Vitals">
             <View style={styles.statsRow}>
               {displayVitals.map((v) => (
@@ -370,23 +317,26 @@ export default function ClinicalInfo() {
               ))}
             </View>
           </Section>
-        </View>
-        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
+        </Animated.View>
+        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(2)]}>
           <Section title="History (Hx)">
             {historyItems.map((h, i) => (
-              <BulletItem key={i}>{h}</BulletItem>
+              <View key={i} style={styles.historySection}>
+                <Text style={[styles.historyCategory, { color: "#C2185B" }]}>{h.category}</Text>
+                <BulletItem>{h.detail}</BulletItem>
+              </View>
             ))}
           </Section>
-        </View>
-        <View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }]}>
+        </Animated.View>
+        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(3)]}>
           <Section title="Physical Examination (PE)">
             {examItems.map((e, i) => (
-              <BulletItem key={i}>{e}</BulletItem>
+              <BulletItem key={i}>{`${e.system}: ${e.findings}`}</BulletItem>
             ))}
           </Section>
-        </View>
+        </Animated.View>
         
-      </ScrollView>
+      </Animated.ScrollView>
       {(index < SLIDE_COUNT - 1) && (
         <View style={[styles.dotsContainer, { bottom: Math.max(70, insets.bottom + 20) }]} pointerEvents="none">
           {Array.from({ length: SLIDE_COUNT }, (_, d) => d).map((d) => (
@@ -433,8 +383,9 @@ export default function ClinicalInfo() {
           style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }]}
           activeOpacity={0.9}
         >
-          <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
           <Text style={styles.primaryButtonText}>Send for Tests</Text>
+          <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+
         </TouchableOpacity>
       )}
       
@@ -445,7 +396,7 @@ export default function ClinicalInfo() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
   carousel: { },
-  slide: { paddingHorizontal: 16, paddingTop: 36, paddingBottom: 120, height: '100%', justifyContent: 'center', alignItems: 'stretch' },
+  slide: { paddingHorizontal: 10, paddingTop: 36, paddingBottom: 120, height: '100%', justifyContent: 'center', alignItems: 'stretch' },
   sectionBlock: { marginBottom: 20, alignItems: 'center' },
   card: {
     borderRadius: 16,
@@ -473,7 +424,8 @@ const styles = StyleSheet.create({
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 4 },
   bulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.brand.darkPink, marginTop: 6, marginRight: 8 },
   bulletText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+  historyCategory: { fontSize: 14, fontWeight: '800', marginBottom: 4, marginTop: 8 },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
   statTile: {
     borderWidth: 1,
     borderRadius: 12,

@@ -8,6 +8,8 @@ import { Colors } from '../../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useDispatch, useSelector } from 'react-redux';
+import { setSelectedTests as setSelectedTestsAction } from '../store/slices/currentGameSlice';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
@@ -59,55 +61,59 @@ export default function SelectTests() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const dispatch = useDispatch();
+  const selectedTestIds = useSelector((s) => s.currentGame.selectedTestIds);
 
-  const caseData = (route?.params && route.params.caseData) ? route.params.caseData : {};
-  const availableTests = caseData?.diagnosticWorkup?.availableTests || [];
-  const testResults = caseData?.diagnosticWorkup?.testResults || {};
+  const caseData = route?.params?.caseData || {};
+  
+  // Extract data from the CASES_ARRAY structure (steps[1].data)
+  const step2Data = caseData?.steps?.[1]?.data || {};
+  const availableTests = step2Data?.availableTests || [];
 
-  const [selectedTests, setSelectedTests] = useState([]);
   const [evaluatedResults, setEvaluatedResults] = useState([]);
 
   const testsById = useMemo(() => {
     const map = new Map();
-    for (const t of availableTests) map.set(t.id, t);
+    for (const t of availableTests) {
+      map.set(t.testId, t);
+    }
     return map;
   }, [availableTests]);
 
   const iconForTest = (t) => {
     if (!t) return 'beaker-outline';
-    switch (t.id) {
-      case 'card_ekg':
+    switch (t.testId) {
+      case 'img001':
         return 'heart-pulse';
-      case 'rad_cxr':
+      case 'img002':
         return 'x-ray';
-      case 'rad_cta':
+      case 'img003':
         return 'radiology-box';
-      case 'rad_us':
+      case 'img004':
         return 'image';
-      case 'hem_ddimer':
-        return 'beaker-outline';
-      case 'path_trop':
-        return 'blood-bag';
-      case 'path_bmp':
-        return 'beaker';
+      case 'img005':
+        return 'image';
       default:
         break;
     }
-    if (t.category === 'Cardiology') return 'heart-pulse';
-    if (t.category === 'Radiology') return 'image';
-    if (t.category === 'Clinical Pathology') return 'beaker';
-    if (t.category === 'Hematology') return 'beaker-outline';
+    if (t.category === 'Imaging/Cardiac') return 'heart-pulse';
+    if (t.category === 'Imaging') return 'image';
+    if (t.category === 'Laboratory') return 'beaker-outline';
     return 'beaker-outline';
   };
 
   const toggleTest = (id) => {
-    setSelectedTests((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
+    const next = selectedTestIds.includes(id)
+      ? selectedTestIds.filter((t) => t !== id)
+      : [...selectedTestIds, id];
+    dispatch(setSelectedTestsAction(next));
   };
 
   const handleEvaluate = () => {
-    const results = selectedTests.map((id) => {
+    const results = selectedTestIds.map((id) => {
       const meta = testsById.get(id);
-      return { id, name: meta?.name || id, value: testResults?.[id] };
+      const value = meta?.result;
+      return { id, name: meta?.testName || id, value };
     });
     setEvaluatedResults(results);
   };
@@ -124,7 +130,7 @@ export default function SelectTests() {
   );
 
   const presentReportsSheet = () => {
-    if (!selectedTests || selectedTests.length === 0) return;
+    if (!selectedTestIds || selectedTestIds.length === 0) return;
     handleEvaluate();
     setReportIndex(0);
     reportsSheetRef.current?.present();
@@ -153,18 +159,18 @@ export default function SelectTests() {
         <Section title="Select Tests">
           <View style={styles.testGrid}>
             {availableTests.map((t) => {
-              const selected = selectedTests.includes(t.id);
+              const selected = selectedTestIds.includes(t.testId);
               const icon = iconForTest(t);
               return (
                 <TouchableOpacity
-                  key={t.id}
+                  key={t.testId}
                   accessibilityRole="button"
-                  onPress={() => toggleTest(t.id)}
+                  onPress={() => toggleTest(t.testId)}
                   style={[styles.testCard, selected && styles.testCardSelected]}
                   activeOpacity={0.9}
                 >
                   <MaterialCommunityIcons name={icon} size={28} color={selected ? Colors.brand.darkPink : '#687076'} />
-                  <Text style={[styles.testName, selected && styles.testNameSelected]}>{t.name}</Text>
+                  <Text style={[styles.testName, selected && styles.testNameSelected]}>{t.testName}</Text>
                   {selected ? (
                     <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} style={styles.selectedCheck} />
                   ) : null}
@@ -186,8 +192,8 @@ export default function SelectTests() {
       <TouchableOpacity
         accessibilityRole="button"
         onPress={presentReportsSheet}
-        disabled={!selectedTests || selectedTests.length === 0}
-        style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, (!selectedTests || selectedTests.length === 0) && { opacity: 0.5 }]}
+        disabled={!selectedTestIds || selectedTestIds.length === 0}
+        style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, (!selectedTestIds || selectedTestIds.length === 0) && { opacity: 0.5 }]}
         activeOpacity={0.9}
       >
         <MaterialCommunityIcons name="file-document" size={18} color="#fff" />
@@ -211,7 +217,8 @@ export default function SelectTests() {
               </View>
               <View style={styles.chipsRow}>
                 {evaluatedResults.map((r, i) => {
-                  const label = testsById.get(r.id)?.name || r.id;
+                  const testMeta = testsById.get(r.id);
+                  const label = testMeta?.testName || r.id;
                   const shortLabel = (label && label.split('(')[0]) || label;
                   const active = i === reportIndex;
                   return (
@@ -248,10 +255,11 @@ export default function SelectTests() {
               >
                 {evaluatedResults.map((r) => {
                   const meta = testsById.get(r.id);
+                  const testName = meta?.testName || r.id;
                   return (
                     <View key={r.id} style={{ width: width - 32, paddingRight: 16 }}>
                       <View style={styles.simpleReportCard}>
-                        <Text style={styles.reportTitle}>{meta?.name || r.id}</Text>
+                        <Text style={styles.reportTitle}>{testName}</Text>
                         <Text style={styles.reportValueText}>
                           {r?.value || 'Result not available for this test.'}
                         </Text>

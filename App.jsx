@@ -25,7 +25,11 @@ import AccountScreen from './src/screens/AccountScreen';
 import ClinicalInsight from './src/screens/ClinicalInsight';
 import SelectTests from './src/screens/SelectTests';
 import SelectDiagnosis from './src/screens/SelectDiagnosis';
+import SelectTreatment from './src/screens/SelectTreatment';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { AppDataProvider } from './src/AppDataContext';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -147,6 +151,8 @@ export default function App() {
   return (
     <View style={{ flex: 1 }}>
       <BottomSheetModalProvider>
+        <AppDataProvider>
+        <Provider store={store}>
         <LinearGradient
           colors={SUBTLE_PINK_GRADIENT}
           start={{ x: 0, y: 0 }}
@@ -154,7 +160,7 @@ export default function App() {
           style={StyleSheet.absoluteFill}
         />
         <NavigationContainer theme={mergedTheme}>
-          {!user ? (
+          {user ? (
             <Stack.Navigator
               screenOptions={{
                 headerShown: false,
@@ -200,6 +206,15 @@ export default function App() {
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
               />
+              <Stack.Screen
+                name="SelectTreatment"
+                component={SelectTreatment}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
             </Stack.Navigator>
           ) : (
             <Stack.Navigator
@@ -216,6 +231,8 @@ export default function App() {
             </Stack.Navigator>
           )}
         </NavigationContainer>
+        </Provider>
+        </AppDataProvider>
       </BottomSheetModalProvider>
     </View>
   );

@@ -4,10 +4,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../constants/Colors';
+import { API_BASE } from '../../constants/Api';
+import { useDispatch, useSelector } from 'react-redux';
+import { ensureGameplay, setSelectedTreatments as setSelectedTreatmentsAction, submitGameplay } from '../store/slices/currentGameSlice';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { useDispatch, useSelector } from 'react-redux';
-import { setSelectedDiagnosis as setSelectedDiagnosisAction } from '../store/slices/currentGameSlice';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
@@ -52,24 +53,67 @@ function Section({ title, children }) {
   );
 }
 
-export default function SelectDiagnosis() {
+export default function SelectTreatment() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const dispatch = useDispatch();
-  const selectedDiagnosisId = useSelector((s) => s.currentGame.selectedDiagnosisId);
+  const { userId, caseId, gameplayId: gameplayIdFromStore, selectedTreatmentIds } = useSelector((s) => s.currentGame);
 
   const caseData = route?.params?.caseData || {};
+  const gameplayId = route?.params?.gameplayId || gameplayIdFromStore;
   
-  // Extract data from the CASES_ARRAY structure (steps[2].data)
-  const step3Data = caseData?.steps?.[2]?.data || {};
-  const diagnosisOptions = step3Data?.diagnosisOptions || [];
+  // Extract treatment data from the CASES_ARRAY structure (steps[3].data)
+  const step4Data = caseData?.steps?.[3]?.data || {};
+  const treatmentOptions = step4Data?.treatmentOptions || {};
+  const medications = treatmentOptions?.medications || [];
+  const surgicalInterventional = treatmentOptions?.surgicalInterventional || [];
+  const nonSurgical = treatmentOptions?.nonSurgical || [];
+  const psychiatric = treatmentOptions?.psychiatric || [];
 
-  const toggleDiagnosis = (id) => {
-    const next = selectedDiagnosisId === id ? null : id;
-    dispatch(setSelectedDiagnosisAction(next));
+  // Combine all treatment options into one array with category tags
+  const allTreatments = [
+    ...medications.map(m => ({ ...m, category: 'Medication' })),
+    ...surgicalInterventional.map(m => ({ ...m, category: 'Surgical/Interventional' })),
+    ...nonSurgical.map(m => ({ ...m, category: 'Non-Surgical' })),
+    ...psychiatric.map(m => ({ ...m, category: 'Psychiatric' }))
+  ];
+
+  const toggleTreatment = (id) => {
+    const next = selectedTreatmentIds.includes(id) ? selectedTreatmentIds.filter((t) => t !== id) : [...selectedTreatmentIds, id];
+    dispatch(setSelectedTreatmentsAction(next));
+  };
+
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'Medication':
+        return 'pill';
+      case 'Surgical/Interventional':
+        return 'medical-bag';
+      case 'Non-Surgical':
+        return 'hospital-building';
+      case 'Psychiatric':
+        return 'brain';
+      default:
+        return 'medical-bag';
+    }
+  };
+
+  const getCategoryColor = (category) => {
+    switch (category) {
+      case 'Medication':
+        return Colors.brand.darkPink;
+      case 'Surgical/Interventional':
+        return '#1E88E5';
+      case 'Non-Surgical':
+        return '#43A047';
+      case 'Psychiatric':
+        return '#9C27B0';
+      default:
+        return Colors.brand.darkPink;
+    }
   };
 
   return (
@@ -92,23 +136,43 @@ export default function SelectDiagnosis() {
       </View>
 
       <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: Math.max(36, insets.top + 24), paddingBottom: 120 }}>
-        <Section title={`Select Diagnosis`}>
+        <Section title="Select Treatment Plan">
           <View style={{ gap: 12 }}>
-            {diagnosisOptions.map((opt) => {
-              const selected = selectedDiagnosisId === opt.diagnosisId;
+            {allTreatments.map((treatment) => {
+              const selected = selectedTreatmentIds.includes(treatment.treatmentId);
+              const categoryIcon = getCategoryIcon(treatment.category);
+              const categoryColor = getCategoryColor(treatment.category);
+
               return (
                 <TouchableOpacity
-                  key={opt.diagnosisId}
+                  key={treatment.treatmentId}
                   accessibilityRole="button"
-                  onPress={() => toggleDiagnosis(opt.diagnosisId)}
-                  style={[styles.diagnosisCard, selected && styles.diagnosisCardSelected]}
+                  onPress={() => toggleTreatment(treatment.treatmentId)}
+                  style={[styles.treatmentCard, selected && styles.treatmentCardSelected]}
                   activeOpacity={0.9}
                 >
-                  <Text style={[styles.diagnosisName, selected && styles.diagnosisNameSelected]}>
-                    {opt.diagnosisName}
-                  </Text>
+                  <View style={styles.treatmentContent}>
+                    <View style={styles.treatmentHeader}>
+                      <MaterialCommunityIcons 
+                        name={categoryIcon} 
+                        size={24} 
+                        color={selected ? Colors.brand.darkPink : categoryColor} 
+                      />
+                      <View style={styles.treatmentTextContainer}>
+                        <Text style={[styles.treatmentName, selected && styles.treatmentNameSelected]}>
+                          {treatment.treatmentName}
+                        </Text>
+                       
+                      </View>
+                    </View>
+                  </View>
                   {selected ? (
-                    <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} style={styles.selectedCheck} />
+                    <MaterialCommunityIcons 
+                      name="check-circle" 
+                      size={20} 
+                      color={Colors.brand.darkPink} 
+                      style={styles.selectedCheck} 
+                    />
                   ) : null}
                 </TouchableOpacity>
               );
@@ -116,6 +180,7 @@ export default function SelectDiagnosis() {
           </View>
         </Section>
       </View>
+
       <TouchableOpacity
         accessibilityRole="button"
         onPress={() => navigation.goBack()}
@@ -127,16 +192,30 @@ export default function SelectDiagnosis() {
 
       <TouchableOpacity
         accessibilityRole="button"
-          onPress={() => {
-            if (!selectedDiagnosisId) return;
-            navigation.navigate('SelectTreatment', { caseData });
-          }}
-        disabled={!selectedDiagnosisId}
-        style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, !selectedDiagnosisId && { opacity: 0.5 }]}
+        onPress={async () => {
+          if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
+          try {
+            // Ensure gameplay and submit all selections in one bulk call
+            let gid = gameplayId;
+            if (!gid) {
+              const action = await dispatch(ensureGameplay());
+              if (ensureGameplay.fulfilled.match(action)) gid = action.payload;
+            }
+            await dispatch(submitGameplay());
+          } catch (e) {}
+          navigation.goBack();
+        }}
+        disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
+        style={[
+          styles.primaryButton, 
+          styles.navRightCta, 
+          { bottom: Math.max(22, insets.bottom + 25) }, 
+          (!selectedTreatmentIds || selectedTreatmentIds.length === 0) && { opacity: 0.5 }
+        ]}
         activeOpacity={0.9}
       >
-        <Text style={styles.primaryButtonText}>Give Medication</Text>
-        <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+        <Text style={styles.primaryButtonText}>Confirm Treatment</Text>
+        <MaterialCommunityIcons name="check" size={18} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -158,12 +237,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-  },
-  headerButtons: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    width: '100%',
-    paddingHorizontal: 16
   },
   container: { flex: 1, backgroundColor: 'transparent' },
   sectionBlock: { marginBottom: 20, alignItems: 'center' },
@@ -201,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 0,
   },
-  diagnosisCard: {
+  treatmentCard: {
     width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.12)',
@@ -210,14 +283,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     minHeight: 56,
     backgroundColor: '#fff',
   },
-  diagnosisCardSelected: { borderColor: Colors.brand.darkPink, backgroundColor: 'rgba(255, 0, 102, 0.08)' },
-  diagnosisName: { marginTop: 0, marginLeft: 12, textAlign: 'left', fontWeight: '700', flex: 1 },
-  diagnosisNameSelected: { color: Colors.brand.darkPink },
-  selectedCheck: { position: 'absolute', top: 8, right: 8 },
+  treatmentCardSelected: { 
+    borderColor: Colors.brand.darkPink, 
+    backgroundColor: 'rgba(255, 0, 102, 0.08)' 
+  },
+  treatmentContent: {
+    flex: 1,
+    gap: 8,
+  },
+  treatmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  treatmentTextContainer: {
+    flex: 1,
+    gap: 6,
+  },
+  treatmentName: { 
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#11181C',
+    lineHeight: 20,
+  },
+  treatmentNameSelected: { 
+    color: Colors.brand.darkPink 
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  selectedCheck: { 
+    marginTop: 2,
+  },
   primaryButton: {
     marginTop: 16,
     flexDirection: 'row',
@@ -228,8 +336,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  primaryButtonText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  navRightCta: { position: 'absolute', right: 16, paddingHorizontal: 16 },
+  primaryButtonText: { 
+    color: '#fff', 
+    fontWeight: '800', 
+    fontSize: 16 
+  },
+  navRightCta: { 
+    position: 'absolute', 
+    right: 16, 
+    paddingHorizontal: 16 
+  },
 });
-
 
