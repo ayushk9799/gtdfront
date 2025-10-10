@@ -6,7 +6,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { Colors } from '../../constants/Colors';
 import { API_BASE } from '../../constants/Api';
 import { useDispatch, useSelector } from 'react-redux';
-import { ensureGameplay, setSelectedTreatments as setSelectedTreatmentsAction, submitGameplay } from '../store/slices/currentGameSlice';
+import { setSelectedTreatments as setSelectedTreatmentsAction, submitGameplay } from '../store/slices/currentGameSlice';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
@@ -60,10 +60,10 @@ export default function SelectTreatment() {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const dispatch = useDispatch();
-  const { userId, caseId, gameplayId: gameplayIdFromStore, selectedTreatmentIds } = useSelector((s) => s.currentGame);
+  const { userId, caseId, selectedTreatmentIds } = useSelector((s) => s.currentGame);
 
   const caseData = route?.params?.caseData || {};
-  const gameplayId = route?.params?.gameplayId || gameplayIdFromStore;
+  // gameplayId not required anymore; backend will create on submit
   
   // Extract treatment data from the CASES_ARRAY structure (steps[3].data)
   const step4Data = caseData?.steps?.[3]?.data || {};
@@ -195,15 +195,9 @@ export default function SelectTreatment() {
         onPress={async () => {
           if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
           try {
-            // Ensure gameplay and submit all selections in one bulk call
-            let gid = gameplayId;
-            if (!gid) {
-              const action = await dispatch(ensureGameplay());
-              if (ensureGameplay.fulfilled.match(action)) gid = action.payload;
-            }
             await dispatch(submitGameplay());
           } catch (e) {}
-          navigation.goBack();
+          navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan' });
         }}
         disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
         style={[

@@ -2,6 +2,7 @@ import React from 'react';
 import { useColorScheme, useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 import { TabView, TabBar } from 'react-native-tab-view';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Line } from 'react-native-svg';
@@ -21,96 +22,8 @@ const ERROR_BG = '#FDEAEA';
 const INFO_COLOR = '#6E4A13';
 const INFO_BG = '#F6EFE4';
 
-const CASE_DATA = {
-  id: 'case_001',
-  title: 'Bacterial conjunctivitis',
-  subtitle: 'Classic Red Eye Case',
-  sections: {
-    tests: [
-      {
-        kind: 'success',
-        title: 'Efficient Test Choices',
-        items: [
-          'Bacterial conjunctival swab and culture',
-          'Viral conjunctival swab (PCR) (Supportive)',
-        ],
-      },
-      {
-        kind: 'error',
-        title: 'Unnecessary Tests Ordered',
-        items: ['Orbital CT scan', 'Serum IgE'],
-      },
-      {
-        kind: 'info',
-        title: 'Missed Key Tests',
-        items: ['Gram stain of conjunctival discharge'],
-      },
-    ],
-    diagnosis: [
-      {
-        kind: 'error',
-        title: 'Incorrect Diagnoses Considered',
-        items: ['Allergic conjunctivitis'],
-      },
-      {
-        kind: 'info',
-        title: 'Missed Differential Diagnoses',
-        items: ['Bacterial conjunctivitis'],
-      },
-    ],
-    treatment: [
-      {
-        kind: 'success',
-        title: 'Correct Treatments Given',
-        items: ['Topical antibiotic eye drops (e.g., erythromycin)'],
-      },
-      {
-        kind: 'error',
-        title: 'Unnecessary Treatments Given',
-        items: ['IV antibiotics'],
-      },
-      {
-        kind: 'info',
-        title: 'Missed Treatments',
-        items: ['Topical broad-spectrum antibiotic ointment'],
-      },
-    ],
-  },
-  insights: [
-    {
-      title: 'Correct Diagnosis',
-      bullets: [
-        'Acute bacterial conjunctivitis (left eye) due to Staphylococcus aureus.',
-      ],
-    },
-    {
-      title: 'Key Clues',
-      bullets: [
-        'Acute unilateral purulent discharge with conjunctival injection, normal cornea/vision, and absent preauricular LAD favors bacterial over viral/ allergic causes.',
-      ],
-    },
-    {
-      title: 'Essential Tests',
-      bullets: [
-        'Conjunctival Gram stain and bacterial culture to confirm etiology and guide antibiotics', 'Reserve PCR panels for atypical/severe cases or STI risk.',
-      ],
-    },
-    {
-      title: 'Immediate Management',
-      bullets: [
-        'Begin topical broad-spectrum antibiotic (e.g., erythromycin or trimethoprim-polymyxin B), enforce strict hand hygiene, use cold compresses, and avoid contact lenses until resolved.',
-      ],
-    },
-    {
-      title: 'Pitfalls to avoid',
-      bullets: [
-        'Avoid topical steroids or unnecessary imaging/ systemic antibiotics in uncomplicated conjunctivitis.',
-      ],
-    },
-  ],
-};
-
-const TABS = ['Tests', 'Diagnosis', 'Treatment'];
+// Tabs mapped to Case Review arrays in step 5
+const TABS = ['How We Landed', 'Test Rationale', 'Treatment Plan'];
 
 export default function ClinicalInsight() {
   const colorScheme = useColorScheme();
@@ -118,12 +31,32 @@ export default function ClinicalInsight() {
   const route = useRoute();
   const navigation = useNavigation();
   const initialTabParam = route?.params?.initialTab;
+  const caseDataFromRoute = route?.params?.caseData;
+  const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
+  const selectedDiagnosisId = useSelector((s) => s.currentGame.selectedDiagnosisId);
+  const caseData = caseDataFromRoute || caseDataFromStore || {};
+  const step3 = caseData?.steps?.[2]?.data || {};
+  const diagnosisOptions = step3?.diagnosisOptions || [];
+  const correctDiagnosis = diagnosisOptions.find((d) => d?.isCorrect);
+  const chosenDiagnosis = diagnosisOptions.find((d) => d?.diagnosisId === selectedDiagnosisId);
+  const isChoiceCorrect = !!(chosenDiagnosis && correctDiagnosis && chosenDiagnosis.diagnosisId === correctDiagnosis.diagnosisId);
+  const step5 = caseData?.steps?.[4]?.data || {};
+  const howWeLanded = Array.isArray(step5?.howWeLandedOnTheDiagnosis) ? step5.howWeLandedOnTheDiagnosis : [];
+  const testRationale = Array.isArray(step5?.rationaleBehindTestSelection) ? step5.rationaleBehindTestSelection : [];
+  const treatmentPlan = Array.isArray(step5?.treatmentPriorityAndSequencing) ? step5.treatmentPriorityAndSequencing : [];
+  const core = step5?.coreClinicalInsight || {};
+  const coreInsights = [
+    core?.correctDiagnosis ? { title: 'Correct Diagnosis', bullets: [core.correctDiagnosis] } : null,
+    core?.keyClues ? { title: 'Key Clues', bullets: [core.keyClues] } : null,
+    core?.essentialTests ? { title: 'Essential Tests', bullets: [core.essentialTests] } : null,
+    Array.isArray(core?.trapsToAvoid) && core.trapsToAvoid.length ? { title: 'Pitfalls to avoid', bullets: core.trapsToAvoid } : null,
+  ].filter(Boolean);
   const layout = useWindowDimensions();
   const [index, setIndex] = React.useState(
-    Math.max(0, TABS.indexOf(TABS.includes(initialTabParam) ? initialTabParam : 'Tests'))
+    Math.max(0, TABS.indexOf(TABS.includes(initialTabParam) ? initialTabParam : 'How We Landed'))
   );
   const [routes] = React.useState(
-    TABS.map((t) => ({ key: t.toLowerCase(), title: t }))
+    TABS.map((t) => ({ key: t.toLowerCase().replace(/\s+/g, '_'), title: t }))
   );
   const [insightsExpanded, setInsightsExpanded] = React.useState(true);
 
@@ -141,8 +74,8 @@ export default function ClinicalInsight() {
         </Pressable>
         <View style={styles.topWrap}>
           <Image source={inappicon} style={styles.topImage} />
-          <Text style={styles.caseTitle}>{CASE_DATA.title}</Text>
-          <Text style={styles.caseSubtitle}>{CASE_DATA.subtitle}</Text>
+          <Text style={styles.caseTitle}>{caseData?.caseTitle || 'Case Review'}</Text>
+          <Text style={styles.caseSubtitle}>{caseData?.caseCategory || ''}</Text>
         </View>
         {/* case review card */}
         <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, minHeight: 600, }]}>
@@ -151,6 +84,24 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
             </View>
             <Text style={styles.caseHeaderText}>CASE REVIEW</Text>
+          </View>
+          {/* Correct vs Your Diagnosis */}
+          <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View style={[styles.sectionIconWrap, { backgroundColor: SUCCESS_BG }]}> 
+                <MaterialCommunityIcons name="check-circle-outline" size={16} color={SUCCESS_COLOR} />
+              </View>
+              <Text style={[styles.sectionTitle, { color: SUCCESS_COLOR }]}>Correct Diagnosis</Text>
+            </View>
+            <Text style={styles.bulletText}>{`\u2022 ${correctDiagnosis?.diagnosisName || '—'}`}</Text>
+            <DashedDivider />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
+              <View style={[styles.sectionIconWrap, { backgroundColor: isChoiceCorrect ? SUCCESS_BG : ERROR_BG }]}> 
+                <MaterialCommunityIcons name={isChoiceCorrect ? 'check-circle-outline' : 'close-circle-outline'} size={16} color={isChoiceCorrect ? SUCCESS_COLOR : ERROR_COLOR} />
+              </View>
+              <Text style={[styles.sectionTitle, { color: isChoiceCorrect ? SUCCESS_COLOR : ERROR_COLOR }]}>Your Choice</Text>
+            </View>
+            <Text style={styles.bulletText}>{`\u2022 ${chosenDiagnosis?.diagnosisName || '—'}`}</Text>
           </View>
 
           <TabView
@@ -172,19 +123,21 @@ export default function ClinicalInsight() {
               />
             )}
             renderScene={({ route: r }) => {
-              const key = r.key;
-              const currentSections = CASE_DATA.sections[key];
+              const key = r.key; // 'how_we_landed' | 'test_rationale' | 'treatment_plan'
+              let items = [];
+              let title = '';
+              if (key === 'how_we_landed') { title = 'How We Landed on the Diagnosis'; items = howWeLanded; }
+              else if (key === 'test_rationale') { title = 'Rationale Behind Test Selection'; items = testRationale; }
+              else { title = 'Treatment Priority & Sequencing'; items = treatmentPlan; }
+              const section = { kind: 'info', title, items };
               return (
                 <View style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
-                  {currentSections.map((section, idx) => (
-                    <Section
-                      key={idx}
-                      kind={section.kind}
-                      title={section.title}
-                      items={section.items}
-                      showDivider={idx !== currentSections.length - 1}
-                    />
-                  ))}
+                  <Section
+                    kind={section.kind}
+                    title={section.title}
+                    items={section.items}
+                    showDivider={false}
+                  />
                 </View>
               );
             }}
@@ -206,7 +159,7 @@ export default function ClinicalInsight() {
           {insightsExpanded && (
             <>
               <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-                {CASE_DATA.insights.map((insight, idx) => (
+                {coreInsights.map((insight, idx) => (
                   <InsightSection
                     key={idx}
                     title={insight.title}

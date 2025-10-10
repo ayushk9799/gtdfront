@@ -16,33 +16,10 @@ export const loadCaseById = createAsyncThunk(
   }
 );
 
-// Thunk: ensure gameplay exists for current user+case, return gameplayId
-export const ensureGameplay = createAsyncThunk(
-  'currentGame/ensureGameplay',
-  async (_, { getState }) => {
-    const state = getState();
-    const userId = state.currentGame.userId;
-    const caseId = state.currentGame.caseId;
-    if (!userId || !caseId) throw new Error('userId and caseId required');
-    const res = await fetch(`${API_BASE}/api/gameplays`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, caseId })
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `Failed to ensure gameplay (${res.status})`);
-    }
-    const data = await res.json();
-    return data?.gameplay?._id;
-  }
-);
-
 const initialState = {
   userId: null,
   caseId: null,
   caseData: null,
-  gameplayId: null,
   selectedTestIds: [],
   selectedDiagnosisId: null,
   selectedTreatmentIds: [],
@@ -91,12 +68,6 @@ const currentGameSlice = createSlice({
       .addCase(loadCaseById.rejected, (state, action) => {
         state.status = 'idle';
         state.error = action.error?.message || 'Failed to load case';
-      })
-      .addCase(ensureGameplay.fulfilled, (state, action) => {
-        state.gameplayId = action.payload || null;
-      })
-      .addCase(ensureGameplay.rejected, (state, action) => {
-        state.error = action.error?.message || 'Failed to ensure gameplay';
       });
   }
 });
@@ -104,15 +75,11 @@ const currentGameSlice = createSlice({
 // Submit gameplay thunk: maps selected IDs to indices and sends to backend submit endpoint
 export const submitGameplay = createAsyncThunk(
   'currentGame/submitGameplay',
-  async (_, { getState, dispatch }) => {
+  async (_, { getState }) => {
     const state = getState();
-    const { caseData, gameplayId, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds } = state.currentGame;
-    let gid = gameplayId;
-    if (!gid) {
-      const ensure = await dispatch(ensureGameplay());
-      if (ensureGameplay.fulfilled.match(ensure)) gid = ensure.payload;
-    }
-    if (!gid || !caseData) throw new Error('Missing gameplay or case data');
+    const { userId, caseId, caseData, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds } = state.currentGame;
+    if (!userId || !caseId) throw new Error('Missing userId or caseId');
+    if (!caseData) throw new Error('Missing case data');
 
     // Map tests to indices
     const tests = caseData?.steps?.[1]?.data?.availableTests || [];
@@ -143,11 +110,11 @@ export const submitGameplay = createAsyncThunk(
       .map((id) => treatIndexMap.get(id))
       .filter((i) => typeof i === 'number');
 
-    const res = await fetch(`${API_BASE}/api/gameplays/${gid}/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diagnosisIndex, testIndices, treatmentIndices, complete: true })
-    });
+    const res = await fetch(`${API_BASE}/api/gameplays/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, caseId, diagnosisIndex, testIndices, treatmentIndices, complete: true })
+      });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Failed to submit gameplay (${res.status})`);
