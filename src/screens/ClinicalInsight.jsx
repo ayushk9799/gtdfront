@@ -2,13 +2,13 @@ import React from 'react';
 import { useColorScheme, useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
 import { TabView, TabBar } from 'react-native-tab-view';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Line } from 'react-native-svg';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import LinearGradient from 'react-native-linear-gradient';
+import { useSelector } from 'react-redux';
 
 const ORANGE = '#FF8A00';
 
@@ -22,8 +22,7 @@ const ERROR_BG = '#FDEAEA';
 const INFO_COLOR = '#6E4A13';
 const INFO_BG = '#F6EFE4';
 
-// Tabs mapped to Case Review arrays in step 5
-const TABS = ['How We Landed', 'Test Rationale', 'Treatment Plan'];
+const TABS = ['Tests', 'Diagnosis', 'Treatment'];
 
 export default function ClinicalInsight() {
   const colorScheme = useColorScheme();
@@ -32,33 +31,120 @@ export default function ClinicalInsight() {
   const navigation = useNavigation();
   const initialTabParam = route?.params?.initialTab;
   const caseDataFromRoute = route?.params?.caseData;
-  const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
-  const selectedDiagnosisId = useSelector((s) => s.currentGame.selectedDiagnosisId);
+  const {
+    caseData: caseDataFromStore,
+    selectedTestIds,
+    selectedDiagnosisId,
+    selectedTreatmentIds,
+  } = useSelector((s) => s.currentGame);
   const caseData = caseDataFromRoute || caseDataFromStore || {};
-  const step3 = caseData?.steps?.[2]?.data || {};
-  const diagnosisOptions = step3?.diagnosisOptions || [];
-  const correctDiagnosis = diagnosisOptions.find((d) => d?.isCorrect);
-  const chosenDiagnosis = diagnosisOptions.find((d) => d?.diagnosisId === selectedDiagnosisId);
-  const isChoiceCorrect = !!(chosenDiagnosis && correctDiagnosis && chosenDiagnosis.diagnosisId === correctDiagnosis.diagnosisId);
-  const step5 = caseData?.steps?.[4]?.data || {};
-  const howWeLanded = Array.isArray(step5?.howWeLandedOnTheDiagnosis) ? step5.howWeLandedOnTheDiagnosis : [];
-  const testRationale = Array.isArray(step5?.rationaleBehindTestSelection) ? step5.rationaleBehindTestSelection : [];
-  const treatmentPlan = Array.isArray(step5?.treatmentPriorityAndSequencing) ? step5.treatmentPriorityAndSequencing : [];
-  const core = step5?.coreClinicalInsight || {};
-  const coreInsights = [
-    core?.correctDiagnosis ? { title: 'Correct Diagnosis', bullets: [core.correctDiagnosis] } : null,
-    core?.keyClues ? { title: 'Key Clues', bullets: [core.keyClues] } : null,
-    core?.essentialTests ? { title: 'Essential Tests', bullets: [core.essentialTests] } : null,
-    Array.isArray(core?.trapsToAvoid) && core.trapsToAvoid.length ? { title: 'Pitfalls to avoid', bullets: core.trapsToAvoid } : null,
-  ].filter(Boolean);
   const layout = useWindowDimensions();
+  // Alias mapping for initial tab labels coming from previous screens
+  const normalizedInitialTab = (initialTabParam === 'Treatment Plan') ? 'Treatment' : initialTabParam;
   const [index, setIndex] = React.useState(
-    Math.max(0, TABS.indexOf(TABS.includes(initialTabParam) ? initialTabParam : 'How We Landed'))
+    Math.max(0, TABS.indexOf(TABS.includes(normalizedInitialTab) ? normalizedInitialTab : 'Tests'))
   );
   const [routes] = React.useState(
-    TABS.map((t) => ({ key: t.toLowerCase().replace(/\s+/g, '_'), title: t }))
+    TABS.map((t) => ({ key: t.toLowerCase(), title: t }))
   );
   const [insightsExpanded, setInsightsExpanded] = React.useState(true);
+
+  // Build evaluation sections from caseData + selections
+  const sections = React.useMemo(() => {
+    const sec = { tests: [], diagnosis: [], treatment: [] };
+
+    // Tests (step 2 / index 1)
+    const availableTests = caseData?.steps?.[1]?.data?.availableTests || [];
+    const testById = new Map(availableTests.map((t) => [t.testId, t]));
+    const selectedTests = (selectedTestIds || [])
+      .map((id) => testById.get(id))
+      .filter(Boolean);
+    const correctSelectedTests = selectedTests.filter((t) => t.isRelevant);
+    const unnecessarySelectedTests = selectedTests.filter((t) => !t.isRelevant);
+    const missedRelevantTests = availableTests.filter((t) => t.isRelevant && !(selectedTestIds || []).includes(t.testId));
+
+    if (correctSelectedTests.length) {
+      sec.tests.push({ kind: 'success', title: 'Efficient Test Choices', items: correctSelectedTests.map((t) => t.testName) });
+    }
+    if (unnecessarySelectedTests.length) {
+      sec.tests.push({ kind: 'error', title: 'Unnecessary Tests Ordered', items: unnecessarySelectedTests.map((t) => t.testName) });
+    }
+    if (missedRelevantTests.length) {
+      sec.tests.push({ kind: 'info', title: 'Missed Key Tests', items: missedRelevantTests.map((t) => t.testName) });
+    }
+
+    // Diagnosis (step 3 / index 2)
+    const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
+    const diagById = new Map(diags.map((d) => [d.diagnosisId, d]));
+    const correctDiagnosis = diags.find((d) => d.isCorrect);
+    const userDiagnosis = selectedDiagnosisId ? diagById.get(selectedDiagnosisId) : null;
+    if (userDiagnosis) {
+      const userCorrect = !!userDiagnosis.isCorrect;
+      sec.diagnosis.push({
+        kind: userCorrect ? 'success' : 'error',
+        title: 'Your Diagnosis',
+        items: [userDiagnosis.diagnosisName],
+      });
+    }
+    if (correctDiagnosis) {
+      sec.diagnosis.push({ kind: 'info', title: 'Correct Diagnosis', items: [correctDiagnosis.diagnosisName] });
+    }
+
+    // Treatment (step 4 / index 3)
+    const step4 = caseData?.steps?.[3]?.data || {};
+    const treatmentOptions = step4?.treatmentOptions || {};
+    const flatTreatments = [
+      ...(treatmentOptions.medications || []),
+      ...(treatmentOptions.surgicalInterventional || []),
+      ...(treatmentOptions.nonSurgical || []),
+      ...(treatmentOptions.psychiatric || []),
+    ];
+    const txById = new Map(flatTreatments.map((t) => [t.treatmentId, t]));
+    const selectedTx = (selectedTreatmentIds || []).map((id) => txById.get(id)).filter(Boolean);
+    const correctSelectedTx = selectedTx.filter((t) => t.isCorrect);
+    const unnecessarySelectedTx = selectedTx.filter((t) => !t.isCorrect);
+    const missedTx = flatTreatments.filter((t) => t.isCorrect && !(selectedTreatmentIds || []).includes(t.treatmentId));
+
+    if (correctSelectedTx.length) {
+      sec.treatment.push({ kind: 'success', title: 'Correct Treatments Given', items: correctSelectedTx.map((t) => t.treatmentName) });
+    }
+    if (unnecessarySelectedTx.length) {
+      sec.treatment.push({ kind: 'error', title: 'Unnecessary Treatments Given', items: unnecessarySelectedTx.map((t) => t.treatmentName) });
+    }
+    if (missedTx.length) {
+      sec.treatment.push({ kind: 'info', title: 'Missed Treatments', items: missedTx.map((t) => t.treatmentName) });
+    }
+
+    return sec;
+  }, [caseData, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds]);
+
+  // Build core insights from case review if present
+  const insights = React.useMemo(() => {
+    const review = caseData?.steps?.[4]?.data; // stepNumber 5, index 4
+    if (!review) return [];
+    const out = [];
+    if (review?.coreClinicalInsight?.correctDiagnosis) {
+      out.push({ title: 'Correct Diagnosis', bullets: [review.coreClinicalInsight.correctDiagnosis] });
+    }
+    if (review?.coreClinicalInsight?.keyClues) {
+      out.push({ title: 'Key Clues', bullets: [review.coreClinicalInsight.keyClues] });
+    }
+    if (review?.coreClinicalInsight?.essentialTests) {
+      out.push({ title: 'Essential Tests', bullets: [review.coreClinicalInsight.essentialTests] });
+    }
+    if (Array.isArray(review?.coreClinicalInsight?.trapsToAvoid) && review.coreClinicalInsight.trapsToAvoid.length) {
+      out.push({ title: 'Pitfalls to avoid', bullets: review.coreClinicalInsight.trapsToAvoid });
+    }
+    return out;
+  }, [caseData]);
+
+  // Header diagnosis values
+  const headerDx = React.useMemo(() => {
+    const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
+    const correct = diags.find((d) => d.isCorrect)?.diagnosisName || null;
+    const mine = selectedDiagnosisId ? diags.find((d) => d.diagnosisId === selectedDiagnosisId)?.diagnosisName : null;
+    return { correct, mine };
+  }, [caseData, selectedDiagnosisId]);
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
@@ -73,9 +159,34 @@ export default function ClinicalInsight() {
           <MaterialCommunityIcons name="chevron-left" size={26} color="#223148" />
         </Pressable>
         <View style={styles.topWrap}>
-          <Image source={inappicon} style={styles.topImage} />
-          <Text style={styles.caseTitle}>{caseData?.caseTitle || 'Case Review'}</Text>
-          <Text style={styles.caseSubtitle}>{caseData?.caseCategory || ''}</Text>
+          {(headerDx.correct && headerDx.mine && headerDx.correct === headerDx.mine) ? (
+            <>
+              <Text style={styles.userDxGreenText}>{headerDx.mine}</Text>
+              {headerDx.correct ? (
+                <Text style={styles.headerLabelText}>
+                  {`Correct diagnosis: `}
+                  <Text style={styles.headerCorrectValueGreen}>{headerDx.correct}</Text>
+                </Text>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {headerDx.mine ? (
+                <Text style={styles.userDxRedText}>{` ${headerDx.mine}`}</Text>
+              ) : null}
+              {headerDx.correct ? (
+                <Text style={styles.headerLabelText}>
+                  {`Correct : `}
+                  <Text style={styles.headerCorrectValueGreen}>{headerDx.correct}</Text>
+                </Text>
+              ) : (
+                <Text style={styles.headerLabelText}>
+                  {`Correct : `}
+                  <Text style={styles.headerCorrectValueGreen}>Unavailable</Text>
+                </Text>
+              )}
+            </>
+          )}
         </View>
         {/* case review card */}
         <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, minHeight: 600, }]}>
@@ -84,24 +195,6 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
             </View>
             <Text style={styles.caseHeaderText}>CASE REVIEW</Text>
-          </View>
-          {/* Correct vs Your Diagnosis */}
-          <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View style={[styles.sectionIconWrap, { backgroundColor: SUCCESS_BG }]}> 
-                <MaterialCommunityIcons name="check-circle-outline" size={16} color={SUCCESS_COLOR} />
-              </View>
-              <Text style={[styles.sectionTitle, { color: SUCCESS_COLOR }]}>Correct Diagnosis</Text>
-            </View>
-            <Text style={styles.bulletText}>{`\u2022 ${correctDiagnosis?.diagnosisName || '—'}`}</Text>
-            <DashedDivider />
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
-              <View style={[styles.sectionIconWrap, { backgroundColor: isChoiceCorrect ? SUCCESS_BG : ERROR_BG }]}> 
-                <MaterialCommunityIcons name={isChoiceCorrect ? 'check-circle-outline' : 'close-circle-outline'} size={16} color={isChoiceCorrect ? SUCCESS_COLOR : ERROR_COLOR} />
-              </View>
-              <Text style={[styles.sectionTitle, { color: isChoiceCorrect ? SUCCESS_COLOR : ERROR_COLOR }]}>Your Choice</Text>
-            </View>
-            <Text style={styles.bulletText}>{`\u2022 ${chosenDiagnosis?.diagnosisName || '—'}`}</Text>
           </View>
 
           <TabView
@@ -123,21 +216,23 @@ export default function ClinicalInsight() {
               />
             )}
             renderScene={({ route: r }) => {
-              const key = r.key; // 'how_we_landed' | 'test_rationale' | 'treatment_plan'
-              let items = [];
-              let title = '';
-              if (key === 'how_we_landed') { title = 'How We Landed on the Diagnosis'; items = howWeLanded; }
-              else if (key === 'test_rationale') { title = 'Rationale Behind Test Selection'; items = testRationale; }
-              else { title = 'Treatment Priority & Sequencing'; items = treatmentPlan; }
-              const section = { kind: 'info', title, items };
+              const key = r.key;
+              const currentSections = sections[key] || [];
               return (
                 <View style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
-                  <Section
-                    kind={section.kind}
-                    title={section.title}
-                    items={section.items}
-                    showDivider={false}
-                  />
+                  {currentSections.length === 0 ? (
+                    <Text style={[styles.bulletText, { marginLeft: 0 }]}>No items to display.</Text>
+                  ) : (
+                    currentSections.map((section, idx) => (
+                      <Section
+                        key={idx}
+                        kind={section.kind}
+                        title={section.title}
+                        items={section.items}
+                        showDivider={idx !== currentSections.length - 1}
+                      />
+                    ))
+                  )}
                 </View>
               );
             }}
@@ -159,7 +254,7 @@ export default function ClinicalInsight() {
           {insightsExpanded && (
             <>
               <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-                {coreInsights.map((insight, idx) => (
+                {insights.map((insight, idx) => (
                   <InsightSection
                     key={idx}
                     title={insight.title}
@@ -236,6 +331,12 @@ const styles = StyleSheet.create({
   },
   caseTitle: { fontSize: 24, fontWeight: '900', color: '#FF407D', textAlign: 'center' },
   caseSubtitle: { fontSize: 18, fontWeight: '500', color: '#223148', textAlign: 'center', marginTop: 8, marginBottom: 8 },
+  correctDxText: { fontSize: 22, fontWeight: '900', color: '#12A77A', textAlign: 'center' },
+  userDxText: { fontSize: 16, fontWeight: '800', color: '#1E88E5', textAlign: 'center', marginTop: 6 },
+  userDxGreenText: { fontSize: 22, fontWeight: '900', color: '#12A77A', textAlign: 'center' },
+  userDxRedText: { fontSize: 18, fontWeight: '900', color: '#E2555A', textAlign: 'center' },
+  headerLabelText: { fontSize: 14, fontWeight: '800', color: '#5C6C83', textAlign: 'center', marginTop: 6 },
+  headerCorrectValueGreen: { fontSize: 16, fontWeight: '900', color: '#12A77A' },
   card: {
     borderRadius: 18,
     borderWidth: 1,

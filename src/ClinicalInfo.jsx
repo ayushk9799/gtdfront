@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import DecorativeSeparator from './components/DecorativeSeparator';
 import { Colors } from '../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -29,6 +30,8 @@ function ECGUnderline({ color = Colors.brand.darkPink }) {
   );
 }
 
+// DecorativeSeparator is now a shared component
+
 function Section({ title, children }) {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
@@ -40,7 +43,7 @@ function Section({ title, children }) {
       ]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{title}</Text>
-          <ECGUnderline />
+          <DecorativeSeparator />
         </View>
         <ScrollView
           style={styles.sectionScroll}
@@ -170,6 +173,7 @@ export default function ClinicalInfo() {
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const scrollRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
   const SLIDE_COUNT = 4; // Basic, Vitals, Hx, PE
 
   // Layout calculations for platform-consistent nav button positioning
@@ -245,6 +249,21 @@ export default function ClinicalInfo() {
       opacity,
     };
   };
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 2000,
+        easing: Animated.Easing ? Animated.Easing.linear : undefined,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => {
+      try { loop.stop?.(); } catch (_) {}
+      shimmerAnim.setValue(0);
+    };
+  }, [shimmerAnim]);
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -256,7 +275,7 @@ export default function ClinicalInfo() {
       <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
           style={styles.closeButton}
           activeOpacity={0.8}
         >
@@ -383,9 +402,25 @@ export default function ClinicalInfo() {
           style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }]}
           activeOpacity={0.9}
         >
+          <LinearGradient
+            colors={["#F472B6", "#FB7185"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButtonGradient}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0,1], outputRange: [-100, 220] }) }] }]}
+          >
+            <LinearGradient
+              colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
           <Text style={styles.primaryButtonText}>Send for Tests</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
-
         </TouchableOpacity>
       )}
       
@@ -415,6 +450,8 @@ const styles = StyleSheet.create({
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
   ecgSvg: { marginTop: 6, marginBottom: 6 },
+  separatorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 6 },
+  separatorLine: { flex: 1, height: 2, borderRadius: 2 },
   sectionBody: { fontSize: 14, lineHeight: 20, color: '#333' },
   sectionScroll: { flex: 1 },
   sectionScrollContent: { paddingBottom: 8 },
@@ -496,11 +533,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Colors.brand.darkPink,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    minHeight: 60,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
-  primaryButtonText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
+  shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
+  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 18 },
   testGrid: { flexDirection: 'column', gap: 12 },
   testCard: {
     width: '100%',

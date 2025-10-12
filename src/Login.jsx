@@ -23,7 +23,7 @@ const storage = new MMKV();
 
 async function platformSpecificSignUp() {
   try {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android'||true) {
       // Android: Google Sign-In
       const googleCredential = await signUpWithGoogle({
         serverClientId:
