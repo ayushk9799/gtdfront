@@ -1,21 +1,11 @@
-import {
-  signUpWithGoogle,
-  signUpWithApple,
-} from 'react-native-credentials-manager';
+import { signUpWithGoogle, signUpWithApple } from 'react-native-credentials-manager';
 
 import React, { useState } from 'react';
 import { API_BASE } from '../constants/Api.jsx';
 import inappicon from '../constants/inappicon.png';
 import { MMKV } from 'react-native-mmkv';
-import {
-  View,
-  TouchableOpacity,
-  Platform,
-  ActivityIndicator,
-  Text,
-  StyleSheet,
-  Image,
-} from 'react-native';
+import { View, TouchableOpacity, Platform, ActivityIndicator, Text, StyleSheet, Image } from 'react-native';
+import googleAuth from './services/googleAuth';
 import Svg, { Path } from 'react-native-svg';
 
 // Initialize MMKV storage
@@ -23,7 +13,7 @@ const storage = new MMKV();
 
 async function platformSpecificSignUp() {
   try {
-    if (Platform.OS === 'android'||true) {
+    if (Platform.OS === 'android') {
       // Android: Google Sign-In
       const googleCredential = await signUpWithGoogle({
         serverClientId:
@@ -43,23 +33,18 @@ async function platformSpecificSignUp() {
       const data = await ans.json();
       return data;
     } else {
-      // iOS: Apple Sign In
-      const appleCredential = await signUpWithApple({
-        nonce: 'OPTIONAL_NONCE_FOR_SECURITY',
-        requestedScopes: ['fullName', 'email'],
+      // iOS: Google Sign-In via native module (keep Android flow unchanged)
+      console.log("signing in with google", googleAuth);
+      const result = await googleAuth.signIn();
+      console.log("result", result);
+      if (!result?.idToken) throw new Error('No idToken from Google');
+      const ans = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: result.idToken }),
       });
-
-      return {
-        type: 'apple',
-        token: appleCredential.idToken,
-        id: appleCredential.id,
-        user: {
-          name: appleCredential.displayName,
-          givenName: appleCredential.givenName,
-          familyName: appleCredential.familyName,
-          email: appleCredential.email,
-        },
-      };
+      const data = await ans.json();
+      return data;
     }
   } catch (error) {
     console.error('Platform-specific sign-up failed:', error);
@@ -131,7 +116,7 @@ function Login({ onLogin }) {
             </View>
             <Text style={styles.gsiMaterialButtonContents}>
               {Platform.OS === 'ios'
-                ? 'Sign in with Apple'
+                ? 'Sign in with Appule'
                 : 'Sign in with Google'}
             </Text>
           </View>

@@ -38,7 +38,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey : Any] = [:]
   ) -> Bool {
-    return GIDSignIn.sharedInstance.handle(url)
+    if GIDSignIn.sharedInstance.handle(url) { return true }
+    return false
   }
 
 }
