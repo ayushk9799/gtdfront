@@ -7,7 +7,7 @@ import { StyleSheet, useColorScheme, View, Platform } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import { MMKV } from 'react-native-mmkv';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +30,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { AppDataProvider } from './src/AppDataContext';
 import { Provider } from 'react-redux';
 import { store } from './src/store';
+import { initializeAndroidNotifications, registerAndroidNotificationTapHandlers } from './src/notifications/NotificationManager';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -119,6 +120,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const navigationRef = React.useRef(createNavigationContainerRef());
+  const pendingTapDataRef = React.useRef(null);
 
   /* load stored credential once */
   useEffect(() => {
@@ -131,6 +134,49 @@ export default function App() {
       setLoading(false);
     }
   }, []);
+
+  // Android-only: initialize notifications
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let cleanup = () => {};
+    initializeAndroidNotifications().then(fn => {
+      if (typeof fn === 'function') cleanup = fn;
+    });
+    return () => cleanup();
+  }, []);
+
+  // Android-only: handle notification taps (background and cold start)
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const unsubscribe = registerAndroidNotificationTapHandlers({
+      onBackgroundTap: (data) => {
+        tryNavigateToClinicalInfo(data);
+      },
+      onColdStartTap: (data) => {
+        // queue until navigation is ready
+        pendingTapDataRef.current = data || {};
+        tryNavigateToClinicalInfo(data);
+      },
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  function tryNavigateToClinicalInfo(data) {
+    const payload = data || {};
+    // If navigator is ready, navigate immediately; else queue
+    if (navigationRef.current && navigationRef.current.isReady()) {
+      try {
+        navigationRef.current.navigate(`${payload.screen}`, payload);
+        pendingTapDataRef.current = null;
+      } catch (e) {
+        console.warn('Navigation to ClinicalInfo failed', e);
+      }
+    } else {
+      pendingTapDataRef.current = payload;
+    }
+  }
 
   if (loading) return null; // splash screen placeholder
 
@@ -159,7 +205,15 @@ export default function App() {
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <NavigationContainer theme={mergedTheme}>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={() => {
+            if (pendingTapDataRef.current) {
+              tryNavigateToClinicalInfo(pendingTapDataRef.current);
+            }
+          }}
+          theme={mergedTheme}
+        >
           {user ? (
             <Stack.Navigator
               screenOptions={{
