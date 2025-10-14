@@ -42,7 +42,7 @@ const DUMMY = [
 
 export default function LearningScreen() {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors = Colors.light;
   const navigation = useNavigation();
   const totalCount = DUMMY.reduce((sum, sec) => sum + sec.items.length, 0);
   const detailSheetRef = React.useRef(null);

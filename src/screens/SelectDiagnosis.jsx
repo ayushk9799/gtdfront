@@ -69,7 +69,7 @@ function DiagnosisSvg({ size = 80, ...props }) {
 
 function Section({ title, children }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors = Colors.light;
   return (
     <View style={styles.sectionBlock}>
       <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>

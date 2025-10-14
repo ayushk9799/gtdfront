@@ -33,8 +33,7 @@ function ECGUnderline({ color = Colors.brand.darkPink }) {
 // DecorativeSeparator is now a shared component
 
 function Section({ title, children }) {
-  const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={styles.sectionBlock}>
       <View style={[
@@ -96,7 +95,7 @@ function PhysicalExam() {
 
 function FieldRow({ label, value }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={styles.fieldRow}>
       <Text style={[styles.fieldLabel, { color: themeColors.text }]}>{label}</Text>
@@ -107,7 +106,7 @@ function FieldRow({ label, value }) {
 
 function BulletItem({ children }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={styles.bulletRow}>
       <View style={styles.bulletDot} />
@@ -118,7 +117,7 @@ function BulletItem({ children }) {
 
 function StatTile({ label, value, icon }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={[styles.statTile, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
       <View style={styles.statHeaderRow}>
@@ -135,20 +134,19 @@ function StatTile({ label, value, icon }) {
 }
 
 function InfoColumn({ icon, label, value }) {
-  const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={styles.infoCol}>
       <MaterialCommunityIcons name={icon} size={20} color={Colors.brand.darkPink} />
       <Text style={[styles.infoLabel, { color: '#687076' }]}>{label}</Text>
-      <Text style={[styles.infoValue, { color: themeColors.text }]}>{value}</Text>
+      <Text style={[styles.infoValue, { color:"black"}]}>{value}</Text>
     </View>
   );
 }
 
 function TipCard({ title, subtitle, cta }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={[styles.tipCard, { borderColor: themeColors.border, backgroundColor: themeColors.card }]}> 
       <View style={styles.tipRow}>
@@ -169,8 +167,7 @@ export default function ClinicalInfo() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  
   const scrollRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -506,10 +503,10 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   heroImage: { width: '100%', height: 200, borderRadius: 16, marginBottom: 12, resizeMode: 'cover' },
-  infoGrid: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
-  infoCol: { flex: 1 },
-  infoLabel: { marginTop: 6, fontSize: 12, fontWeight: '800' },
-  infoValue: { marginTop: 2, fontSize: 16, fontWeight: '800' },
+  infoGrid: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 12 },
+  infoCol: { alignItems: 'center', minWidth: 90 },
+  infoLabel: { marginTop: 6, fontSize: 12, fontWeight: '800', opacity: 0.8 },
+  infoValue: { marginTop: 2, fontSize: 16, fontWeight: '900', color: '#11181C' },
   subHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   chiefContainer: {
     marginTop: 8,

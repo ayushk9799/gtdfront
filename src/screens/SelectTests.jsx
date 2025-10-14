@@ -16,20 +16,7 @@ const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 
-function ECGUnderline({ color = Colors.brand.darkPink }) {
-  return (
-    <Svg width={160} height={14} viewBox="0 0 160 14" style={styles.ecgSvg}>
-      <Path
-        d="M0 7 H18 L26 7 L31 2 L36 12 L41 7 H58 L66 7 L71 3 L76 12 L81 7 H98 L106 7 L111 3 L116 12 L121 7 H160"
-        stroke={color}
-        strokeWidth={2.5}
-        fill="none"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-}
+
 
 // DecorativeSeparator is now a shared component
 function MicroscopeSvg({ size = 80, color = '#F79EBD' }) {
@@ -48,7 +35,7 @@ function MicroscopeSvg({ size = 80, color = '#F79EBD' }) {
 
 function Section({ title, children }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors = Colors.light;
   return (
     <View style={styles.sectionBlock}>
       <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>

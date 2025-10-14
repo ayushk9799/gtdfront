@@ -34,7 +34,7 @@ function ECGUnderline({ color = Colors.brand.darkPink }) {
 
 function Section({ title, children }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={styles.sectionBlock}>
       <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
@@ -61,15 +61,13 @@ export default function SelectTreatment() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   const dispatch = useDispatch();
   const { userId, caseId, selectedTreatmentIds } = useSelector((s) => s.currentGame);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
 
   const caseData = route?.params?.caseData || {};
-  // gameplayId not required anymore; backend will create on submit
   
-  // Extract treatment data from the CASES_ARRAY structure (steps[3].data)
   const step4Data = caseData?.steps?.[3]?.data || {};
   const treatmentOptions = step4Data?.treatmentOptions || {};
   const medications = treatmentOptions?.medications || [];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useColorScheme, useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
+import {  useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { TabView, TabBar } from 'react-native-tab-view';
@@ -25,8 +25,7 @@ const INFO_BG = '#F6EFE4';
 const TABS = ['Tests', 'Diagnosis', 'Treatment'];
 
 export default function ClinicalInsight() {
-  const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   const route = useRoute();
   const navigation = useNavigation();
   const initialTabParam = route?.params?.initialTab;

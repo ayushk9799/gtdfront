@@ -26,6 +26,7 @@ import ClinicalInsight from './src/screens/ClinicalInsight';
 import SelectTests from './src/screens/SelectTests';
 import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { AppDataProvider } from './src/AppDataContext';
 import { Provider } from 'react-redux';
@@ -45,7 +46,7 @@ const storage = new MMKV();
 /* ---------- tabs ---------- */
 function RootTabs() {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   const insets = useSafeAreaInsets();
   const bottomExtra = Platform.OS === 'android' ? (insets.bottom || 0) : 0;
   const isAndroid12Plus = Platform.OS === 'android' && Number(Platform.Version) >= 31;
@@ -75,7 +76,7 @@ function RootTabs() {
             return (
               <BlurView
                 style={StyleSheet.absoluteFill}
-                blurType={colorScheme === 'dark' ? 'dark' : 'light'}
+                blurType={ 'light'}
                 blurAmount={16}
                 overlayColor="transparent"
               />
@@ -118,7 +119,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
 
   /* load stored credential once */
   useEffect(() => {
@@ -132,9 +133,24 @@ export default function App() {
     }
   }, []);
 
+  /* react to auth changes (login/logout) */
+  useEffect(() => {
+    const listener = storage.addOnValueChangedListener((changedKey) => {
+      if (changedKey === 'user') {
+        try {
+          const stored = storage.getString('user');
+          setUser(stored ? JSON.parse(stored) : null);
+        } catch (e) {
+          setUser(null);
+        }
+      }
+    });
+    return () => listener.remove();
+  }, []);
+
   if (loading) return null; // splash screen placeholder
 
-  const baseTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+  const baseTheme =  DefaultTheme;
   const mergedTheme = {
     ...baseTheme,
     colors: {
@@ -215,6 +231,24 @@ export default function App() {
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
               />
+              <Stack.Screen
+                name="PrivacyPolicy"
+                component={PrivacyPolicy}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="TermsOfService"
+                component={TermsOfServiceScreen}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
             </Stack.Navigator>
           ) : (
             <Stack.Navigator
@@ -225,6 +259,13 @@ export default function App() {
                 statusBarTranslucent: true,
               }}
             >
+              <Stack.Screen
+                name="Onboarding"
+                component={OnboardingScreen}
+                options={{
+                  contentStyle: { backgroundColor: '#ffffff' },
+                }}
+              />
               <Stack.Screen name="Login">
                 {() => <Login onLogin={setUser} />}
               </Stack.Screen>
