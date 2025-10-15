@@ -13,6 +13,8 @@ import { MMKV } from 'react-native-mmkv';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadCaseById, setUserId } from '../store/slices/currentGameSlice';
 import { fetchCategories } from '../store/slices/categoriesSlice';
+import departmentIcon from '../../constants/department.png';
+import calendarIcon from '../../constants/calendar.png';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -27,6 +29,7 @@ export default function HomeScreen() {
     try {
       const storage = new MMKV();
       const stored = storage.getString('user');
+      console.log("stored", stored);
       if (stored) {
         const u = JSON.parse(stored);
         const uid = u?.userId || u?._id || u?.id;
@@ -58,7 +61,7 @@ export default function HomeScreen() {
           <View style={styles.cardContent}>
             <View style={styles.rowCenterBetween}>
               <View style={styles.rowCenter}>
-                <MaterialCommunityIcons name="calendar-star" size={22} color={Colors.brand.darkPink} />
+                <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
               </View>
               <View style={styles.badge}>
@@ -77,9 +80,9 @@ export default function HomeScreen() {
           <View style={{}}>
             <View style={styles.rowCenterBetween}>
               <View style={styles.rowCenter}>
+                <Image source={departmentIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Departments</Text>
               </View>
-             
             </View>
             {categoriesLoading === 'loading' && (
               <View style={[styles.rowCenter, { marginTop: 8 }]}> 

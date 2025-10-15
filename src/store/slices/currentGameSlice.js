@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { API_BASE } from '../../../constants/Api';
+import { computeGameplayScoreNormalized } from '../../services/scoring';
 
 // Thunk: load case data by ObjectId and store as current case
 export const loadCaseById = createAsyncThunk(
@@ -110,10 +111,31 @@ export const submitGameplay = createAsyncThunk(
       .map((id) => treatIndexMap.get(id))
       .filter((i) => typeof i === 'number');
 
+    // Compute normalized points (30/40/30)
+    const normalized = computeGameplayScoreNormalized(caseData, {
+      selectedTestIds,
+      selectedDiagnosisId,
+      selectedTreatmentIds,
+    });
+    
+
     const res = await fetch(`${API_BASE}/api/gameplays/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, caseId, diagnosisIndex, testIndices, treatmentIndices, complete: true })
+      body: JSON.stringify({
+          userId,
+          caseId,
+          diagnosisIndex,
+          testIndices,
+          treatmentIndices,
+          points: {
+            total: normalized.total,
+            tests: normalized.tests,
+            diagnosis: normalized.diagnosis,
+            treatment: normalized.treatment,
+          },
+          complete: true,
+        })
       });
     if (!res.ok) {
       const text = await res.text();
