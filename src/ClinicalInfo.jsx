@@ -15,20 +15,7 @@ const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 // Card height as a percentage of the screen height
 const CARD_HEIGHT_PCT = 0.70;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
-function ECGUnderline({ color = Colors.brand.darkPink }) {
-  return (
-    <Svg width={160} height={14} viewBox="0 0 160 14" style={styles.ecgSvg}>
-      <Path
-        d="M0 7 H18 L26 7 L31 2 L36 12 L41 7 H58 L66 7 L71 3 L76 12 L81 7 H98 L106 7 L111 3 L116 12 L121 7 H160"
-        stroke={color}
-        strokeWidth={2.5}
-        fill="none"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-}
+
 
 // DecorativeSeparator is now a shared component
 
@@ -58,54 +45,8 @@ function Section({ title, children }) {
   );
 }
 
-function PatientInfo() {
-  return (
-    <Section title="Patient Info">
-      Age: 32, Sex: Female. Chief complaint: intermittent fever and cough for 5 days.
-    </Section>
-  );
-}
-
-function Vitals() {
-  return (
-    <Section title="Vitals">
-      Temp 38.3°C, HR 96 bpm, BP 118/72 mmHg, RR 18/min, SpO2 97% on room air.
-    </Section>
-  );
-}
-
-function History() {
-  return (
-    <Section title="History">
-      Onset gradual, sore throat, mild fatigue. No recent travel, no chronic conditions.
-    </Section>
-  );
-}
-
-function PhysicalExam() {
-  return (
-    <Section title="Physical Examination">
-      <BulletItem>Alert and oriented</BulletItem>
-      <BulletItem>Mild pharyngeal erythema</BulletItem>
-      <BulletItem>Lungs clear to auscultation</BulletItem>
-      <BulletItem>No rashes</BulletItem>
-    </Section>
-  );
-}
-
-function FieldRow({ label, value }) {
-  const colorScheme = useColorScheme();
-  const themeColors =  Colors.light;
-  return (
-    <View style={styles.fieldRow}>
-      <Text style={[styles.fieldLabel, { color: themeColors.text }]}>{label}</Text>
-      <Text style={[styles.fieldValue, { color: themeColors.text }]}>{value}</Text>
-    </View>
-  );
-}
 
 function BulletItem({ children }) {
-  const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   return (
     <View style={styles.bulletRow}>
@@ -116,7 +57,6 @@ function BulletItem({ children }) {
 }
 
 function StatTile({ label, value, icon }) {
-  const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   return (
     <View style={[styles.statTile, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
@@ -134,7 +74,6 @@ function StatTile({ label, value, icon }) {
 }
 
 function InfoColumn({ icon, label, value }) {
-  const themeColors =  Colors.light;
   return (
     <View style={styles.infoCol}>
       <MaterialCommunityIcons name={icon} size={20} color={Colors.brand.darkPink} />
@@ -144,22 +83,7 @@ function InfoColumn({ icon, label, value }) {
   );
 }
 
-function TipCard({ title, subtitle, cta }) {
-  const colorScheme = useColorScheme();
-  const themeColors =  Colors.light;
-  return (
-    <View style={[styles.tipCard, { borderColor: themeColors.border, backgroundColor: themeColors.card }]}> 
-      <View style={styles.tipRow}>
-        <Image source={require('../constants/inappicon.png')} style={styles.tipImage} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.tipTitle}>{title}</Text>
-          <Text style={styles.tipSubtitle}>{subtitle}</Text>
-          {cta ? <Text style={styles.tipCta}>{cta}</Text> : null}
-        </View>
-      </View>
-    </View>
-  );
-}
+
 
 export default function ClinicalInfo() {
   const { width } = Dimensions.get('window');
