@@ -1,14 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import DecorativeSeparator from '../components/DecorativeSeparator';
 import { Colors } from '../../constants/Colors';
 import { API_BASE } from '../../constants/Api';
 import { useDispatch, useSelector } from 'react-redux';
-import { ensureGameplay, setSelectedTreatments as setSelectedTreatmentsAction, submitGameplay } from '../store/slices/currentGameSlice';
+import { setSelectedTreatments as setSelectedTreatmentsAction, submitGameplay } from '../store/slices/currentGameSlice';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import medImg from '../../constants/medicine.png';
+import surgImg from '../../constants/surgical.png';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
@@ -31,13 +34,13 @@ function ECGUnderline({ color = Colors.brand.darkPink }) {
 
 function Section({ title, children }) {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   return (
     <View style={styles.sectionBlock}>
       <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{title}</Text>
-          <ECGUnderline />
+          <DecorativeSeparator />
         </View>
         <ScrollView
           style={styles.sectionScroll}
@@ -58,14 +61,13 @@ export default function SelectTreatment() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   const dispatch = useDispatch();
-  const { userId, caseId, gameplayId: gameplayIdFromStore, selectedTreatmentIds } = useSelector((s) => s.currentGame);
+  const { userId, caseId, selectedTreatmentIds } = useSelector((s) => s.currentGame);
+  const shimmerAnim = React.useRef(new Animated.Value(0)).current;
 
   const caseData = route?.params?.caseData || {};
-  const gameplayId = route?.params?.gameplayId || gameplayIdFromStore;
   
-  // Extract treatment data from the CASES_ARRAY structure (steps[3].data)
   const step4Data = caseData?.steps?.[3]?.data || {};
   const treatmentOptions = step4Data?.treatmentOptions || {};
   const medications = treatmentOptions?.medications || [];
@@ -73,13 +75,7 @@ export default function SelectTreatment() {
   const nonSurgical = treatmentOptions?.nonSurgical || [];
   const psychiatric = treatmentOptions?.psychiatric || [];
 
-  // Combine all treatment options into one array with category tags
-  const allTreatments = [
-    ...medications.map(m => ({ ...m, category: 'Medication' })),
-    ...surgicalInterventional.map(m => ({ ...m, category: 'Surgical/Interventional' })),
-    ...nonSurgical.map(m => ({ ...m, category: 'Non-Surgical' })),
-    ...psychiatric.map(m => ({ ...m, category: 'Psychiatric' }))
-  ];
+  // Render categories separately in the UI with subheaders
 
   const toggleTreatment = (id) => {
     const next = selectedTreatmentIds.includes(id) ? selectedTreatmentIds.filter((t) => t !== id) : [...selectedTreatmentIds, id];
@@ -116,6 +112,14 @@ export default function SelectTreatment() {
     }
   };
 
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(shimmerAnim, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true })
+    );
+    loop.start();
+    return () => { try { loop.stop?.(); } catch(_) {} shimmerAnim.setValue(0); };
+  }, [shimmerAnim]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -127,7 +131,7 @@ export default function SelectTreatment() {
       <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
           style={styles.closeButton}
           activeOpacity={0.8}
         >
@@ -135,49 +139,70 @@ export default function SelectTreatment() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: Math.max(36, insets.top + 24), paddingBottom: 120 }}>
+      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: Math.max(36, insets.top + 24), paddingBottom: 120 }}>
         <Section title="Select Treatment Plan">
-          <View style={{ gap: 12 }}>
-            {allTreatments.map((treatment) => {
-              const selected = selectedTreatmentIds.includes(treatment.treatmentId);
-              const categoryIcon = getCategoryIcon(treatment.category);
-              const categoryColor = getCategoryColor(treatment.category);
-
-              return (
-                <TouchableOpacity
-                  key={treatment.treatmentId}
-                  accessibilityRole="button"
-                  onPress={() => toggleTreatment(treatment.treatmentId)}
-                  style={[styles.treatmentCard, selected && styles.treatmentCardSelected]}
-                  activeOpacity={0.9}
-                >
-                  <View style={styles.treatmentContent}>
-                    <View style={styles.treatmentHeader}>
+          {[
+            { key: 'Medication', items: medications },
+            { key: 'Surgical/Interventional', items: surgicalInterventional },
+            { key: 'Non-Surgical', items: nonSurgical },
+            { key: 'Psychiatric', items: psychiatric },
+          ].map(({ key, items }) => (
+            items && items.length ? (
+              <View key={key} style={{ marginBottom: 16 }}>
+                <View style={styles.categoryHeaderRow}>
+                  <View style={styles.categoryHeaderIconWrap}>
+                    {key === 'Medication' ? (
+                      <Image source={medImg} style={styles.categoryHeaderImage} />
+                    ) : key === 'Surgical/Interventional' ? (
+                      <Image source={surgImg} style={styles.categoryHeaderImage} />
+                    ) : (
                       <MaterialCommunityIcons 
-                        name={categoryIcon} 
-                        size={24} 
-                        color={selected ? Colors.brand.darkPink : categoryColor} 
+                        name={getCategoryIcon(key)} 
+                        size={18} 
+                        color={getCategoryColor(key)} 
                       />
-                      <View style={styles.treatmentTextContainer}>
-                        <Text style={[styles.treatmentName, selected && styles.treatmentNameSelected]}>
-                          {treatment.treatmentName}
-                        </Text>
-                       
-                      </View>
-                    </View>
+                    )}
                   </View>
-                  {selected ? (
-                    <MaterialCommunityIcons 
-                      name="check-circle" 
-                      size={20} 
-                      color={Colors.brand.darkPink} 
-                      style={styles.selectedCheck} 
-                    />
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  <Text style={[styles.categoryHeaderText, { color: getCategoryColor(key) }]}>{key}</Text>
+                </View>
+                <View style={{ gap: 12 }}>
+                  {items.map((treatment) => {
+                    const selected = selectedTreatmentIds.includes(treatment.treatmentId);
+                    const categoryIcon = getCategoryIcon(key);
+                    const categoryColor = getCategoryColor(key);
+                    return (
+                      <TouchableOpacity
+                        key={treatment.treatmentId}
+                        accessibilityRole="button"
+                        onPress={() => toggleTreatment(treatment.treatmentId)}
+                        style={[styles.treatmentCard, selected && styles.treatmentCardSelected]}
+                        activeOpacity={0.9}
+                      >
+                        <View style={styles.treatmentContent}>
+                          <View style={styles.treatmentHeader}>
+                           
+                            <View style={styles.treatmentTextContainer}>
+                              <Text style={[styles.treatmentName, selected && styles.treatmentNameSelected]}>
+                                {treatment.treatmentName}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                        {selected ? (
+                          <MaterialCommunityIcons 
+                            name="check-circle" 
+                            size={20} 
+                            color={Colors.brand.darkPink} 
+                            style={styles.selectedCheck} 
+                          />
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null
+          ))}
         </Section>
       </View>
 
@@ -195,15 +220,9 @@ export default function SelectTreatment() {
         onPress={async () => {
           if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
           try {
-            // Ensure gameplay and submit all selections in one bulk call
-            let gid = gameplayId;
-            if (!gid) {
-              const action = await dispatch(ensureGameplay());
-              if (ensureGameplay.fulfilled.match(action)) gid = action.payload;
-            }
             await dispatch(submitGameplay());
           } catch (e) {}
-          navigation.goBack();
+          navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan' });
         }}
         disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
         style={[
@@ -214,6 +233,23 @@ export default function SelectTreatment() {
         ]}
         activeOpacity={0.9}
       >
+        <LinearGradient
+          colors={["#F472B6", "#FB7185"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.primaryButtonGradient}
+        />
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0,1], outputRange: [-100, 220] }) }] }]}
+        >
+          <LinearGradient
+            colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
         <Text style={styles.primaryButtonText}>Confirm Treatment</Text>
         <MaterialCommunityIcons name="check" size={18} color="#fff" />
       </TouchableOpacity>
@@ -243,7 +279,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     borderWidth: 1,
-    padding: 16,
+    padding: 10,
     shadowColor: '#1E88E5',
     shadowOpacity: 0.12,
     shadowRadius: 10,
@@ -256,6 +292,8 @@ const styles = StyleSheet.create({
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
   ecgSvg: { marginTop: 6, marginBottom: 6 },
+  separatorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 6 },
+  separatorLine: { flex: 1, height: 2, borderRadius: 2 },
   sectionScroll: { flex: 1 },
   sectionScrollContent: { paddingBottom: 8 },
   headerOverlay: {
@@ -313,6 +351,10 @@ const styles = StyleSheet.create({
   treatmentNameSelected: { 
     color: Colors.brand.darkPink 
   },
+  categoryHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  categoryHeaderIconWrap: { width: 26, height: 26, borderRadius: 13,  alignItems: 'center', justifyContent: 'center' },
+  categoryHeaderImage: { width: 40, height: 40, resizeMode: 'contain' },
+  categoryHeaderText: { fontSize: 16, fontWeight: '900' },
   categoryBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
@@ -331,16 +373,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.brand.darkPink,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    minHeight: 60,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
-  primaryButtonText: { 
-    color: '#fff', 
-    fontWeight: '800', 
-    fontSize: 16 
-  },
+  primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
+  shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
+  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 18 },
   navRightCta: { 
     position: 'absolute', 
     right: 16, 

@@ -13,13 +13,11 @@ const leaderboard = [
 ];
 
 export default function LeagueScreen() {
-  const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors = Colors.light;
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top','left','right']}>
-      {/* fixed header outside scroll */}
-      {/* <View style={{ paddingHorizontal: 16 }}> */}
+     
         <LeagueHeader onPressPro={() => {}} />
       {/* </View> */}
 

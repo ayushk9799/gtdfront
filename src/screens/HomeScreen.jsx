@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -7,21 +7,22 @@ import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import { styles } from './styles';
 import LeagueHeader from './LeagueHeader';
-import { API_BASE, CASES_ARRAY } from '../../constants/Api';
-import { AppDataContext } from '../AppDataContext';
+import { CASES_ARRAY } from '../../constants/Api';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { loadCaseById, setUserId } from '../store/slices/currentGameSlice';
+import { fetchCategories } from '../store/slices/categoriesSlice';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   const navigation = useNavigation();
-  const { categories, categoriesLoading, categoriesError, refreshCategories } = useContext(AppDataContext);
+  const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
+  const { userData } = useSelector(state => state.user);
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const dispatch = useDispatch();
-
+  console.log("userData", userData);
   useEffect(() => {
     try {
       const storage = new MMKV();
@@ -36,6 +37,12 @@ export default function HomeScreen() {
       }
     } catch (_) {}
   }, []);
+
+  useEffect(() => {
+    if(categoriesLoading === 'idle') {
+      dispatch(fetchCategories());
+    }
+  }, [dispatch]);
 
   const openCaseById = async (caseId) => {
     try {
@@ -74,16 +81,16 @@ export default function HomeScreen() {
               </View>
              
             </View>
-            {categoriesLoading && (
+            {categoriesLoading === 'loading' && (
               <View style={[styles.rowCenter, { marginTop: 8 }]}> 
                 <ActivityIndicator color={Colors.brand.darkPink} />
                 <Text style={[styles.cardDesc, { marginLeft: 8 }]}>Loading departments…</Text>
               </View>
             )}
-            {categoriesError && !categoriesLoading && (
+            {categoriesError && categoriesLoading !== 'loading' && (
               <Text style={[styles.cardDesc, { color: '#C62828', marginTop: 8 }]}>{categoriesError}</Text>
             )}
-            {!categoriesLoading && !categoriesError && (
+            {categoriesLoading !== 'loading' && !categoriesError && (
               <DepartmentProgressList
                 userId={currentUserId}
                 themeColors={themeColors}

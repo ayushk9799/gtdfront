@@ -10,6 +10,8 @@ import 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { registerAndroidBackgroundHandler } from './src/notifications/NotificationManager';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
 
 registerAndroidBackgroundHandler();
 
@@ -25,7 +27,9 @@ enableScreens();
 const Root = () => (
   <SafeAreaProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <App />
+      <Provider store={store}>
+        <App />
+      </Provider>
     </GestureHandlerRootView>
   </SafeAreaProvider>
 );

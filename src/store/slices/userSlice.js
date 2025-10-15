@@ -5,52 +5,40 @@ import { Platform } from 'react-native';
 
 const storage = new MMKV();
 
-export const loadUserFromStorage = createAsyncThunk(
-  'user/loadUserFromStorage',
-  async () => {
+export const getUser = createAsyncThunk(
+  'user/getUser',
+  async (userId, { rejectWithValue }) => {
     try {
-      const stored = storage.getString('user');
-      if (!stored) return null;
-      const parsed = JSON.parse(stored);
-      return parsed || null;
-    } catch (_) {
-      return null;
-    }
-  }
-);
-
-export const loginWithGoogle = createAsyncThunk(
-  'user/loginWithGoogle',
-  async (idToken, { rejectWithValue }) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: idToken, platfrom: Platform.OS === 'android' ? 'android' : 'ios' })
-      });
+      const res = await fetch(`${API_BASE}/api/users/${userId}`);
       const data = await res.json();
-      if (!res.ok || data?.success !== true) {
-        const message = data?.error || 'Login failed';
+      console.log("data", data);
+      
+      if (!res.ok || data?.error) {
+        const message = data?.error || 'User not found';
         return rejectWithValue(message);
       }
-      const user = data.user || null;
-      if (user) storage.set('user', JSON.stringify(user));
-      return user;
+      return data;
     } catch (err) {
       return rejectWithValue(err?.message || 'Network error');
     }
   }
 );
 
-export const logout = createAsyncThunk('user/logout', async () => {
-  try {
-    storage.delete('user');
-  } catch (_) {}
-  return true;
-});
+export const updateUser = createAsyncThunk(
+  'user/updateUser',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/users/${userId}`);
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      return rejectWithValue(err?.message || 'Network error');
+    }
+  }
+);
 
 const initialState = {
-  user: null,
+  userData: null,
   status: 'idle',
   error: null,
 };
@@ -58,47 +46,32 @@ const initialState = {
 const userSlice = createSlice({
   name: 'user',
   initialState,
-  reducers: {
-    setUser(state, action) {
-      state.user = action.payload || null;
-      state.error = null;
-      try {
-        if (action.payload) storage.set('user', JSON.stringify(action.payload));
-      } catch (_) {}
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(loadUserFromStorage.pending, (state) => {
+      .addCase(getUser.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(loadUserFromStorage.fulfilled, (state, action) => {
+      .addCase(getUser.fulfilled, (state, action) => {
         state.status = 'idle';
-        state.user = action.payload || null;
+        state.userData = action.payload || null;
       })
-      .addCase(loadUserFromStorage.rejected, (state) => {
+      .addCase(getUser.rejected, (state) => {
         state.status = 'idle';
       })
-      .addCase(loginWithGoogle.pending, (state) => {
+      .addCase(updateUser.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(loginWithGoogle.fulfilled, (state, action) => {
-        state.status = 'authenticated';
-        state.user = action.payload || null;
-      })
-      .addCase(loginWithGoogle.rejected, (state, action) => {
+      .addCase(updateUser.fulfilled, (state, action) => {
         state.status = 'idle';
-        state.error = action.payload || action.error?.message || 'Login failed';
+        state.userData = action.payload || null;
       })
-      .addCase(logout.fulfilled, (state) => {
-        state.user = null;
+      .addCase(updateUser.rejected, (state) => {
         state.status = 'idle';
-        state.error = null;
-      });
+      })
   },
 });
 
-export const { setUser } = userSlice.actions;
 export default userSlice.reducer;

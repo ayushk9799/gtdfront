@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../constants/Colors';
 import { fetchDepartmentProgress } from '../store/slices/progressSlice';
@@ -28,7 +29,7 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
   }
 
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: 8}}>
       {items.map((dept) => {
         const title = (dept.name || '').charAt(0).toUpperCase() + (dept.name || '').slice(1);
         const firstCase = (Array.isArray(dept.unsolvedCases) ? dept.unsolvedCases : [])[0];
@@ -47,15 +48,19 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
             style={{ opacity: nextCaseId ? 1 : 0.7 }}
           >
             <View
-              style={[
-                styles.card,
-                { backgroundColor: themeColors.card, borderColor: themeColors.border, marginBottom: 12 },
-              ]}
+              style={ {
+                borderRadius: 16,
+                overflow: 'hidden',
+                marginBottom: 16,
+                backgroundColor: "white",
+               }}
             >
-            <View style={[styles.cardContent, { flexDirection: 'row', alignItems: 'center' }]}>
-              <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={[styles.cardTitle, { color: themeColors.text }]}>{title}</Text>
-                <Text style={[styles.cardDesc, { marginTop: 6 }]} numberOfLines={2}>
+              <View style={styles.cardContent}>
+                <View style={[styles.rowCenterBetween, { marginBottom: 2 }]}>
+                  <Text style={[styles.cardTitle, { color: themeColors.text }]}>{title}</Text>
+                  <Text style={[styles.cardDesc, { fontWeight: '800', color: themeColors.text }]}>{`${done}/${total}`}</Text>
+                </View>
+                <Text style={[styles.cardDesc]} numberOfLines={2}>
                   {subtitle}
                 </Text>
 
@@ -63,26 +68,42 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
                   <View
                     style={{
                       height: 10,
-                      backgroundColor: 'rgba(0,0,0,0.06)',
+                      backgroundColor: '#ECEFF4',
                       borderRadius: 999,
                       overflow: 'hidden',
+                      position: 'relative',
                     }}
                   >
-                    <View
+                    <LinearGradient
+                      colors={["#FFC1D9", Colors.brand.darkPink]}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
                       style={{
-                        height: 10,
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
                         width: `${Math.round(progress * 100)}%`,
-                        backgroundColor: Colors.brand.darkPink,
                         borderRadius: 999,
                       }}
                     />
-                  </View>
-                  <View style={[styles.rowCenterBetween, { marginTop: 4 }]}>
-                    <Text style={[styles.cardDesc, { color: themeColors.text }]}>{`${done}/${total}`}</Text>
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: -2,
+                        left: `${Math.round(progress * 100)}%`,
+                        transform: [{ translateX: -6 }],
+                        width: 12,
+                        height: 12,
+                        borderRadius: 6,
+                        backgroundColor: Colors.brand.darkPink,
+                        borderWidth: 2,
+                        borderColor: '#FFFFFF',
+                      }}
+                    />
                   </View>
                 </View>
               </View>
-            </View>
             </View>
           </TouchableOpacity>
         );

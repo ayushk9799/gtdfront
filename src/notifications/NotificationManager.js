@@ -1,6 +1,10 @@
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import { MMKV } from 'react-native-mmkv';
+import { updateUser } from '../store/slices/userSlice';
 
-export async function initializeAndroidNotifications() {
+const storage = new MMKV();
+
+export async function initializeAndroidNotifications(dispatch) {
   if (Platform.OS !== 'android') return () => {};
   try {
     const messaging = (await import('@react-native-firebase/messaging')).default;
@@ -17,6 +21,12 @@ export async function initializeAndroidNotifications() {
     await messaging().requestPermission();
     await messaging().registerDeviceForRemoteMessages();
     const token = await messaging().getToken();
+    const fcmToken = storage.getString('fcmToken');
+    if (fcmToken !== token) {
+      storage.set('fcmToken', token);
+      console.log('FCM token', token);
+      dispatch(updateUser({fcmToken : token}))
+    }
     console.log('FCM token', token);
 
     try {
@@ -37,6 +47,8 @@ export async function initializeAndroidNotifications() {
         console.warn('ALL_USER topic re-subscribe failed', err);
       }
       // TODO: send newToken to backend
+      storage.set('fcmToken', newToken);
+      dispatch(updateUser({fcmToken : newToken}))
     });
 
     return () => {

@@ -11,6 +11,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainer
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
 
 import Login from './src/Login';
 import PrivacyPolicy from './src/PrivacyPolicy';
@@ -26,11 +27,10 @@ import ClinicalInsight from './src/screens/ClinicalInsight';
 import SelectTests from './src/screens/SelectTests';
 import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { AppDataProvider } from './src/AppDataContext';
-import { Provider } from 'react-redux';
-import { store } from './src/store';
 import { initializeAndroidNotifications, registerAndroidNotificationTapHandlers } from './src/notifications/NotificationManager';
+import { getUser } from './src/store/slices/userSlice';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -46,7 +46,7 @@ const storage = new MMKV();
 /* ---------- tabs ---------- */
 function RootTabs() {
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   const insets = useSafeAreaInsets();
   const bottomExtra = Platform.OS === 'android' ? (insets.bottom || 0) : 0;
   const isAndroid12Plus = Platform.OS === 'android' && Number(Platform.Version) >= 31;
@@ -76,7 +76,7 @@ function RootTabs() {
             return (
               <BlurView
                 style={StyleSheet.absoluteFill}
-                blurType={colorScheme === 'dark' ? 'dark' : 'light'}
+                blurType={ 'light'}
                 blurAmount={16}
                 overlayColor="transparent"
               />
@@ -119,27 +119,35 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
-  const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const themeColors =  Colors.light;
   const navigationRef = React.useRef(createNavigationContainerRef());
   const pendingTapDataRef = React.useRef(null);
+  const dispatch = useDispatch();
 
   /* load stored credential once */
   useEffect(() => {
     try {
       const stored = storage.getString('user');
-      if (stored) setUser(JSON.parse(stored));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setUser(parsed);
+        const uid = parsed?.userId || parsed?._id || parsed?.id;
+        console.log("uid", uid);
+        if (uid) dispatch(getUser(uid));
+        console.log("fetched user");
+      }
     } catch (e) {
       console.warn('Failed to load user from storage', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   // Android-only: initialize notifications
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     let cleanup = () => {};
-    initializeAndroidNotifications().then(fn => {
+    initializeAndroidNotifications(dispatch).then(fn => {
       if (typeof fn === 'function') cleanup = fn;
     });
     return () => cleanup();
@@ -178,9 +186,14 @@ export default function App() {
     }
   }
 
+  console.log("user", user);
+
+  /* react to auth changes (login/logout) */
+  // Removed storage change listener; rely on explicit login/logout actions instead
+
   if (loading) return null; // splash screen placeholder
 
-  const baseTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+  const baseTheme =  DefaultTheme;
   const mergedTheme = {
     ...baseTheme,
     colors: {
@@ -197,8 +210,6 @@ export default function App() {
   return (
     <View style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <AppDataProvider>
-        <Provider store={store}>
         <LinearGradient
           colors={SUBTLE_PINK_GRADIENT}
           start={{ x: 0, y: 0 }}
@@ -269,6 +280,24 @@ export default function App() {
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
               />
+              <Stack.Screen
+                name="PrivacyPolicy"
+                component={PrivacyPolicy}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="TermsOfService"
+                component={TermsOfServiceScreen}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
             </Stack.Navigator>
           ) : (
             <Stack.Navigator
@@ -279,14 +308,19 @@ export default function App() {
                 statusBarTranslucent: true,
               }}
             >
+              <Stack.Screen
+                name="Onboarding"
+                component={OnboardingScreen}
+                options={{
+                  contentStyle: { backgroundColor: '#ffffff' },
+                }}
+              />
               <Stack.Screen name="Login">
                 {() => <Login onLogin={setUser} />}
               </Stack.Screen>
             </Stack.Navigator>
           )}
         </NavigationContainer>
-        </Provider>
-        </AppDataProvider>
       </BottomSheetModalProvider>
     </View>
   );
