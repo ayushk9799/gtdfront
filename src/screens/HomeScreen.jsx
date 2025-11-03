@@ -11,7 +11,6 @@ import { CASES_ARRAY } from '../../constants/Api';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch, useSelector } from 'react-redux';
-import { useDispatch, useSelector } from 'react-redux';
 import { loadCaseById, setUserId } from '../store/slices/currentGameSlice';
 import { loadTodaysChallenge, selectCurrentChallenge, selectIsChallengeLoading, selectHasChallengeError, selectChallengeError } from '../store/slices/dailyChallengeSlice';
 import { fetchCategories } from '../store/slices/categoriesSlice';
