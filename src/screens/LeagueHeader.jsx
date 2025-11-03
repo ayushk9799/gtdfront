@@ -14,7 +14,7 @@ export default function LeagueHeader({ onPressPro }) {
         activeOpacity={0.9}
         onPress={onPressPro}
         style={{
-          backgroundColor: '#00C4B3',
+          backgroundColor: '#08C634',
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderRadius: 999,

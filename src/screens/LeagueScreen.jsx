@@ -21,7 +21,7 @@ export default function LeagueScreen() {
         <LeagueHeader onPressPro={() => {}} />
       {/* </View> */}
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         {/* big heart badge placeholder */}
         <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 18 }}>
           <View style={{ width: 220, height: 220, borderRadius: 110, backgroundColor: '#FFD1E1', alignItems: 'center', justifyContent: 'center', shadowColor: '#C2185B', shadowOpacity: 0.25, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 }}>

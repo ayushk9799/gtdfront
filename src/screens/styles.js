@@ -6,7 +6,7 @@ export const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 28, fontWeight: '800' },
   subtitle: { marginTop: 8, opacity: 0.7 },
-  screenScroll: { padding: 16, paddingBottom: 120, flexGrow: 1 },
+  screenScroll: { padding: 8, paddingBottom: 120, flexGrow: 1 },
   card: {
     borderRadius: 16,
     borderWidth: 1,

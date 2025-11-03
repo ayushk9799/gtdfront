@@ -1,50 +1,27 @@
 import React from 'react';
-import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable } from 'react-native';
+import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import LeagueHeader from './LeagueHeader';
 import { LearningDetailSheetForwarded as LearningDetailSheet } from '../components/LearningDetailSheet';
 import { useNavigation } from '@react-navigation/native';
+import { API_BASE } from '../../constants/Api';
+import { MMKV } from 'react-native-mmkv';
+import { useDispatch } from 'react-redux';
+import { setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setUserId } from '../store/slices/currentGameSlice';
 
-const DUMMY = [
-  {
-    dateLabel: '5th October 2025',
-    items: [
-      {
-        title: 'Essential hypertension',
-        summary:
-          'A middle-aged man with chest discomfort and subtle ECG changes challenges your diagnostic skills.',
-      },
-      {
-        title: 'Community-acquired bacterial pneumonia (right lower lobe)',
-        summary:
-          'Acute dyspnea with pleuritic pain and fever. Exam suggests unilateral basal changes. ABG shows mild hypoxemia. CXR and CT refine the cause; PE',
-      },
-      {
-        title: 'Displaced supracondylar humerus fracture',
-        summary:
-          'A child presents with arm pain and swelling after a fall onto an outstretched hand. Evaluate for vascular compromise and functional loss. Decide between',
-      },
-    ],
-  },
-  {
-    dateLabel: '4th October 2025',
-    items: [
-      {
-        title: 'Upper gastrointestinal bleeding due to peptic ulcer',
-        summary:
-          'A 58-year-old arrives with hematemesis, melena, hypotension, and confusion after heavy NSAID use. Stabilize airway and',
-      },
-    ],
-  },
-];
+// Will fetch brief gameplay list for user
 
 export default function LearningScreen() {
   const colorScheme = useColorScheme();
   const themeColors = Colors.light;
   const navigation = useNavigation();
-  const totalCount = DUMMY.reduce((sum, sec) => sum + sec.items.length, 0);
+  const dispatch = useDispatch();
+  const [userId, setUid] = React.useState(undefined);
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
   const detailSheetRef = React.useRef(null);
 
   const openSheet = (item) => {
@@ -55,30 +32,129 @@ export default function LearningScreen() {
     detailSheetRef.current?.dismiss();
   };
 
+  React.useEffect(() => {
+    // Load user from MMKV and then fetch brief gameplays
+    (async () => {
+      try {
+        const storage = new MMKV();
+        const stored = storage.getString('user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          const uid = u?.userId || u?._id || u?.id;
+          if (uid) {
+            setUid(uid);
+            dispatch(setUserId(uid));
+            const res = await fetch(`${API_BASE}/api/gameplays/brief?userId=${encodeURIComponent(uid)}`);
+            if (!res.ok) {
+              const t = await res.text();
+              throw new Error(t || `Failed to load gameplays (${res.status})`);
+            }
+            const data = await res.json();
+            const list = Array.isArray(data?.items) ? data.items : [];
+            setItems(list);
+          }
+        }
+      } catch (e) {
+        setError(e?.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [dispatch]);
+
+  const groupedByDate = React.useMemo(() => {
+    const toKeyLabel = (createdAt) => {
+      const d = new Date(createdAt);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const key = `${y}-${m}-${day}`;
+      const label = d.toLocaleDateString("en-IN", { month: 'long', day: 'numeric', year: 'numeric' });
+      return { key, label };
+    };
+    const map = new Map();
+    items.forEach((it) => {
+      const { key, label } = toKeyLabel(it.createdAt);
+      if (!map.has(key)) map.set(key, { label, items: [] });
+      map.get(key).items.push(it);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([, v]) => v);
+  }, [items]);
+
+  const openGameplay = async (gameplayId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/gameplays/${encodeURIComponent(gameplayId)}`);
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `Failed to load gameplay (${res.status})`);
+      }
+      const data = await res.json();
+      const gp = data?.gameplay;
+      const caseDoc = gp?.caseId || {};
+      const caseData = caseDoc?.caseData || {};
+      // Map indices -> IDs
+      const tests = caseData?.steps?.[1]?.data?.availableTests || [];
+      const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
+      const step4 = caseData?.steps?.[3]?.data || {};
+      const treatmentGroups = step4?.treatmentOptions || {};
+      const flatTreatments = [
+        ...(treatmentGroups.medications || []),
+        ...(treatmentGroups.surgicalInterventional || []),
+        ...(treatmentGroups.nonSurgical || []),
+        ...(treatmentGroups.psychiatric || []),
+      ];
+
+      const selectedTestIds = (gp?.selections?.testIndices || [])
+        .map((i) => (typeof i === 'number' && tests[i] ? tests[i].testId : null))
+        .filter(Boolean);
+      const selectedDiagnosisId = (typeof gp?.selections?.diagnosisIndex === 'number' && diags[gp.selections.diagnosisIndex])
+        ? diags[gp.selections.diagnosisIndex].diagnosisId
+        : null;
+      const selectedTreatmentIds = (gp?.selections?.treatmentIndices || [])
+        .map((i) => (typeof i === 'number' && flatTreatments[i] ? flatTreatments[i].treatmentId : null))
+        .filter(Boolean);
+
+      dispatch(setSelectedTests(selectedTestIds));
+      dispatch(setSelectedDiagnosis(selectedDiagnosisId));
+      dispatch(setSelectedTreatments(selectedTreatmentIds));
+
+      navigation.navigate('ClinicalInsight', { caseData });
+    } catch (_) {}
+  };
+
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
       <LeagueHeader onPressPro={() => {}} />
       <ScrollView contentContainerStyle={styles.learnScroll}>
-        <View style={styles.learnHeaderRow}>
-          <Text style={[styles.learnHeaderCount, { color: themeColors.text }]}>{totalCount} Learnings</Text>
-          <Text style={styles.learnHeaderMenu}>⋮</Text>
-        </View>
-
-        {DUMMY.map((section, idx) => (
-          <View key={idx} style={styles.learnSection}>
-            <Text style={[styles.learnDate, { color: themeColors.text }]}>{section.dateLabel}</Text>
-
-            {section.items.map((item, i) => (
+        {loading && (
+          <View style={{ alignItems: 'center', marginTop: 12 }}>
+            <ActivityIndicator color={Colors.brand.darkPink} />
+            <Text style={[styles.learnSummary, { marginTop: 6 }]}>Loading…</Text>
+          </View>
+        )}
+        {!loading && error && (
+          <Text style={[styles.learnSummary, { color: '#C62828' }]}>{error}</Text>
+        )}
+        {!loading && !error && groupedByDate.map((group, idx) => (
+          <View key={idx} style={{...styles.learnSection}}>
+            <Text style={[styles.learnDate, { color: themeColors.text }]}>{group.label}</Text>
+            {group.items.map((it) => (
               <Pressable
-                key={i}
-                //  onPress={() => openSheet(item)}
-                onPress={() => navigation.navigate('ClinicalInsight')}
+                key={String(it.gameplayId)}
+                onPress={() => openGameplay(it.gameplayId)}
                 style={[styles.learnCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
               >
                 <View style={styles.learnCardRow}>
                   <View style={styles.learnCardTextWrap}>
-                    <Text style={[styles.learnTitle, { color: themeColors.text }]}>{item.title}</Text>
-                    <Text style={styles.learnSummary}>{item.summary}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={[styles.learnTitle, { color: themeColors.text, flex: 1 }]} numberOfLines={1} ellipsizeMode="tail">{it.case?.title || 'Case'}</Text>
+                    </View>
+                    <Text style={[styles.learnSummary, { marginTop: 2 }]} numberOfLines={1} ellipsizeMode="tail">{it.case?.correctDiagnosis || ''}</Text>
+                    <View style={{ alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#C24467', borderWidth: 1, borderColor: '#D3D9E3' }}>
+                      <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }} numberOfLines={1} ellipsizeMode="tail">{it.case?.category || 'General'}</Text>
+                    </View>
                   </View>
                   <Image source={inappicon} style={styles.learnThumb} />
                 </View>
@@ -94,7 +170,7 @@ export default function LearningScreen() {
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
-  learnScroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120, flexGrow: 1 },
+  learnScroll: { paddingHorizontal: 8, paddingTop: 8, paddingBottom: 120, flexGrow: 1 },
   learnHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   learnHeaderCount: { fontSize: 32, fontWeight: '800' },
   learnHeaderMenu: { fontSize: 26, opacity: 0.7 },

@@ -11,8 +11,9 @@ import { API_BASE, CASES_ARRAY } from '../../constants/Api';
 import { AppDataContext } from '../AppDataContext';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { loadCaseById, setUserId } from '../store/slices/currentGameSlice';
+import { loadTodaysChallenge, selectCurrentChallenge, selectIsChallengeLoading, selectHasChallengeError, selectChallengeError } from '../store/slices/dailyChallengeSlice';
 import departmentIcon from '../../constants/department.png';
 import calendarIcon from '../../constants/calendar.png';
 
@@ -23,6 +24,12 @@ export default function HomeScreen() {
   const { categories, categoriesLoading, categoriesError, refreshCategories } = useContext(AppDataContext);
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const dispatch = useDispatch();
+  
+  // Daily challenge selectors
+  const currentChallenge = useSelector(selectCurrentChallenge);
+  const isChallengeLoading = useSelector(selectIsChallengeLoading);
+  const hasChallengeError = useSelector(selectHasChallengeError);
+  const challengeError = useSelector(selectChallengeError);
 
   useEffect(() => {
     try {
@@ -39,6 +46,11 @@ export default function HomeScreen() {
       }
     } catch (_) {}
   }, []);
+
+  // Load today's daily challenge on component mount
+  useEffect(() => {
+    dispatch(loadTodaysChallenge());
+  }, [dispatch]);
 
   const openCaseById = async (caseId) => {
     try {
@@ -61,12 +73,56 @@ export default function HomeScreen() {
                 <Text style={styles.badgeText}>New</Text>
               </View>
             </View>
-            <Text style={[styles.cardDesc, { marginTop: 8 }]}>
-              Solve today's case in under 3 tries to keep your streak alive.
-            </Text>
-            <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={() => navigation.navigate('ClinicalInfo')}>
-              <Text style={styles.primaryButtonText}>Solve the case</Text>
-            </TouchableOpacity>
+            
+            {isChallengeLoading && (
+              <View style={[styles.rowCenter, { marginTop: 8 }]}>
+                <ActivityIndicator color={Colors.brand.darkPink} />
+                <Text style={[styles.cardDesc, { marginLeft: 8 }]}>Loading today's challenge...</Text>
+              </View>
+            )}
+            
+            {hasChallengeError && !isChallengeLoading && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={[styles.cardDesc, { color: '#C62828' }]}>
+                  {challengeError || 'Failed to load today\'s challenge'}
+                </Text>
+               
+              </View>
+            )}
+            
+            {currentChallenge && !isChallengeLoading && !hasChallengeError && (
+              <>
+                <Text style={[styles.cardDesc, { marginTop: 8 }]}>
+                  {currentChallenge?.metadata?.description || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                </Text>
+                <TouchableOpacity 
+                  style={styles.primaryButton} 
+                  activeOpacity={0.9} 
+                  onPress={() => {
+                    // Load the daily challenge case data and navigate
+                    dispatch(loadCaseById(currentChallenge?._id));
+                    navigation.navigate('ClinicalInfo', { caseData: currentChallenge?.caseData });
+                  }}
+                >
+                  <Text style={styles.primaryButtonText}>Solve the case</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            
+            {!currentChallenge && !isChallengeLoading && !hasChallengeError && (
+              <>
+                <Text style={[styles.cardDesc, { marginTop: 8 }]}>
+                  No daily challenge available for today. Check back tomorrow!
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.primaryButton, { opacity: 0.6 }]} 
+                  activeOpacity={0.9} 
+                  disabled={true}
+                >
+                  <Text style={styles.primaryButtonText}>No Challenge Today</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 

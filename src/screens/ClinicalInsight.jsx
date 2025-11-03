@@ -1,5 +1,6 @@
 import React from 'react';
-import {  useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
+import {  useWindowDimensions, View, Text, Image, ImageBackground, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { TabView, TabBar } from 'react-native-tab-view';
@@ -7,13 +8,14 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import Svg, { Line } from 'react-native-svg';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
-import LinearGradient from 'react-native-linear-gradient';
+import blackboard from '../../constants/seniorblackboard.png';
 import { useSelector } from 'react-redux';
+import { computeGameplayScoreNormalized } from '../services/scoring';
 
 const ORANGE = '#FF8A00';
-
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
+
 
 const SUCCESS_COLOR = '#12A77A';
 const SUCCESS_BG = '#EAF7F2';
@@ -47,6 +49,90 @@ export default function ClinicalInsight() {
     TABS.map((t) => ({ key: t.toLowerCase(), title: t }))
   );
   const [insightsExpanded, setInsightsExpanded] = React.useState(true);
+
+  // Compute normalized scores (30/40/30)
+  const scores = React.useMemo(() => {
+    try {
+      return computeGameplayScoreNormalized(caseData, {
+        selectedTestIds,
+        selectedDiagnosisId,
+        selectedTreatmentIds,
+      }) || { total: 0, tests: 0, diagnosis: 0, treatment: 0 };
+    } catch (_) {
+      return { total: 0, tests: 0, diagnosis: 0, treatment: 0 };
+    }
+  }, [caseData, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds]);
+
+  // Animated total score value
+  const totalScoreAnim = React.useRef(new Animated.Value(0)).current;
+  const [displayTotalScore, setDisplayTotalScore] = React.useState(0);
+  React.useEffect(() => {
+    const id = totalScoreAnim.addListener(({ value }) => setDisplayTotalScore(value));
+    return () => totalScoreAnim.removeListener(id);
+  }, [totalScoreAnim]);
+  React.useEffect(() => {
+    Animated.timing(totalScoreAnim, {
+      toValue: scores.total || 0,
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [scores.total, totalScoreAnim]);
+
+  // Animated per-tab category scores (animate on tab change)
+  const categoryAnimValuesRef = React.useRef({
+    tests: new Animated.Value(0),
+    diagnosis: new Animated.Value(0),
+    treatment: new Animated.Value(0),
+  });
+  const [categoryDisplay, setCategoryDisplay] = React.useState({ tests: 0, diagnosis: 0, treatment: 0 });
+  React.useEffect(() => {
+    const subs = [];
+    const ref = categoryAnimValuesRef.current;
+    Object.keys(ref).forEach((k) => {
+      subs.push(ref[k].addListener(({ value }) => {
+        setCategoryDisplay((prev) => ({ ...prev, [k]: value }));
+      }));
+    });
+    return () => {
+      const ref2 = categoryAnimValuesRef.current;
+      Object.keys(ref2).forEach((k, i) => {
+        ref2[k].removeListener(subs[i]);
+      });
+    };
+  }, []);
+  React.useEffect(() => {
+    const activeKey = routes[index]?.key;
+    if (!activeKey) return;
+    const toVal = activeKey === 'tests' ? (scores.tests || 0) : activeKey === 'diagnosis' ? (scores.diagnosis || 0) : (scores.treatment || 0);
+    const anim = categoryAnimValuesRef.current[activeKey];
+    anim.stopAnimation();
+    anim.setValue(0);
+    Animated.timing(anim, {
+      toValue: toVal,
+      duration: 650,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [index, scores.tests, scores.diagnosis, scores.treatment, routes]);
+
+  // Subtle fade/slide-in for active tab content
+  const sceneAnimsRef = React.useRef({
+    tests: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
+    diagnosis: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
+    treatment: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
+  });
+  React.useEffect(() => {
+    const activeKey = routes[index]?.key;
+    if (!activeKey) return;
+    const anims = sceneAnimsRef.current[activeKey];
+    anims.opacity.setValue(0);
+    anims.translateY.setValue(8);
+    Animated.parallel([
+      Animated.timing(anims.opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(anims.translateY, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start();
+  }, [index, routes, sections]);
 
   // Build evaluation sections from caseData + selections
   const sections = React.useMemo(() => {
@@ -155,40 +241,50 @@ export default function ClinicalInsight() {
       />
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtnInline} hitSlop={10}>
-          <MaterialCommunityIcons name="chevron-left" size={26} color="#223148" />
+          <MaterialCommunityIcons name="chevron-left" size={26} color="#ffffff" />
         </Pressable>
+        <View style={styles.scoreBoardWrap}>
+          <ImageBackground
+            source={blackboard}
+            resizeMode="cover"
+            style={styles.scoreBoardBg}
+            imageStyle={styles.scoreBoardBgImage}
+          >
+            <Text style={styles.scoreBoardText}>{`Score: ${Math.round(displayTotalScore)} / 100`}</Text>
+            {/* Bottom fade to blend image into page background */}
+            <LinearGradient
+              pointerEvents="none"
+              colors={[
+                'rgba(255,255,255,0)',
+                'rgba(255,255,255,1)',
+                '#FFFFFF',
+                themeColors.card,
+              ]}
+              locations={[0, 0.3, 0.6, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.scoreBoardBottomFade}
+            />
+            {headerDx.correct ? (
+              <View style={styles.overlayDxWrap}>
+                <View style={[styles.dxPill, styles.dxPillCorrect]}>
+                  <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} style={{ marginRight: 8 }} />
+                  <Text style={[styles.dxPillText, styles.dxPillTextCorrect]}>{headerDx.correct}</Text>
+                </View>
+              </View>
+            ) : null}
+          </ImageBackground>
+        </View>
         <View style={styles.topWrap}>
-          {(headerDx.correct && headerDx.mine && headerDx.correct === headerDx.mine) ? (
-            <>
-              <Text style={styles.userDxGreenText}>{headerDx.mine}</Text>
-              {headerDx.correct ? (
-                <Text style={styles.headerLabelText}>
-                  {`Correct diagnosis: `}
-                  <Text style={styles.headerCorrectValueGreen}>{headerDx.correct}</Text>
-                </Text>
-              ) : null}
-            </>
-          ) : (
-            <>
-              {headerDx.mine ? (
-                <Text style={styles.userDxRedText}>{` ${headerDx.mine}`}</Text>
-              ) : null}
-              {headerDx.correct ? (
-                <Text style={styles.headerLabelText}>
-                  {`Correct : `}
-                  <Text style={styles.headerCorrectValueGreen}>{headerDx.correct}</Text>
-                </Text>
-              ) : (
-                <Text style={styles.headerLabelText}>
-                  {`Correct : `}
-                  <Text style={styles.headerCorrectValueGreen}>Unavailable</Text>
-                </Text>
-              )}
-            </>
-          )}
+          {headerDx.mine && headerDx.mine !== headerDx.correct ? (
+            <View style={[styles.dxPill, styles.dxPillMine]}>
+              <MaterialCommunityIcons name="alert-circle" size={18} color={ERROR_COLOR} style={{ marginRight: 8 }} />
+              <Text style={[styles.dxPillText, styles.dxPillTextMine]}>{headerDx.mine}</Text>
+            </View>
+          ) : null}
         </View>
         {/* case review card */}
-        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, minHeight: 600, }]}>
+        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, borderTopWidth: 0, marginTop: -14, minHeight: 600 }]}>
           <View style={styles.caseHeader}>
             <View style={styles.caseIconWrap}>
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
@@ -217,22 +313,32 @@ export default function ClinicalInsight() {
             renderScene={({ route: r }) => {
               const key = r.key;
               const currentSections = sections[key] || [];
+              const categoryMax = key === 'diagnosis' ? 40 : 30;
+              const categoryScore = key === 'tests' ? scores.tests : key === 'diagnosis' ? scores.diagnosis : scores.treatment;
+              const animatedCategory = (categoryDisplay && typeof categoryDisplay[key] === 'number') ? categoryDisplay[key] : categoryScore;
               return (
-                <View style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
-                  {currentSections.length === 0 ? (
-                    <Text style={[styles.bulletText, { marginLeft: 0 }]}>No items to display.</Text>
-                  ) : (
-                    currentSections.map((section, idx) => (
-                      <Section
-                        key={idx}
-                        kind={section.kind}
-                        title={section.title}
-                        items={section.items}
-                        showDivider={idx !== currentSections.length - 1}
-                      />
-                    ))
-                  )}
-                </View>
+                <ScrollView 
+                  style={{ flex: 1 }}
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12 }}
+                >
+                  <Animated.View style={{ opacity: sceneAnimsRef.current[key].opacity, transform: [{ translateY: sceneAnimsRef.current[key].translateY }] }}>
+                    <Text style={[styles.bulletText, { marginLeft: 0, fontWeight: '900', color: Colors.brand.darkPink }]}>{`Score: ${Math.round(animatedCategory)} / ${categoryMax}`}</Text>
+                    {currentSections.length === 0 ? (
+                      <Text style={[styles.bulletText, { marginLeft: 0 }]}>No items to display.</Text>
+                    ) : (
+                      currentSections.map((section, idx) => (
+                        <Section
+                          key={idx}
+                          kind={section.kind}
+                          title={section.title}
+                          items={section.items}
+                          showDivider={idx !== currentSections.length - 1}
+                        />
+                      ))
+                    )}
+                  </Animated.View>
+                </ScrollView>
               );
             }}
           />
@@ -317,7 +423,7 @@ function InsightSection({ title, bullets }) {
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
-  container: { paddingHorizontal: 16, paddingBottom: 120 },
+  container: { paddingHorizontal: 8, paddingBottom: 120 },
   screenWrap: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
   topWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 12 },
   topImage: {
@@ -363,7 +469,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: Colors.brand.darkPink,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -371,6 +477,53 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
+  scoreBoardWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 0,  alignSelf: 'stretch', width: '100%',  },
+  scoreBoardBg: { width: '100%', height: 400, paddingTop: 80 },
+  scoreBoardBgImage: { borderRadius: 0 },
+  scoreBoardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)'
+  },
+  scoreBoardBottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 80 },
+  overlayDxWrap: { position: 'absolute', left: 0, right: 0, bottom: 10, alignItems: 'center' },
+  overlayDxText: { color: '#0E6B51', textShadowColor: 'rgba(255,255,255,0.85)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
+  scoreBoardText: {
+    fontSize: 28,
+    color: '#FFFFFF',
+    paddingLeft: 50,
+    fontFamily: 'BrightChalk',
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  dxPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  dxPillCorrect: {
+    backgroundColor: 'rgba(234, 247, 242, 0.95)',
+    borderWidth: 1,
+    borderColor: '#C8EDE1',
+  },
+  dxPillMine: {
+    backgroundColor: 'rgba(233, 201, 201, 0.95)',
+    borderWidth: 1,
+    borderColor: '#F5C7C9',
+  },
+  dxPillText: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  dxPillTextCorrect: { color: SUCCESS_COLOR },
+  dxPillTextMine: { color: ERROR_COLOR },
   insightCard: {
     borderRadius: 18,
     borderWidth: 2,

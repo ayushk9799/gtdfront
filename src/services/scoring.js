@@ -76,17 +76,17 @@ export function computeGameplayScoreNormalized(caseData, {
   const meds = maxPossibleMedScore > 0 ? (rawMedScore / maxPossibleMedScore) * 30 : 0;
 
   // Optional clamping to avoid extreme negatives when unnecessary selections are many
-  const testsScore = clamp(lab, -30, 30);
-  const diagnosisScore = clamp(diagnosis, -40, 40);
-  const treatmentScore = clamp(meds, -30, 30);
+//   const testsScore = clamp(lab, -30, 30);
+//   const diagnosisScore = clamp(diagnosis, -40, 40);
+//   const treatmentScore = clamp(meds, -30, 30);
 
-  const total = (testsScore || 0) + (diagnosisScore || 0) + (treatmentScore || 0);
+  const total = (lab || 0) + (diagnosis || 0) + (meds || 0);
 
   return {
     total,
-    tests: testsScore,
-    diagnosis: diagnosisScore,
-    treatment: treatmentScore,
+    tests: lab,
+    diagnosis: diagnosis,
+    treatment: meds,
   };
 }
 
