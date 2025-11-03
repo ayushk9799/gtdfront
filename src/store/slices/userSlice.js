@@ -26,10 +26,21 @@ export const getUser = createAsyncThunk(
 
 export const updateUser = createAsyncThunk(
   'user/updateUser',
-  async (userId, { rejectWithValue }) => {
+  async ({ userId, userData }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${API_BASE}/api/users/${userId}`);
+      const res = await fetch(`${API_BASE}/api/users/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user: userData }),
+      });
       const data = await res.json();
+      
+      if (!res.ok || data?.error) {
+        const message = data?.error || 'Failed to update user';
+        return rejectWithValue(message);
+      }
       return data;
     } catch (err) {
       return rejectWithValue(err?.message || 'Network error');
