@@ -1,6 +1,9 @@
 package com.thousandways.gtd
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -34,5 +37,36 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     loadReactNative(this)
+    createDefaultNotificationChannels()
+  }
+
+  private fun createDefaultNotificationChannels() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val manager = getSystemService(NotificationManager::class.java)
+      if (manager != null) {
+        val defaultChannelId = "default"
+        val existing = manager.getNotificationChannel(defaultChannelId)
+        if (existing == null) {
+          val channel = NotificationChannel(
+            defaultChannelId,
+            "General",
+            NotificationManager.IMPORTANCE_DEFAULT
+          )
+          channel.description = "General app notifications"
+          manager.createNotificationChannel(channel)
+        }
+        val highChannelId = "high-priority"
+        val existingHigh = manager.getNotificationChannel(highChannelId)
+        if (existingHigh == null) {
+          val high = NotificationChannel(
+            highChannelId,
+            "Important",
+            NotificationManager.IMPORTANCE_HIGH
+          )
+          high.description = "Important alerts"
+          manager.createNotificationChannel(high)
+        }
+      }
+    }
   }
 }

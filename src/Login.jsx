@@ -24,8 +24,7 @@ async function platformSpecificSignUp() {
           '125181194595-uautevfk4s33h57gi28hougs7lruet70.apps.googleusercontent.com',
         autoSelectEnabled: false,
       });
-      console.log("googleCredential", googleCredential);
-
+   console.log(googleCredential);
       const ans = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
         method: 'POST',
         headers: {

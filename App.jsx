@@ -3,14 +3,15 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, useColorScheme, View, Platform } from 'react-native';
+import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import { MMKV } from 'react-native-mmkv';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDispatch, useSelector } from 'react-redux';
 
 import Login from './src/Login';
 import PrivacyPolicy from './src/PrivacyPolicy';
@@ -27,10 +28,10 @@ import SelectTests from './src/screens/SelectTests';
 import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import NotificationPermission from './src/screens/NotificationPermission';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { AppDataProvider } from './src/AppDataContext';
-import { Provider } from 'react-redux';
-import { store } from './src/store';
+import { getUser, updateUser } from './src/store/slices/userSlice';
+import messaging from '@react-native-firebase/messaging';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -40,6 +41,56 @@ const Tab = createBottomTabNavigator();
 
 // Initialize MMKV storage
 const storage = new MMKV();
+
+
+export const handleFCMTokenUpdate = async (dispatch, userData) => {
+  try {
+    // Step 1: Get current FCM token
+    const currentFCMToken = await messaging().getToken();
+    
+    // Step 2: Get locally stored user data (if available)
+    const localUserDataString = storage.getString('user');
+    let localUserData = null;
+    if (localUserDataString) {
+      try {
+        localUserData = JSON.parse(localUserDataString);
+      } catch (e) {
+        console.warn('Failed to parse local user data', e);
+      }
+    }
+
+    const localFCMToken = localUserData?.fcmToken;
+    
+    console.log('Current FCM Token:', currentFCMToken);
+    console.log('Local FCM Token:', localFCMToken);
+    console.log('Server FCM Token:', userData?.fcmToken);
+
+    // Step 3: Compare current token with local token and update local if different
+    if (localFCMToken !== currentFCMToken && localUserData) {
+      console.log('FCM token changed, updating local storage...');
+      localUserData.fcmToken = currentFCMToken;
+      storage.set('user', JSON.stringify(localUserData));
+    }
+
+    // Step 4: Compare with server token - update server only if different
+    if (userData && userData.fcmToken !== currentFCMToken) {
+      console.log('Server FCM token differs, updating server...');
+      
+      const userId = userData?.userId || userData?._id || userData?.id;
+      if (userId) {
+        // Update user FCM token on server (can be null if permission denied)
+        await dispatch(updateUser({
+          userId,
+          userData: { fcmToken: currentFCMToken }
+        }));
+      }
+    } else {
+      console.log('Server FCM token matches, no update needed');
+    }
+  } catch (error) {
+    console.log('Error handling FCM token:', error);
+  }
+};
 
 /* screens moved to src/screens */
 
@@ -120,33 +171,118 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
+  const navigationRef = React.useRef(createNavigationContainerRef());
+  const pendingTapDataRef = React.useRef(null);
+  const dispatch = useDispatch();
+  const {userData} = useSelector(state => state.user);
 
   /* load stored credential once */
   useEffect(() => {
     try {
       const stored = storage.getString('user');
-      if (stored) setUser(JSON.parse(stored));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setUser(parsed);
+        const uid = parsed?.userId || parsed?._id || parsed?.id;
+        console.log("uid", uid);
+        if (uid) dispatch(getUser(uid));
+        
+        console.log("fetched user");
+      }
     } catch (e) {
       console.warn('Failed to load user from storage', e);
     } finally {
       setLoading(false);
     }
+  }, [dispatch]);
+
+  // FCM Token management - fetch user, get token, compare and update if different
+  useEffect(() => {
+    if (userData && userData?._id) {
+      handleFCMTokenUpdate(dispatch, userData);
+    }
+  }, [userData]);
+
+ 
+
+  // 3. Set up notification listeners
+  useEffect(() => {
+    // A. For foreground messages (when the app is open)
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
+    });
+
+    // B. For when the user taps a notification and the app is in the background
+    messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log(
+        'Notification caused app to open from background state:',
+        remoteMessage.notification,
+      );
+      // e.g., navigate to a specific screen
+    });
+
+    // C. For when the user taps a notification and the app is closed (quit)
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          console.log(
+            'Notification caused app to open from quit state:',
+            remoteMessage.notification,
+          );
+        }
+      });
+
+    return unsubscribe;
   }, []);
 
-  /* react to auth changes (login/logout) */
-  useEffect(() => {
-    const listener = storage.addOnValueChangedListener((changedKey) => {
-      if (changedKey === 'user') {
-        try {
-          const stored = storage.getString('user');
-          setUser(stored ? JSON.parse(stored) : null);
-        } catch (e) {
-          setUser(null);
-        }
+  // Android-only: initialize notifications
+  // useEffect(() => {
+  //   // if (Platform.OS !== 'android') return;
+  //   let cleanup = () => {};
+  //   initializeAndroidNotifications(dispatch).then(fn => {
+  //     if (typeof fn === 'function') cleanup = fn;
+  //   });
+  //   return () => cleanup();
+  // }, []);
+
+  // Android-only: handle notification taps (background and cold start)
+  // useEffect(() => {
+  //   // if (Platform.OS !== 'android') return;
+  //   const unsubscribe = registerAndroidNotificationTapHandlers({
+  //     onBackgroundTap: (data) => {
+  //       tryNavigateToClinicalInfo(data);
+  //     },
+  //     onColdStartTap: (data) => {
+  //       // queue until navigation is ready
+  //       pendingTapDataRef.current = data || {};
+  //       tryNavigateToClinicalInfo(data);
+  //     },
+  //   });
+  //   return () => {
+  //     if (typeof unsubscribe === 'function') unsubscribe();
+  //   };
+  // }, []);
+
+  function tryNavigateToClinicalInfo(data) {
+    const payload = data || {};
+    // If navigator is ready, navigate immediately; else queue
+    if (navigationRef.current && navigationRef.current.isReady()) {
+      try {
+        navigationRef.current.navigate(`${payload.screen}`, payload);
+        pendingTapDataRef.current = null;
+      } catch (e) {
+        console.warn('Navigation to ClinicalInfo failed', e);
       }
-    });
-    return () => listener.remove();
-  }, []);
+    } else {
+      pendingTapDataRef.current = payload;
+    }
+  }
+
+  console.log("user", user);
+
+  /* react to auth changes (login/logout) */
+  // Removed storage change listener; rely on explicit login/logout actions instead
 
   if (loading) return null; // splash screen placeholder
 
@@ -167,15 +303,21 @@ export default function App() {
   return (
     <View style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <AppDataProvider>
-        <Provider store={store}>
         <LinearGradient
           colors={SUBTLE_PINK_GRADIENT}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <NavigationContainer theme={mergedTheme}>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={() => {
+            if (pendingTapDataRef.current) {
+              tryNavigateToClinicalInfo(pendingTapDataRef.current);
+            }
+          }}
+          theme={mergedTheme}
+        >
           {user ? (
             <Stack.Navigator
               screenOptions={{
@@ -184,7 +326,21 @@ export default function App() {
                 animation: 'fade',
                 statusBarTranslucent: true,
               }}
+              initialRouteName={
+                storage.getBoolean && !storage.getBoolean('notifDecided')
+                  ? 'NotificationPermission'
+                  : 'Tabs'
+              }
             >
+              <Stack.Screen
+                name="NotificationPermission"
+                component={NotificationPermission}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
               <Stack.Screen name="Tabs" component={RootTabs} />
               <Stack.Screen
                 name="ClinicalInfo"
@@ -272,8 +428,6 @@ export default function App() {
             </Stack.Navigator>
           )}
         </NavigationContainer>
-        </Provider>
-        </AppDataProvider>
       </BottomSheetModalProvider>
     </View>
   );

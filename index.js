@@ -9,6 +9,9 @@ import { name as appName } from './app.json';
 import 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
+
 
 enableScreens();
 
@@ -22,7 +25,9 @@ enableScreens();
 const Root = () => (
   <SafeAreaProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <App />
+      <Provider store={store}>
+        <App />
+      </Provider>
     </GestureHandlerRootView>
   </SafeAreaProvider>
 );

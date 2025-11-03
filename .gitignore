@@ -36,6 +36,11 @@ local.properties
 .kotlin/
 *.jks
 
+clean-ios.sh
+
+android/app/google-services.json
+ios/frontend.xcworkspace/GoogleService-Info.plist
+
 
 # node.js
 #
