@@ -2,7 +2,7 @@ import React from 'react';
 import {  useWindowDimensions, View, Text, Image, ImageBackground, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, CommonActions } from '@react-navigation/native';
 import { TabView, TabBar } from 'react-native-tab-view';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Line } from 'react-native-svg';
@@ -240,7 +240,25 @@ export default function ClinicalInsight() {
         style={StyleSheet.absoluteFill}
       />
       <ScrollView contentContainerStyle={styles.container}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtnInline} hitSlop={10}>
+        <Pressable
+          onPress={() =>
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: 'Tabs',
+                    state: {
+                      routes: [{ name: 'Home' }],
+                    },
+                  },
+                ],
+              })
+            )
+          }
+          style={styles.backBtnInline}
+          hitSlop={10}
+        >
           <MaterialCommunityIcons name="chevron-left" size={26} color="#ffffff" />
         </Pressable>
         <View style={styles.scoreBoardWrap}>

@@ -198,7 +198,6 @@ export default function SelectTests() {
                   style={[styles.testCard, selected && styles.testCardSelected]}
                   activeOpacity={0.9}
                 >
-                  <MaterialCommunityIcons name={icon} size={28} color={selected ? Colors.brand.darkPink : '#687076'} />
                   <Text style={[styles.testName, selected && styles.testNameSelected]}>{t.testName}</Text>
                   {selected ? (
                     <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} style={styles.selectedCheck} />
