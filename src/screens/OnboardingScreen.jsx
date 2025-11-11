@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ImageBackground, TouchableOpacity, useColorScheme, Animated, Easing } from 'react-native';
+import { View, Text, ImageBackground, TouchableOpacity, useColorScheme, Animated, Easing, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { useNavigation } from '@react-navigation/native';
 import doctorsilhoute from '../../constants/doctorsilhoute3.png';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Sound from 'react-native-sound';
 
 export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
@@ -26,13 +27,13 @@ export default function OnboardingScreen() {
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   const script = useMemo(() => ([
-    { type: 'line', text: 'You are a doctor.', duration: 1200, pause: 400, flicker: false },
-    { type: 'line', text: 'A patient walks in — pale, sweating, clutching his chest.', duration: 1800, pause: 400 },
-    { type: 'line', text: 'He’s 42. His pulse is weak. His ECG monitor screams for help.', duration: 2000, pause: 400 },
-    { type: 'line', text: 'You have seconds.', duration: 1000, pause: 600, flicker: true },
-    { type: 'options', lines: ['What will you do first?', 'Call for an ECG?', 'Order Troponin?', 'Ask for history?', 'Wait and observe?'], hold: 2200 },
-    { type: 'line', text: 'Every choice matters.', duration: 1200, pause: 300 },
-    { type: 'line', text: 'Can you save him?', duration: 1400, pause: 600 },
+    { type: 'line', text: 'You are a doctor.', duration: 200, pause: 600, flicker: false },
+    { type: 'line', text: 'A patient walks in — pale, sweating, clutching his chest.', duration: 3900, pause: 0 },
+    { type: 'line', text: 'He’s 42. His pulse is weak. His ECG monitor screams for help.', duration: 5200, pause: 0 },
+    { type: 'line', text: 'You have seconds.', duration: 320, pause: 0, flicker: true },
+    { type: 'options', lines: ['What will you do?', 'Call for an ECG?', 'Order Troponin?', 'Ask for history?', 'Wait and observe?'], hold: 5370 },
+    { type: 'line', text: 'Every choice matters.', duration: 1800, pause: 0 },
+    { type: 'line', text: 'Can you save him?', duration: 300, pause: 0 },
     { type: 'cta' },
   ]), []);
 
@@ -40,9 +41,73 @@ export default function OnboardingScreen() {
     return new Promise(resolve => animation.start(() => resolve(undefined)));
   }
 
+  // Audio playback using react-native-sound
+  const soundRef = useRef(null);
+
+  useEffect(() => {
+    try { Sound.setCategory('Playback', true); } catch (_) {}
+    try { Sound.enableInSilenceMode(true); } catch (_) {}
+    return () => {
+      if (soundRef.current) {
+        try { soundRef.current.stop(() => { soundRef.current?.release(); }); } catch (_) {}
+        soundRef.current = null;
+      }
+    };
+  }, []);
+
+  // Audio playback - plays the onboarding narration
+  const playAudio = React.useCallback(() => {
+    return new Promise((resolve) => {
+      try {
+        if (Platform.OS === 'android') {
+          // Load from android/app/src/main/res/raw (filename without extension)
+          const s = new Sound('onboardingspeech1', Sound.MAIN_BUNDLE, (error) => {
+            if (error) {
+              console.warn('Audio load error (android raw):', error);
+              resolve();
+              return;
+            }
+            soundRef.current = s;
+            try { s.setVolume(1.0); } catch (_) {}
+            s.play((success) => {
+              try { s.release(); } catch (_) {}
+              soundRef.current = null;
+              if (!success) console.warn('Audio play failed');
+            });
+            setTimeout(resolve, 150);
+          });
+        } else {
+          // iOS: bundle via require
+          const s = new Sound(require('../../constants/onboardingspeech1.mp3'), (error) => {
+            if (error) {
+              console.warn('Audio load error (ios bundle):', error);
+              resolve();
+              return;
+            }
+            soundRef.current = s;
+            try { s.setVolume(1.0); } catch (_) {}
+            s.play((success) => {
+              try { s.release(); } catch (_) {}
+              soundRef.current = null;
+              if (!success) console.warn('Audio play failed');
+            });
+            setTimeout(resolve, 150);
+          });
+        }
+      } catch (e) {
+        console.warn('Audio init error:', e);
+        resolve();
+      }
+    });
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     async function play() {
+      // Fire-and-forget audio: start it but don't block UI
+      playAudio();
+      
+      // Animate script while audio plays
       for (let i = 0; i < script.length && isMounted; i++) {
         const step = script[i];
         if (step.type === 'line') {
@@ -51,6 +116,7 @@ export default function OnboardingScreen() {
           setCurrentLine(step.text);
           fade.setValue(0);
           await run(Animated.timing(fade, { toValue: 1, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }));
+          await run(Animated.delay(step.duration || 1000));
           if (step.flicker) {
             flicker.setValue(0);
             await run(Animated.sequence([
@@ -58,7 +124,6 @@ export default function OnboardingScreen() {
               Animated.timing(flicker, { toValue: 0, duration: 120, useNativeDriver: true }),
             ]));
           }
-          await run(Animated.delay(step.duration));
           await run(Animated.timing(fade, { toValue: 0, duration: 350, easing: Easing.in(Easing.cubic), useNativeDriver: true }));
           await run(Animated.delay(step.pause || 0));
         } else if (step.type === 'options') {
@@ -67,13 +132,11 @@ export default function OnboardingScreen() {
           fade.setValue(0);
           optionOpacities.forEach(v => v.setValue(0));
           await run(Animated.timing(fade, { toValue: 1, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }));
-          // Reveal options one by one
           for (let j = 0; j < step.lines.slice(1).length; j++) {
             await run(Animated.timing(optionOpacities[j], { toValue: 1, duration: 300, useNativeDriver: true }));
             await run(Animated.delay(120));
           }
           await run(Animated.delay(step.hold || 1600));
-          // Fade all out
           await run(Animated.parallel([
             Animated.timing(fade, { toValue: 0, duration: 300, useNativeDriver: true }),
             ...step.lines.slice(1).map((_, idx) => Animated.timing(optionOpacities[idx], { toValue: 0, duration: 250, useNativeDriver: true })),
@@ -85,7 +148,7 @@ export default function OnboardingScreen() {
     }
     play();
     return () => { isMounted = false; };
-  }, [fade, flicker, optionOpacities, script]);
+  }, [fade, flicker, optionOpacities, script, playAudio]);
 
   useEffect(() => {
     if (!showCTA) {
