@@ -4,6 +4,14 @@ import React, { useState } from 'react';
 import { API_BASE } from '../constants/Api.jsx';
 import senior from '../constants/senior3.jpeg';
 import { MMKV } from 'react-native-mmkv';
+import {
+  registerDeviceForRemoteMessages,
+  getToken,
+  getMessaging,
+} from '@react-native-firebase/messaging';
+import { getApp } from '@react-native-firebase/app';
+import { useDispatch } from 'react-redux';
+import { updateUser } from './store/slices/userSlice';
 import { View, TouchableOpacity, Platform, ActivityIndicator, Text, StyleSheet, Image, useColorScheme, Dimensions } from 'react-native';
 import googleAuth from './services/googleAuth';
 import Svg, { Path } from 'react-native-svg';
@@ -61,6 +69,7 @@ function Login({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
+  const dispatch = useDispatch();
 
   const handleSignIn = async () => {
     try {
@@ -68,9 +77,45 @@ function Login({ onLogin }) {
       const credential = await platformSpecificSignUp();
     
       // Persist user credential
-      storage.set('user', JSON.stringify(credential?.user));
+      const loggedInUser = credential?.user || {};
+      storage.set('user', JSON.stringify(loggedInUser));
+
+      // Try to register for remote messages and fetch FCM token immediately
+      try {
+        await registerDeviceForRemoteMessages(getMessaging(getApp()));
+      } catch (e) {
+        console.warn('Failed to register device for remote messages (login flow)', e);
+      }
+      try {
+        const token = await getToken(getMessaging(getApp()));
+        // Save FCM token locally with user object
+        try {
+          const storedUserStr = storage.getString('user');
+          if (storedUserStr) {
+            const storedUser = JSON.parse(storedUserStr);
+            if (storedUser) {
+              storedUser.fcmToken = token;
+              storage.set('user', JSON.stringify(storedUser));
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to update stored user with FCM token (login flow)', e);
+        }
+        // Update server with FCM token (best-effort)
+        const userId = loggedInUser?.userId || loggedInUser?._id || loggedInUser?.id;
+        if (userId && token) {
+          try {
+            await dispatch(updateUser({ userId, userData: { fcmToken: token } }));
+          } catch (e) {
+            console.warn('Failed to update server with FCM token (login flow)', e);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to get FCM token (login flow)', e);
+      }
+
       if (typeof onLogin === 'function') {
-        onLogin(credential?.user);
+        onLogin(loggedInUser);
       }
       // TODO: navigate or store auth data as needed
     } catch (error) {

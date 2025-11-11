@@ -3,7 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, Permiss
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/Colors';
 import { MMKV } from 'react-native-mmkv';
-import messaging from '@react-native-firebase/messaging';
+import messaging, {
+  requestPermission,
+  registerDeviceForRemoteMessages,
+  subscribeToTopic,
+  getMessaging,
+} from '@react-native-firebase/messaging';
+import { getApp } from '@react-native-firebase/app';
 import { useDispatch } from 'react-redux';
 import { updateUser } from '../store/slices/userSlice';
 import { handleFCMTokenUpdate } from '../../App';
@@ -21,7 +27,7 @@ export default function NotificationPermission() {
 
   async function requestUserPermission() {
     if (Platform.OS === 'ios') {
-      const status = await messaging().requestPermission();
+      const status = await requestPermission(getMessaging(getApp()));
       return (
         status === messaging.AuthorizationStatus.AUTHORIZED ||
         status === messaging.AuthorizationStatus.PROVISIONAL
@@ -44,6 +50,20 @@ export default function NotificationPermission() {
     const granted = await requestUserPermission();
     storage.set('notifDecided', true);
     storage.set('notifEnabled', granted);
+    
+    // If granted, ensure device is registered and subscribe to topic
+    if (granted) {
+      try {
+        await registerDeviceForRemoteMessages(getMessaging(getApp()));
+      } catch (e) {
+        console.warn('Failed to register device for remote messages (permission flow)', e);
+      }
+      try {
+        await subscribeToTopic(getMessaging(getApp()), 'all_user');
+      } catch (e) {
+        console.warn('Failed to subscribe to topic all_user', e);
+      }
+    }
     
     // Get user data from local storage and update FCM token
     // The handleFCMTokenUpdate function will:

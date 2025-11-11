@@ -36,7 +36,7 @@ export default function HomeScreen() {
     try {
       const storage = new MMKV();
       const stored = storage.getString('user');
-      console.log("stored", stored);
+      // console.log("stored", stored);
       if (stored) {
         const u = JSON.parse(stored);
         const uid = u?.userId || u?._id || u?.id;
