@@ -31,7 +31,17 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPermission from './src/screens/NotificationPermission';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { getUser, updateUser } from './src/store/slices/userSlice';
-import messaging from '@react-native-firebase/messaging';
+import {
+  registerDeviceForRemoteMessages,
+  getToken,
+  subscribeToTopic,
+  onTokenRefresh,
+  onMessage,
+  onNotificationOpenedApp,
+  getInitialNotification,
+  getMessaging,
+} from '@react-native-firebase/messaging';
+import { getApp } from '@react-native-firebase/app';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -45,8 +55,15 @@ const storage = new MMKV();
 
 export const handleFCMTokenUpdate = async (dispatch, userData) => {
   try {
+    // Ensure device is registered for remote messages before requesting a token
+    try {
+      await registerDeviceForRemoteMessages(getMessaging(getApp()));
+    } catch (e) {
+      console.warn('Failed to register device for remote messages', e);
+    }
+
     // Step 1: Get current FCM token
-    const currentFCMToken = await messaging().getToken();
+    const currentFCMToken = await getToken(getMessaging(getApp()));
     
     // Step 2: Get locally stored user data (if available)
     const localUserDataString = storage.getString('user');
@@ -61,20 +78,20 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
 
     const localFCMToken = localUserData?.fcmToken;
     
-    console.log('Current FCM Token:', currentFCMToken);
-    console.log('Local FCM Token:', localFCMToken);
-    console.log('Server FCM Token:', userData?.fcmToken);
+    // console.log('Current FCM Token:', currentFCMToken);
+    // console.log('Local FCM Token:', localFCMToken);
+    // console.log('Server FCM Token:', userData?.fcmToken);
 
     // Step 3: Compare current token with local token and update local if different
     if (localFCMToken !== currentFCMToken && localUserData) {
-      console.log('FCM token changed, updating local storage...');
+      // console.log('FCM token changed, updating local storage...');
       localUserData.fcmToken = currentFCMToken;
       storage.set('user', JSON.stringify(localUserData));
     }
 
     // Step 4: Compare with server token - update server only if different
     if (userData && userData.fcmToken !== currentFCMToken) {
-      console.log('Server FCM token differs, updating server...');
+      // console.log('Server FCM token differs, updating server...');
       
       const userId = userData?.userId || userData?._id || userData?.id;
       if (userId) {
@@ -85,10 +102,20 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
         }));
       }
     } else {
-      console.log('Server FCM token matches, no update needed');
+      // console.log('Server FCM token matches, no update needed');
+    }
+
+    // Step 5: Subscribe to topic if notifications are enabled by user
+    try {
+      const notifEnabled = storage.getBoolean && storage.getBoolean('notifEnabled');
+      if (notifEnabled) {
+        await subscribeToTopic(getMessaging(getApp()), 'all_user');
+      }
+    } catch (e) {
+      // console.warn('Failed to subscribe to topic all_user (token update flow)', e);
     }
   } catch (error) {
-    console.log('Error handling FCM token:', error);
+    // console.log('Error handling FCM token:', error);
   }
 };
 
@@ -184,10 +211,10 @@ export default function App() {
         const parsed = JSON.parse(stored);
         setUser(parsed);
         const uid = parsed?.userId || parsed?._id || parsed?.id;
-        console.log("uid", uid);
+        // console.log("uid", uid);
         if (uid) dispatch(getUser(uid));
         
-        console.log("fetched user");
+        // console.log("fetched user");
       }
     } catch (e) {
       console.warn('Failed to load user from storage', e);
@@ -196,6 +223,14 @@ export default function App() {
     }
   }, [dispatch]);
 
+  // After interactive login, user state changes; fetch fresh user data from server
+  useEffect(() => {
+    if (!user) return;
+    const uid = user?.userId || user?._id || user?.id;
+    if (uid) {
+      dispatch(getUser(uid));
+    }
+  }, [dispatch, user]);
   // FCM Token management - fetch user, get token, compare and update if different
   useEffect(() => {
     if (userData && userData?._id) {
@@ -203,17 +238,48 @@ export default function App() {
     }
   }, [userData]);
 
- 
+  // Handle token refresh to keep local and server in sync
+  useEffect(() => {
+    if (!userData || !userData?._id) return;
+    const unsubscribe = onTokenRefresh(getMessaging(getApp()), async (refreshedToken) => {
+      try {
+        // Update local storage if needed
+        const localUserDataString = storage.getString('user');
+        if (localUserDataString) {
+          try {
+            const localUserData = JSON.parse(localUserDataString);
+            if (localUserData?.fcmToken !== refreshedToken) {
+              localUserData.fcmToken = refreshedToken;
+              storage.set('user', JSON.stringify(localUserData));
+            }
+          } catch (e) {
+            console.warn('Failed to parse local user during token refresh', e);
+          }
+        }
+        // Update server if needed
+        const userId = userData?.userId || userData?._id || userData?.id;
+        if (userId && userData?.fcmToken !== refreshedToken) {
+          await dispatch(updateUser({
+            userId,
+            userData: { fcmToken: refreshedToken }
+          }));
+        }
+      } catch (e) {
+        console.warn('Error syncing refreshed FCM token', e);
+      }
+    });
+    return unsubscribe;
+  }, [dispatch, userData]);
 
   // 3. Set up notification listeners
   useEffect(() => {
     // A. For foreground messages (when the app is open)
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
+    const unsubscribe = onMessage(getMessaging(getApp()), async remoteMessage => {
       Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
     });
 
     // B. For when the user taps a notification and the app is in the background
-    messaging().onNotificationOpenedApp(remoteMessage => {
+    onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
       console.log(
         'Notification caused app to open from background state:',
         remoteMessage.notification,
@@ -222,9 +288,8 @@ export default function App() {
     });
 
     // C. For when the user taps a notification and the app is closed (quit)
-    messaging()
-      .getInitialNotification()
-      .then(remoteMessage => {
+    getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
+      console.log("remoteMessage", remoteMessage);
         if (remoteMessage) {
           console.log(
             'Notification caused app to open from quit state:',
@@ -235,34 +300,6 @@ export default function App() {
 
     return unsubscribe;
   }, []);
-
-  // Android-only: initialize notifications
-  // useEffect(() => {
-  //   // if (Platform.OS !== 'android') return;
-  //   let cleanup = () => {};
-  //   initializeAndroidNotifications(dispatch).then(fn => {
-  //     if (typeof fn === 'function') cleanup = fn;
-  //   });
-  //   return () => cleanup();
-  // }, []);
-
-  // Android-only: handle notification taps (background and cold start)
-  // useEffect(() => {
-  //   // if (Platform.OS !== 'android') return;
-  //   const unsubscribe = registerAndroidNotificationTapHandlers({
-  //     onBackgroundTap: (data) => {
-  //       tryNavigateToClinicalInfo(data);
-  //     },
-  //     onColdStartTap: (data) => {
-  //       // queue until navigation is ready
-  //       pendingTapDataRef.current = data || {};
-  //       tryNavigateToClinicalInfo(data);
-  //     },
-  //   });
-  //   return () => {
-  //     if (typeof unsubscribe === 'function') unsubscribe();
-  //   };
-  // }, []);
 
   function tryNavigateToClinicalInfo(data) {
     const payload = data || {};
@@ -278,11 +315,6 @@ export default function App() {
       pendingTapDataRef.current = payload;
     }
   }
-
-  console.log("user", user);
-
-  /* react to auth changes (login/logout) */
-  // Removed storage change listener; rely on explicit login/logout actions instead
 
   if (loading) return null; // splash screen placeholder
 

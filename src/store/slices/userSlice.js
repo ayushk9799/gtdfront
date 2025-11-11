@@ -11,7 +11,7 @@ export const getUser = createAsyncThunk(
     try {
       const res = await fetch(`${API_BASE}/api/users/${userId}`);
       const data = await res.json();
-      console.log("data", data);
+      // console.log("data", data);
       
       if (!res.ok || data?.error) {
         const message = data?.error || 'User not found';
