@@ -1,5 +1,5 @@
 //const API_BASE =  "https://gtd.thebilling.in";
- const API_BASE =  "http://10.37.234.145:3004";
+ const API_BASE =  "http://10.37.234.34:3002";
 
  const CASES_ARRAY = [
   {
