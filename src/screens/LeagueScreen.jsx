@@ -20,7 +20,7 @@ export default function LeagueScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top','left','right']}>
      
-        <LeagueHeader onPressPro={() => {}} />
+        {/* <LeagueHeader onPressPro={() => {}} /> */}
       {/* </View> */}
 
       <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16, paddingTop: 8 }}>

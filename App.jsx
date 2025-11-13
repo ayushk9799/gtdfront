@@ -42,6 +42,7 @@ import {
   getMessaging,
 } from '@react-native-firebase/messaging';
 import { getApp } from '@react-native-firebase/app';
+import PremiumScreen from './src/screens/PremiumScreen';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -436,6 +437,15 @@ export default function App() {
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
+              />
+              <Stack.Screen
+                name="Premium"
+                component={PremiumScreen}
+                // options={{
+                //   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                //   presentation: 'card',
+                //   contentStyle: { backgroundColor: 'transparent' },
+                // }}
               />
             </Stack.Navigator>
           ) : (

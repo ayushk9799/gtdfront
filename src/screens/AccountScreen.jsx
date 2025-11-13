@@ -108,7 +108,7 @@ export default function AccountScreen() {
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
-      <LeagueHeader onPressPro={() => {}} />
+      {/* <LeagueHeader onPressPro={() => {}} /> */}
       <ScrollView contentContainerStyle={styles.screenScroll}>
         <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 16 }}>
           <View style={{
