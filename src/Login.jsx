@@ -75,6 +75,8 @@ function Login({ onLogin }) {
     try {
       setIsLoading(true);
       const credential = await platformSpecificSignUp();
+
+      console.log("credential", credential);
     
       // Persist user credential
       const loggedInUser = credential?.user || {};

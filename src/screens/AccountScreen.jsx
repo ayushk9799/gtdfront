@@ -20,6 +20,7 @@ import {
   hasPermission,
   AuthorizationStatus,
 } from '@react-native-firebase/messaging';
+import { useSelector } from 'react-redux';
 
 export default function AccountScreen() {
   const colorScheme = useColorScheme();
@@ -29,7 +30,10 @@ export default function AccountScreen() {
   const dispatch = useDispatch();
   const [refresh, setRefresh] = useState(0);
   const [osPermissionEnabled, setOsPermissionEnabled] = useState(true);
-
+  const { isPremium, customerInfo } = useSelector(state => state.user);
+  console.log('isPremiumAccountScreen', isPremium);
+  console.log('customerInfoAccountScreen', customerInfo);
+  
   const user = useMemo(() => {
     try {
       const raw = storage.getString('user');
@@ -87,6 +91,36 @@ export default function AccountScreen() {
     }, [computeOsPermission])
   );
 
+  const activeEntitlements = customerInfo?.entitlements?.active || {};
+  const activeEntitlementsArray = Object.values(activeEntitlements || {});
+  const premiumPlan =
+    activeEntitlementsArray?.[0]?.productIdentifier ||
+    customerInfo?.activeSubscriptions?.[0] ||
+    null;
+  const premiumExpiresAt = activeEntitlementsArray?.[0]?.expirationDate || null;
+  const planLabelFromId = (id) => {
+    try {
+      if (!id) return 'Active subscription';
+      const lower = String(id).toLowerCase();
+      if (lower.includes('week')) return 'Weekly Plan';
+      if (lower.includes('month')) return 'Monthly Plan';
+      if (lower.includes('year') || lower.includes('annual')) return 'Annual Plan';
+      if (lower.includes('life')) return 'Lifetime';
+      return 'Active subscription';
+    } catch {
+      return 'Active subscription';
+    }
+  };
+  const formatDate = (iso) => {
+    try {
+      if (!iso) return 'Active';
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return 'Active';
+    }
+  };
+
   const handleLogout = useCallback(async () => {
     Alert.alert(
       'Log out',
@@ -131,6 +165,44 @@ export default function AccountScreen() {
             <Text style={styles.subtitle}>{user.email}</Text>
           )}
         </View>
+
+        {isPremium && (
+          <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+            <View
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: '#EDEDED',
+                padding: 16,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <MaterialCommunityIcons name="crown" size={22} color={Colors.brand.darkPink} />
+                <Text style={{ marginLeft: 8, fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                  You’re Premium
+                </Text>
+              </View>
+              <Text style={{ color: '#4A5564', marginBottom: 12 }}>
+                Thanks for subscribing! You now have unlimited access to all features.
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View>
+                  <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>Plan</Text>
+                  <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
+                    {planLabelFromId(premiumPlan)}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>Renews/Expires</Text>
+                  <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
+                    {formatDate(premiumExpiresAt)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         <View style={{ gap: 12 }}>
           {!effectiveEnabled && (

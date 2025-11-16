@@ -1,14 +1,22 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable, Image } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
 import { Colors } from '../../constants/Colors';
 import premiumImage from '../../constants/premium-image.png';
+import Purchases from 'react-native-purchases';
+import { updateUser } from '../store/slices/userSlice';
 
 export default function PremiumScreen() {
   const navigation = useNavigation();
-  const [selectedPlan, setSelectedPlan] = useState('annual');
+  const dispatch = useDispatch();
+  const { userData } = useSelector(state => state.user);
+  const [selectedPlan, setSelectedPlan] = useState(null); // 'monthly' | 'weekly'
+  const [offerings, setOfferings] = useState(null);
+  const [entitlements, setEntitlements] = useState(null);
+  const [loading, setLoading] = useState(false);
   const theme = Colors.light;
 
   const features = useMemo(
@@ -23,6 +31,133 @@ export default function PremiumScreen() {
     ],
     [],
   );
+
+  useEffect(() => {
+    getOfferingsAndEntitlements();
+  }, []);
+
+  const syncServerPremium = async (customerInfo) => {
+    try {
+      const active = customerInfo?.entitlements?.active || {};
+      const activeList = Object.values(active || {});
+      const hasActive = activeList.length > 0;
+      let premiumExpiresAt = null;
+      let premiumPlan = null;
+      if (hasActive) {
+        // Pick the farthest expiration among active entitlements (subscriptions)
+        const maxDate = activeList.reduce((acc, e) => {
+          const d = e?.expirationDate ? new Date(e.expirationDate) : null;
+          if (!d) return acc;
+          if (!acc) return d;
+          return d > acc ? d : acc;
+        }, null);
+        premiumExpiresAt = maxDate ? maxDate.toISOString() : null;
+        premiumPlan = activeList[0]?.productIdentifier || selectedPlan || null;
+      }
+      const uid = userData?.userId || userData?._id || userData?.id;
+      if (!uid) return;
+      await dispatch(updateUser({
+        userId: uid,
+        userData: {
+          isPremium: hasActive,
+          premiumExpiresAt: hasActive ? premiumExpiresAt : null,
+          premiumPlan: hasActive ? premiumPlan : null,
+        }
+      }));
+    } catch (e) {
+      console.log('Failed to sync premium status to server', e);
+    }
+  };
+
+  const checkEntitlements = async () => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      setEntitlements(customerInfo.entitlements.active);
+      await syncServerPremium(customerInfo);
+    } catch (e) {
+      console.log('Error checking entitlements:', e);
+    }
+  };
+
+  const handlePurchase = async (pkg) => {
+    try {
+      setLoading(true);
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      console.log('Purchase successful', customerInfo);
+      await checkEntitlements(); // Update entitlements after successful purchase
+    } catch (e) {
+      if (e?.userCancelled) {
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Purchase cancelled', ToastAndroid.SHORT);
+        } else {
+          Alert.alert('Purchase cancelled');
+        }
+      } else {
+        console.log('Purchase failed:', e);
+      }
+      return;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getOfferingsAndEntitlements = async () => {
+    try {
+      setLoading(true);
+      const o = await Purchases.getOfferings();
+      if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
+        console.log('offerings', o);
+        setOfferings(o);
+        // pick default: prefer monthly, else weekly
+        if (o.current.monthly) {
+          setSelectedPlan('monthly');
+        } else if (o.current.weekly) {
+          setSelectedPlan('weekly');
+        } else {
+          setSelectedPlan(null);
+        }
+      } else {
+        setOfferings(null);
+        setSelectedPlan(null);
+      }
+      await checkEntitlements();
+    } catch (e) {
+      console.log('Failed to load offerings', e);
+      setOfferings(null);
+      setSelectedPlan(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const weeklyPackage = offerings?.current?.weekly || null;
+  const monthlyPackage = offerings?.current?.monthly || null;
+  const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'weekly' ? weeklyPackage : null;
+  const isPremium = !!(userData?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
+  const premiumPlan = userData?.premiumPlan || null;
+  const premiumExpiresAt = userData?.premiumExpiresAt || null;
+  const planLabelFromId = (id) => {
+    try {
+      if (!id) return 'Active subscription';
+      const lower = String(id).toLowerCase();
+      if (lower.includes('week')) return 'Weekly Plan';
+      if (lower.includes('month')) return 'Monthly Plan';
+      if (lower.includes('year') || lower.includes('annual')) return 'Annual Plan';
+      if (lower.includes('life')) return 'Lifetime';
+      return 'Active subscription';
+    } catch {
+      return 'Active subscription';
+    }
+  };
+  const formatDate = (iso) => {
+    try {
+      if (!iso) return 'Active';
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return 'Active';
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -64,6 +199,40 @@ export default function PremiumScreen() {
               <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
               <Text style={{ fontSize: 16, fontWeight: '400', color: '#6C6C6C' }}>Get unlimited access to all features</Text>
             </View>
+            {isPremium && (
+              <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: '#EDEDED',
+                    padding: 16,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                    <MaterialCommunityIcons name="crown" size={22} color={Colors.brand.darkPink} />
+                    <Text style={{ marginLeft: 8, fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                      You’re Premium
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <View>
+                      <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>Plan</Text>
+                      <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
+                        {planLabelFromId(premiumPlan)}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>Renews/Expires</Text>
+                      <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
+                        {formatDate(premiumExpiresAt)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
           {/* Feature comparison table */}
           <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
             <View
@@ -140,93 +309,107 @@ export default function PremiumScreen() {
           </View>
 
           {/* Plan cards */}
-          <View style={{ paddingHorizontal: 16, marginTop: 18 }}>
-            {/* Annual - selected */}
+          {!isPremium && (<View style={{ paddingHorizontal: 16, marginTop: 18 }}>
+            {/* Monthly */}
             <Pressable
-              onPress={() => setSelectedPlan('annual')}
+              onPress={() => monthlyPackage && setSelectedPlan('monthly')}
               style={{
                 backgroundColor:  '#FFFFFF',
                 borderRadius: 16,
                 borderWidth: 2,
-                borderColor: selectedPlan === 'annual' ? Colors.brand.darkPink : '#EDEDED',
+                borderColor: selectedPlan === 'monthly' ? Colors.brand.darkPink : '#EDEDED',
                 padding: 14,
                 marginBottom: 12,
+                opacity: monthlyPackage ? 1 : 0.5,
               }}
             >
-              <View style={{ position: 'absolute', top: -10, right: 14 }}>
-                <View
-                  style={{
-                    backgroundColor: Colors.brand.darkPink,
-                    borderTopLeftRadius: 12,
-                    borderTopRightRadius: 12,
-                    borderBottomLeftRadius: 12,
-                    borderBottomRightRadius: 12,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 10 }}>MOST POPULAR</Text>
+              {monthlyPackage && (
+                <View style={{ position: 'absolute', top: -10, right: 14 }}>
+                  <View
+                    style={{
+                      backgroundColor: Colors.brand.darkPink,
+                      borderTopLeftRadius: 12,
+                      borderTopRightRadius: 12,
+                      borderBottomLeftRadius: 12,
+                      borderBottomRightRadius: 12,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                    }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 10 }}>MOST POPULAR</Text>
+                  </View>
                 </View>
-              </View>
+              )}
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <MaterialCommunityIcons
-                  name={selectedPlan === 'annual' ? 'check-circle' : 'circle-outline'}
+                  name={selectedPlan === 'monthly' ? 'check-circle' : 'circle-outline'}
                   size={22}
-                  color={selectedPlan === 'annual' ? Colors.brand.darkPink : '#B0B7BF'}
+                  color={selectedPlan === 'monthly' ? Colors.brand.darkPink : '#B0B7BF'}
                 />
                 <View style={{ marginLeft: 10, flex: 1 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Annual Plan</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Monthly Plan</Text>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                    Best value for serious learners
+                    {monthlyPackage?.product?.description || 'Access to all features'}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>₹1,200.00</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                    {monthlyPackage?.product?.priceString || ''}
+                  </Text>
                   <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
-                    1,999.99
+                    ₹1,000.00
                   </Text>
                 </View>
               </View>
             </Pressable>
 
-            {/* Six month */}
+            {/* Weekly */}
             <Pressable
-              onPress={() => setSelectedPlan('six')}
+              onPress={() => weeklyPackage && setSelectedPlan('weekly')}
               style={{
                 backgroundColor: '#FFFFFF',
                 borderRadius: 16,
                 borderWidth: 2,
-                borderColor: selectedPlan === 'six' ? Colors.brand.darkPink : '#EDEDED',
+                borderColor: selectedPlan === 'weekly' ? Colors.brand.darkPink : '#EDEDED',
                 padding: 14,
+                opacity: weeklyPackage ? 1 : 0.5,
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <MaterialCommunityIcons
-                  name={selectedPlan === 'six' ? 'check-circle' : 'circle-outline'}
+                  name={selectedPlan === 'weekly' ? 'check-circle' : 'circle-outline'}
                   size={22}
-                  color={selectedPlan === 'six' ? Colors.brand.darkPink : '#B0B7BF'}
+                  color={selectedPlan === 'weekly' ? Colors.brand.darkPink : '#B0B7BF'}
                 />
                 <View style={{ marginLeft: 10, flex: 1 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>6 Month Plan</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Weekly Plan</Text>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                    Flexible access for focused learning
+                    {weeklyPackage?.product?.description || 'All premium features'}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>₹900.00</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                    {weeklyPackage?.product?.priceString || ''}
+                  </Text>
                   <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
-                    1,499.99
+                    ₹500.00
                   </Text>
                 </View>
               </View>
             </Pressable>
-          </View>
+
+            {!monthlyPackage && !weeklyPackage && (
+              <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                <Text style={{ color: '#6C6C6C' }}>No packages available</Text>
+              </View>
+            )}
+          </View>)}
 
           {/* Subscribe CTA */}
-          <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+          {!isPremium && (<View style={{ paddingHorizontal: 16, marginTop: 12 }}>
             <TouchableOpacity
               activeOpacity={0.9}
-              onPress={() => {}}
+              onPress={() => selectedPackage && handlePurchase(selectedPackage)}
               style={{
                 backgroundColor: Colors.brand.darkPink,
                 borderRadius: 16,
@@ -238,16 +421,20 @@ export default function PremiumScreen() {
                 shadowRadius: 10,
                 shadowOffset: { width: 0, height: 6 },
                 elevation: 3,
+                opacity: selectedPackage ? 1 : 0.6,
               }}
+              disabled={!selectedPackage || loading}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 16, marginRight: 6 }}>
-                  Subscribe Now
+                  {loading ? 'Processing...' : 'Subscribe Now'}
                 </Text>
                 <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
-          </View>
+          </View>)}
+
+          
 
            {/* Cancel anytime */}
            <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
