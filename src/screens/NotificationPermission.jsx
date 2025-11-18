@@ -45,11 +45,20 @@ export default function NotificationPermission() {
   }
 
   const proceed = async () => {
-    // Persist user's choice
-    const granted = await requestUserPermission();
+    // Mark that the user has made a decision on notifications
     storage.set('notifDecided', true);
+
+    // If the user chose "I'll Set My Own Pace", do NOT ask for OS permission
+    if (!enableReminders) {
+      storage.set('notifEnabled', false);
+      navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+      return;
+    }
+
+    // User wants reminders: request OS permission
+    const granted = await requestUserPermission();
     storage.set('notifEnabled', granted);
-    
+
     // If granted, ensure device is registered and subscribe to topic
     if (granted) {
       try {
@@ -62,22 +71,19 @@ export default function NotificationPermission() {
       } catch (e) {
         console.warn('Failed to subscribe to topic all_user', e);
       }
-    }
-    
-    // Get user data from local storage and update FCM token
-    // The handleFCMTokenUpdate function will:
-    // 1. Check current FCM token vs local stored token (update local if different)
-    // 2. Check local token vs server token (update server only if different)
-    const userDataString = storage.getString('user');
-    if (userDataString) {
-      try {
-        const userDataParsed = JSON.parse(userDataString);
-        await handleFCMTokenUpdate(dispatch, userDataParsed);
-      } catch (e) {
-        console.warn('Failed to parse user data for FCM token update', e);
+
+      // Get user data from local storage and update FCM token only when enabled
+      const userDataString = storage.getString('user');
+      if (userDataString) {
+        try {
+          const userDataParsed = JSON.parse(userDataString);
+          await handleFCMTokenUpdate(dispatch, userDataParsed);
+        } catch (e) {
+          console.warn('Failed to parse user data for FCM token update', e);
+        }
       }
     }
-    
+
     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   };
 

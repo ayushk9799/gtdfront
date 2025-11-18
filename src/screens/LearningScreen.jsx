@@ -126,7 +126,7 @@ export default function LearningScreen() {
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
-      <LeagueHeader onPressPro={() => {}} />
+      {/* <LeagueHeader onPressPro={() => {}} /> */}
       <ScrollView contentContainerStyle={styles.learnScroll}>
         {loading && (
           <View style={{ alignItems: 'center', marginTop: 12 }}>

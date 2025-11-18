@@ -43,6 +43,9 @@ import {
   getMessaging,
 } from '@react-native-firebase/messaging';
 import { getApp } from '@react-native-firebase/app';
+import PremiumScreen from './src/screens/PremiumScreen';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+import { setCustomerInfo } from './src/store/slices/userSlice';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -197,12 +200,22 @@ function RootTabs() {
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   const navigationRef = React.useRef(createNavigationContainerRef());
   const pendingTapDataRef = React.useRef(null);
   const dispatch = useDispatch();
   const {userData} = useSelector(state => state.user);
+
+  const configurePurchases = async (email) => {
+    Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+    if (Platform.OS === 'ios') {
+      Purchases.configure({apiKey: 'appl_OYDSUPXLqzuDLJSlmdMlsUJffIH'});
+    } else if (Platform.OS === 'android') {
+      Purchases.configure({apiKey: 'goog_GZJTkFQaWlmsypgjConPmrRlioL'});
+    }
+    await Purchases.logIn(email);
+    getCustomerInfo();
+  }
 
   /* load stored credential once */
   useEffect(() => {
@@ -211,11 +224,10 @@ export default function App() {
       if (stored) {
         const parsed = JSON.parse(stored);
         setUser(parsed);
-        const uid = parsed?.userId || parsed?._id || parsed?.id;
+        // const uid = parsed?.userId || parsed?._id || parsed?.id;
         // console.log("uid", uid);
-        if (uid) dispatch(getUser(uid));
-        
-        // console.log("fetched user");
+
+        configurePurchases(parsed?.email);
       }
     } catch (e) {
       console.warn('Failed to load user from storage', e);
@@ -223,6 +235,12 @@ export default function App() {
       setLoading(false);
     }
   }, [dispatch]);
+
+  const getCustomerInfo = async () => {
+    const customerInfo = await Purchases.getCustomerInfo();
+    console.log('customerInfo', customerInfo);
+    dispatch(setCustomerInfo(customerInfo));
+  }
 
   // After interactive login, user state changes; fetch fresh user data from server
   useEffect(() => {
@@ -461,6 +479,15 @@ export default function App() {
               <Stack.Screen
                 name="TermsOfService"
                 component={TermsOfServiceScreen}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="Premium"
+                component={PremiumScreen}
                 options={{
                   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
                   presentation: 'card',

@@ -1,11 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity, SafeAreaView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const PrivacyPolicy = () => {
+  const navigation = useNavigation();
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.h1}>Privacy Policy</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#222222" />
+        </TouchableOpacity>
+      </View>
+      <ScrollView>
+        <View style={styles.content}>
+          <Text style={styles.h1}>Privacy Policy</Text>
         <Text style={styles.p}>
           <Text style={styles.strong}>Effective Date:</Text> July 31, 2025 •{' '}
           <Text style={styles.strong}>Last Updated:</Text> July 31, 2025
@@ -102,8 +116,9 @@ const PrivacyPolicy = () => {
           </Text>
           .
         </Text>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -111,6 +126,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f4f4f4',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    // paddingVertical: 10,
+    // marginTop: 40,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+    marginRight: 6,
   },
   content: {
     maxWidth: 800,

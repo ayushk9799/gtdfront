@@ -1,32 +1,54 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import inappicon from '../../constants/inappicon.png';
+import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 
-export default function LeagueHeader({ onPressPro }) {
+export default function LeagueHeader() {
+  const navigation = useNavigation();
+  const { isPremium } = useSelector(state => state.user);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 10, flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 10 }}>
-        <StatPill icon="coin" iconBg="#FFE8B0" iconColor="#CC8A00" label="2600" style={{ marginRight: 6 }} />
-        <StatPill icon="heart" iconBg="#FFD1E1" iconColor="#C2185B" label="2" style={{ marginRight: 6 }} />
-        <StatPill icon="fire" iconBg="#FFD7AE" iconColor="#FF6A00" label="4" />
+       
+        {/* <Image source={inappicon} style={{ width: 36, height: 36 }} /> */}
+        <Text style={{ fontSize: 24, fontWeight: '800', color: '#FF407D' }}>Diagnose it</Text>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('Premium')}
+          style={[
+            {
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 999,
+              marginLeft: 6,
+            },
+            isPremium
+              ? {
+                  backgroundColor: '#08C634',
+                  shadowColor: '#00C4B3',
+                  shadowOpacity: 0.2,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 3,
+                }
+              : {
+                  backgroundColor: 'transparent',
+                  borderWidth: 1,
+                  borderColor: '#08C634',
+                },
+          ]}
+        >
+          <Text style={{ color: isPremium ? '#ffffff' : '#08C634', fontWeight: '800', fontSize: 12 }}>
+            {isPremium ? 'Pro' : 'Upgrade'}
+          </Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={onPressPro}
-        style={{
-          backgroundColor: '#08C634',
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          borderRadius: 999,
-          shadowColor: '#00C4B3',
-          shadowOpacity: 0.2,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 3,
-        }}
-      >
-        <Text style={{ color: '#ffffff', fontWeight: '800' }}>GO PRO</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 5, flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
+         {/* <StatPill icon="heart" iconBg="#FFD1E1" iconColor="#FF0000" label="2" style={{ marginRight: 6 }} /> */}
+        <StatPill icon="fire" iconBg="#FFD7AE" iconColor="#FF6A00" label="100" /> 
+      </View>
     </View>
   );
 }
@@ -34,10 +56,14 @@ export default function LeagueHeader({ onPressPro }) {
 function StatPill({ icon, iconBg, iconColor, label, style }) {
   return (
     <View style={[pillStyle(), { flexShrink: 1 }, style]}>
-      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center', marginRight: 6 }}>
-        <MaterialCommunityIcons name={icon} size={15} color={iconColor} />
+      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center' }}>
+        <MaterialCommunityIcons name={'heart'} size={12} color={iconColor} />
       </View>
-      <Text style={pillText()}>{label}</Text>
+      <Text style={pillText()}>{3}</Text>
+      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}>
+        <MaterialCommunityIcons name={'fire'} size={10} color={iconColor} />
+      </View>
+      <Text style={pillText()}>{2000}</Text>
     </View>
   );
 }
@@ -62,5 +88,5 @@ function pillStyle() {
 }
 
 function pillText() {
-  return { fontWeight: '800', color: '#333333' };
+  return { fontWeight: '800', color: '#333333', marginLeft : 3 };
 }

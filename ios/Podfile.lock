@@ -14,6 +14,9 @@ PODS:
   - Firebase/CoreOnly (12.4.0):
     - FirebaseCore (~> 12.4.0)
   - Firebase/Messaging (12.4.0):
+  - Firebase/CoreOnly (12.4.0):
+    - FirebaseCore (~> 12.4.0)
+  - Firebase/Messaging (12.4.0):
     - Firebase/CoreOnly
     - FirebaseMessaging (~> 12.4.0)
   - FirebaseCore (12.4.0):
@@ -100,6 +103,8 @@ PODS:
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - PromisesObjC (2.4.0)
+  - PurchasesHybridCommon (17.17.0):
+    - RevenueCat (= 5.47.0)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -2490,6 +2495,9 @@ PODS:
     - RCT-Folly/Fabric
     - RCTRequired
     - RCTTypeSafety
+  - RevenueCat (5.47.0)
+  - RNFBApp (23.5.0):
+    - Firebase/CoreOnly (= 12.4.0)
     - React-Core
     - React-debug
     - React-Fabric
@@ -2511,6 +2519,8 @@ PODS:
   - RNFBApp (23.5.0):
     - Firebase/CoreOnly (= 12.4.0)
     - React-Core
+  - RNFBMessaging (23.5.0):
+    - Firebase/Messaging (= 12.4.0)
   - RNFBMessaging (23.5.0):
     - Firebase/Messaging (= 12.4.0)
     - FirebaseCoreExtension
@@ -2545,7 +2555,10 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNReanimated (3.19.3):
+  - RNPurchases (9.6.5):
+    - PurchasesHybridCommon (= 17.17.0)
+    - React-Core
+  - RNReanimated (3.19.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2572,11 +2585,11 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNReanimated/reanimated (= 3.19.3)
-    - RNReanimated/worklets (= 3.19.3)
+    - RNReanimated/reanimated (= 3.19.4)
+    - RNReanimated/worklets (= 3.19.4)
     - SocketRocket
     - Yoga
-  - RNReanimated/reanimated (3.19.3):
+  - RNReanimated/reanimated (3.19.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2603,10 +2616,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNReanimated/reanimated/apple (= 3.19.3)
+    - RNReanimated/reanimated/apple (= 3.19.4)
     - SocketRocket
     - Yoga
-  - RNReanimated/reanimated/apple (3.19.3):
+  - RNReanimated/reanimated/apple (3.19.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2635,7 +2648,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNReanimated/worklets (3.19.3):
+  - RNReanimated/worklets (3.19.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2662,10 +2675,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNReanimated/worklets/apple (= 3.19.3)
+    - RNReanimated/worklets/apple (= 3.19.4)
     - SocketRocket
     - Yoga
-  - RNReanimated/worklets/apple (3.19.3):
+  - RNReanimated/worklets/apple (3.19.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2965,6 +2978,7 @@ DEPENDENCIES:
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSound (from `../node_modules/react-native-sound`)
@@ -2990,6 +3004,8 @@ SPEC REPOS:
     - GTMSessionFetcher
     - nanopb
     - PromisesObjC
+    - PurchasesHybridCommon
+    - RevenueCat
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -3158,6 +3174,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/messaging"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -3196,6 +3214,7 @@ SPEC CHECKSUMS:
   hermes-engine: 4f07404533b808de66cf48ac4200463068d0e95a
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  PurchasesHybridCommon: fc38c0596d63ad06a3acab2937496fbf77f8af07
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: efa5010912100e944a7ac9a93a157e1def1988fe
   RCTRequired: bbc4cf999ddc4a4b076e076c74dd1d39d0254630
@@ -3235,6 +3254,7 @@ SPEC CHECKSUMS:
   react-native-mmkv: b189248d0ad153f44ef126270c201a1828a056fd
   react-native-pager-view: b9ba7f584ded35913d033e88e65067492b4736ce
   react-native-safe-area-context: 01f6d357d42395422eed7c3bfe715614728f2989
+  react-native-safe-area-context: 01f6d357d42395422eed7c3bfe715614728f2989
   React-NativeModulesApple: 983f3483ef0a3446b56d490f09d579fba2442e17
   React-oscompat: 114036cd8f064558c9c1a0c04fc9ae5e1453706a
   React-perflogger: e7287fee27c16e3c8bd4d470f2361572b63be16b
@@ -3271,6 +3291,12 @@ SPEC CHECKSUMS:
   RNFBMessaging: c304c1d8949f996d3eed1cf4eeba33148d13b4ea
   RNGestureHandler: b10adefe65287088d425204632d519c800a935e5
   RNReanimated: 1132bdde58659cf48013092741fbb2110e553b0c
+  RevenueCat: e9024be15991ff39bf6bd887def57693115ec8c5
+  RNFBApp: 255fa19a91d6c1309e021ee75d5d209754e5961b
+  RNFBMessaging: c304c1d8949f996d3eed1cf4eeba33148d13b4ea
+  RNGestureHandler: 5b17f2ffba1909187924a248aaca7d077673d857
+  RNPurchases: 60cc16dc28bab3e800fdc363b42c0579c8bc4ee3
+  RNReanimated: 845c4547c576a2e88479d86eb4cca7fcddca566a
   RNScreens: f35bcc83b6e3a871635b1c28728e63c9560f159a
   RNSound: ddbba0e2aee6c5894b4f9b230f79a999a644ae00
   RNSVG: cb3156ab4865f6a8bc145fb431a1003f02df2ff7

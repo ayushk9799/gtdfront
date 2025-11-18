@@ -50,6 +50,8 @@ export const updateUser = createAsyncThunk(
 
 const initialState = {
   userData: null,
+  isPremium : false,
+  customerInfo : null,
   status: 'idle',
   error: null,
 };
@@ -57,7 +59,12 @@ const initialState = {
 const userSlice = createSlice({
   name: 'user',
   initialState,
-  reducers: {},
+  reducers: {
+    setCustomerInfo: (state, action) => {
+      state.isPremium = action.payload?.activeSubscriptions?.length > 0;
+      state.customerInfo = action.payload || null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(getUser.pending, (state) => {
@@ -85,4 +92,5 @@ const userSlice = createSlice({
   },
 });
 
+export const { setCustomerInfo } = userSlice.actions;
 export default userSlice.reducer;

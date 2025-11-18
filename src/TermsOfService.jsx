@@ -6,11 +6,25 @@ import {
   StyleSheet,
   SafeAreaView,
   Linking,
+  TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const TermsOfServiceScreen = () => {
+  const navigation = useNavigation();
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#222222" />
+        </TouchableOpacity>
+      </View>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -122,7 +136,29 @@ const TermsOfServiceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#f4f4f4',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+    marginRight: 6,
   },
   scrollView: {
     flex: 1,
@@ -134,7 +170,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#333',
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -147,7 +183,7 @@ const styles = StyleSheet.create({
   },
   intro: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#333',
     lineHeight: 24,
     marginBottom: 24,
   },
@@ -157,18 +193,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#333',
     marginBottom: 12,
   },
   text: {
     fontSize: 15,
-    color: '#CCCCCC',
+    color: '#333',
     lineHeight: 22,
     marginBottom: 8,
   },
   bold: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#333',
   },
   link: {
     color: '#007bff',
