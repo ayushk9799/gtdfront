@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Colors } from '../../constants/Colors';
 import premiumImage from '../../constants/premium-image.png';
 import Purchases from 'react-native-purchases';
-import { updateUser } from '../store/slices/userSlice';
+import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 
 export default function PremiumScreen() {
   const navigation = useNavigation();
@@ -72,6 +72,7 @@ export default function PremiumScreen() {
   const checkEntitlements = async () => {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
+      dispatch(setCustomerInfo(customerInfo));
       setEntitlements(customerInfo.entitlements.active);
       await syncServerPremium(customerInfo);
     } catch (e) {
@@ -84,6 +85,7 @@ export default function PremiumScreen() {
       setLoading(true);
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       console.log('Purchase successful', customerInfo);
+      dispatch(setCustomerInfo(customerInfo));
       await checkEntitlements(); // Update entitlements after successful purchase
     } catch (e) {
       if (e?.userCancelled) {

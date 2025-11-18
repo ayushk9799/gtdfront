@@ -208,7 +208,7 @@ export default function App() {
   const configurePurchases = async (email) => {
     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
     if (Platform.OS === 'ios') {
-      Purchases.configure({apiKey: 'appl_AiyusqVJzQxTvFqGSzIfjGvvpZT'});
+      Purchases.configure({apiKey: 'appl_OYDSUPXLqzuDLJSlmdMlsUJffIH'});
     } else if (Platform.OS === 'android') {
       Purchases.configure({apiKey: 'goog_GZJTkFQaWlmsypgjConPmrRlioL'});
     }
@@ -459,11 +459,11 @@ export default function App() {
               <Stack.Screen
                 name="Premium"
                 component={PremiumScreen}
-                // options={{
-                //   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
-                //   presentation: 'card',
-                //   contentStyle: { backgroundColor: 'transparent' },
-                // }}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
               />
             </Stack.Navigator>
           ) : (
