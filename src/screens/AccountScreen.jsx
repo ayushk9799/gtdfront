@@ -36,12 +36,22 @@ export default function AccountScreen() {
           onPress: async () => {
             try { await googleAuth.signOut(); } catch {}
             try { await googleAuth.revoke?.(); } catch {}
-            try { storage.delete('user'); } catch {}
+            try {
+              // Force App root to show unauthenticated stack at Login screen
+              storage.set('forceLogin', true);
+              storage.delete('user');
+              // After clearing auth, reset navigation to Login explicitly
+              setTimeout(() => {
+                try {
+                  navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                } catch {}
+              }, 0);
+            } catch {}
           },
         },
       ]
     );
-  }, [storage]);
+  }, [storage, navigation]);
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>

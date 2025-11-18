@@ -31,6 +31,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPermission from './src/screens/NotificationPermission';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { getUser, updateUser } from './src/store/slices/userSlice';
+import RNBootSplash from 'react-native-bootsplash';
 import {
   registerDeviceForRemoteMessages,
   getToken,
@@ -231,6 +232,26 @@ export default function App() {
       dispatch(getUser(uid));
     }
   }, [dispatch, user]);
+  // Listen for MMKV 'user' changes to react to logout/login instantly
+  useEffect(() => {
+    const listener = storage.addOnValueChangedListener((changedKey) => {
+      if (changedKey !== 'user') return;
+      try {
+        const stored = storage.getString('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setUser(parsed);
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      }
+    });
+    return () => {
+      try { listener?.remove?.(); } catch {}
+    };
+  }, []);
   // FCM Token management - fetch user, get token, compare and update if different
   useEffect(() => {
     if (userData && userData?._id) {
@@ -316,9 +337,14 @@ export default function App() {
     }
   }
 
-  if (loading) return null; // splash screen placeholder
+  // Do not return a JS splash; native bootsplash covers until we hide it.
 
   const baseTheme =  DefaultTheme;
+  const shouldForceLogin = storage.getBoolean && storage.getBoolean('forceLogin');
+  if (loading) {
+    // Keep native bootsplash visible while we read local storage.
+    return null;
+  }
   const mergedTheme = {
     ...baseTheme,
     colors: {
@@ -344,6 +370,10 @@ export default function App() {
         <NavigationContainer
           ref={navigationRef}
           onReady={() => {
+            // Hide native splash once navigation tree is ready
+            try {
+              RNBootSplash.hide({ fade: true });
+            } catch {}
             if (pendingTapDataRef.current) {
               tryNavigateToClinicalInfo(pendingTapDataRef.current);
             }
@@ -446,6 +476,7 @@ export default function App() {
                 animation: 'fade',
                 statusBarTranslucent: true,
               }}
+              initialRouteName={shouldForceLogin ? 'Login' : 'Onboarding'}
             >
               <Stack.Screen
                 name="Onboarding"

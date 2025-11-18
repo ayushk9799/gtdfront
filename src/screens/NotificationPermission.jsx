@@ -1,5 +1,5 @@
 import React, {  useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, PermissionsAndroid } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, PermissionsAndroid, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/Colors';
 import { MMKV } from 'react-native-mmkv';
@@ -13,6 +13,8 @@ import { getApp } from '@react-native-firebase/app';
 import { useDispatch } from 'react-redux';
 import { updateUser } from '../store/slices/userSlice';
 import { handleFCMTokenUpdate } from '../../App';
+import LinearGradient from 'react-native-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const storage = new MMKV();
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
@@ -20,10 +22,7 @@ const { width: WINDOW_WIDTH } = Dimensions.get('window');
 export default function NotificationPermission() {
   const navigation = useNavigation();
   const themeColors = Colors.light;
-  const [enableReminders, setEnableReminders] = useState(true);
   const dispatch = useDispatch();
-
-  const cardActiveStyle = useMemo(() => ({ borderColor: Colors.brand.darkPink, backgroundColor: '#FFF7F0' }), []);
 
   async function requestUserPermission() {
     if (Platform.OS === 'ios') {
@@ -82,38 +81,74 @@ export default function NotificationPermission() {
     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   };
 
+  const skip = () => {
+    storage.set('notifDecided', true);
+    storage.set('notifEnabled', false);
+    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Consistency Builds{"\n"}Clinical Confidence</Text>
-      <Text style={styles.subtitle}>A daily reminder can help you stay sharp.</Text>
-
-      <View style={[styles.card, enableReminders && cardActiveStyle]}> 
-        <View style={styles.badge}><Text style={styles.badgeText}>STRONGLY ADVISED</Text></View>
-        <TouchableOpacity onPress={() => setEnableReminders(true)} activeOpacity={0.9} style={styles.cardInner}>
-          <Text style={styles.cardIcon}>🔔❤️</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Remind Me</Text>
-            <Text style={styles.cardDesc}>Help me build my habit and stay on track.</Text>
-          </View>
-          <View style={[styles.radio, enableReminders && styles.radioOn]} />
-        </TouchableOpacity>
+      <LinearGradient
+        colors={['#FFF7FA', '#FFEAF2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.headerBg}
+      />
+      <View style={styles.header}>
+        <View style={styles.logoBadge}>
+          <MaterialCommunityIcons name="bell-ring" size={28} color="#ffffff" />
+        </View>
+        <Text style={styles.title}>Build your habit with gentle nudges</Text>
+        <Text style={styles.subtitle}>We’ll remind you once a day to keep your clinical skills sharp.</Text>
       </View>
 
-      <View style={[styles.card, !enableReminders && { borderColor: themeColors.border, backgroundColor: '#ffffff' }]}> 
-        <TouchableOpacity onPress={() => setEnableReminders(false)} activeOpacity={0.9} style={styles.cardInner}>
-          <Text style={[styles.cardIcon, { opacity: 0.5 }]}>🔕</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>I'll Set My Own Pace</Text>
-            <Text style={styles.cardDesc}>I'll manage reminders on my own (for now!).</Text>
+      <View style={[styles.infoCard, styles.cardShadow]}>
+        <Text style={styles.sectionTitle}>Why enable notifications?</Text>
+        <View style={styles.benefits}>
+          <View style={styles.benefitRow}>
+            <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
+            <Text style={styles.benefitText}>Daily reminder to complete a quick case</Text>
           </View>
-          <View style={[styles.radio, !enableReminders && styles.radioOn]} />
-        </TouchableOpacity>
+          <View style={styles.benefitRow}>
+            <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
+            <Text style={styles.benefitText}>Turn on/off anytime from Account → Settings</Text>
+          </View>
+          <View style={styles.benefitRow}>
+            <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
+            <Text style={styles.benefitText}>We never spam. Just a single nudge per day</Text>
+          </View>
+        </View>
+
+        <View style={[styles.previewCard, styles.cardShadow]}>
+          <View style={styles.previewIconWrap}>
+            <Image source={require('../../constants/inappicon.png')} style={styles.previewIcon} resizeMode="contain" />
+          </View>
+          <View style={styles.previewTexts}>
+            <Text style={styles.previewTitle}>Practice time</Text>
+            <Text style={styles.previewBody}>Your daily case awaits. Ready for today’s challenge?</Text>
+          </View>
+          <Text style={styles.previewTime}>9:00 AM</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
+          <MaterialCommunityIcons name="shield-lock-outline" size={14} color="#6B7280" />
+          <Text style={styles.finePrint}>  You can change this anytime in Settings. One reminder per day — no spam.</Text>
+        </View>
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.helperText}>Build your habit, one daily case at a time — we'll help you stay consistent.</Text>
+      <View style={styles.bottomActions}>
         <TouchableOpacity style={styles.primaryButton} onPress={proceed} activeOpacity={0.9}>
-          <Text style={styles.primaryButtonText}>Let's GO →</Text>
+          <LinearGradient
+            colors={["#F472B6", "#FB7185"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButtonGradient}
+          />
+          <Text style={styles.primaryButtonText}>Allow notifications</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryButton} onPress={skip} activeOpacity={0.9}>
+          <Text style={styles.secondaryButtonText}>Not now</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -124,98 +159,207 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 48,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
+  },
+  headerBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 220,
+  },
+  header: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  logoBadge: {
+    height: 56,
+    width: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.brand.darkPink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
   },
   title: {
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 28,
+    lineHeight: 34,
     fontWeight: '900',
     color: '#1F2937',
+    letterSpacing: -0.2,
+    textAlign: 'center',
   },
   subtitle: {
-    marginTop: 12,
-    fontSize: 18,
+    marginTop: 8,
+    fontSize: 16,
     color: '#4B5563',
     fontWeight: '700',
+    letterSpacing: -0.1,
+    textAlign: 'center',
   },
-  card: {
+  infoCard: {
     marginTop: 24,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: '#F1F5F9',
     backgroundColor: '#ffffff',
-    overflow: 'hidden',
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.brand.darkPink,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderTopLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    marginTop: -10,
-    marginLeft: 16,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontWeight: '900',
-    fontSize: 12,
-  },
-  cardInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
   },
-  cardIcon: {
-    fontSize: 24,
-    marginRight: 12,
+  cardShadow: {
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#111827',
-  },
-  cardDesc: {
-    marginTop: 4,
-    color: '#4B5563',
+  sectionTitle: {
     fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 10,
+  },
+  benefits: {
+    marginTop: 4,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  benefitText: {
+    marginLeft: 8,
+    color: '#334155',
+    fontSize: 15,
     fontWeight: '600',
   },
-  radio: {
-    height: 24,
-    width: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    marginLeft: 12,
-  },
-  radioOn: {
-    backgroundColor: Colors.brand.darkPink,
-    borderColor: Colors.brand.darkPink,
-  },
-  footer: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    bottom: 24,
+  previewCard: {
+    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EEF2F7',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  helperText: {
-    textAlign: 'center',
-    color: '#4B5563',
-    fontSize: 16,
-    marginBottom: 16,
+  previewIconWrap: {
+    height: 44,
+    width: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF1F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewIcon: {
+    height: 28,
+    width: 28,
+  },
+  previewTexts: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  previewTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  previewBody: {
+    marginTop: 2,
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  previewTime: {
+    marginLeft: 8,
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '800',
   },
   primaryButton: {
-    width: WINDOW_WIDTH - 48,
-    backgroundColor: Colors.brand.darkPink,
+    width: WINDOW_WIDTH - 32,
+    backgroundColor: 'transparent',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  primaryButtonGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 14,
   },
   primaryButtonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: '900',
+  },
+  secondaryButton: {
+    width: WINDOW_WIDTH - 32,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  secondaryButtonText: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  finePrint: {
+    marginTop: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontSize: 12,
+  },
+  bottomActions: {
+    marginTop: 'auto',
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 10,
+  },
+  primaryButton: {
+    width: '100%',
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  primaryButtonGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 14,
+  },
+  primaryButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  secondaryButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  secondaryButtonText: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });

@@ -1,13 +1,16 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import DecorativeSeparator from './components/DecorativeSeparator';
 import { Colors } from '../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import Sound from 'react-native-sound';
+import { API_BASE } from '../constants/Api';
+import AudioAura from './components/AudioAura';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -15,11 +18,12 @@ const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 // Card height as a percentage of the screen height
 const CARD_HEIGHT_PCT = 0.70;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
+const AURA_SIZE = 96;
 
 
 // DecorativeSeparator is now a shared component
 
-function Section({ title, children }) {
+function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, audioLoading }) {
   const themeColors =  Colors.light;
   return (
     <View style={styles.sectionBlock}>
@@ -29,6 +33,21 @@ function Section({ title, children }) {
       ]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{title}</Text>
+          {typeof onPressAudio === 'function' ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={onPressAudio}
+              style={styles.audioButton}
+              activeOpacity={0.8}
+              disabled={audioDisabled || audioLoading}
+            >
+              <MaterialCommunityIcons
+                name={audioLoading ? 'progress-clock' : (audioPlaying ? 'pause' : 'play')}
+                size={18}
+                color={audioDisabled ? 'rgba(0,0,0,0.25)' : Colors.brand.darkPink}
+              />
+            </TouchableOpacity>
+          ) : null}
           <DecorativeSeparator />
         </View>
         <ScrollView
@@ -91,6 +110,10 @@ export default function ClinicalInfo() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const soundRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentPart, setCurrentPart] = useState(null);
   
   const scrollRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -109,11 +132,13 @@ export default function ClinicalInfo() {
   const caseDataFromRoute = route?.params?.caseData;
   const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
   const caseData = caseDataFromRoute || caseDataFromStore || {};
+  const caseId = (caseData?.caseId && String(caseData.caseId)) || '';
   
   // Extract data from the CASES_ARRAY structure (steps[0].data)
   const step1Data = caseData?.steps?.[0]?.data || {};
   
   const p = step1Data?.basicInfo || {};
+  console.log('p', p);
   const chief = step1Data?.chiefComplaint || '';
   const historyItems = step1Data?.history || [];
   const examItems = step1Data?.physicalExamination || [];
@@ -170,6 +195,85 @@ export default function ClinicalInfo() {
       opacity,
     };
   };
+  const indexToPart = {
+    0: 'basicspeech',
+    1: 'vitalsspeech',
+    2: 'historyspeech',
+    3: 'physicalspeech',
+  };
+  const urlFor = (id, part) => `${API_BASE}/mp3files/${id}_${part}.mp3`;
+
+  const stopPlayback = () => {
+    try {
+      soundRef.current?.stop?.();
+      soundRef.current?.release?.();
+    } catch (_) {}
+    soundRef.current = null;
+    setIsPlaying(false);
+    setIsLoading(false);
+    setCurrentPart(null);
+  };
+
+  const playForIndex = (i) => {
+    if (!caseId) return;
+    const part = indexToPart[i];
+    const url = urlFor(caseId, part);
+    console.log('url', url);
+    // stop prior if any
+    stopPlayback();
+    setIsLoading(true);
+    try { Sound.setCategory('Playback', true); } catch (_) {}
+    try { Sound.enableInSilenceMode(true); } catch (_) {}
+    const s = new Sound(url, undefined, (error) => {
+      if (error) {
+        console.warn('Audio load error:', error);
+        setIsLoading(false);
+        setIsPlaying(false);
+        setCurrentPart(null);
+        return;
+      }
+      setIsLoading(false);
+      setIsPlaying(true);
+      setCurrentPart(part);
+      s.play(() => {
+        try { s.release(); } catch (_) {}
+        soundRef.current = null;
+        setIsPlaying(false);
+        setCurrentPart(null);
+      });
+    });
+    soundRef.current = s;
+  };
+
+  const togglePlayForIndex = (i) => {
+    const part = indexToPart[i];
+    console.log('part', part);
+    console.log(currentPart);
+    console.log(isPlaying);
+    if (isPlaying && currentPart === part) {
+      stopPlayback();
+    } else {
+      playForIndex(i);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        stopPlayback();
+      };
+    }, [])
+  );
+
+  React.useEffect(() => {
+    // Autoplay the audio for the active slide; stop anything currently playing
+    if (!caseId) {
+      stopPlayback();
+      return;
+    }
+    playForIndex(index);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, caseId]);
   React.useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(shimmerAnim, {
@@ -193,6 +297,25 @@ export default function ClinicalInfo() {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+      <View
+        style={[
+          styles.auraOverlay,
+          {
+            top: Math.max(
+              6,
+              12 + insets.top + (36 - AURA_SIZE) / 2 // align vertically with close button
+            ),
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        <AudioAura
+          isPlaying={isPlaying}
+          size={AURA_SIZE}
+          onPress={() => togglePlayForIndex(index)}
+          disabled={!caseId}
+        />
+      </View>
       <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
         <TouchableOpacity
           accessibilityRole="button"
@@ -222,7 +345,9 @@ export default function ClinicalInfo() {
         contentContainerStyle={[styles.carousel, { width: width * SLIDE_COUNT }]}
       >
         <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(0)]}>
-          <Section title="Basic Info & Chief Complaint">
+          <Section
+            title="Basic Info & Chief Complaint"
+          >
             <Image source={require('../constants/inappicon.png')} style={styles.heroImage} />
             <View style={styles.infoGrid}>
               <InfoColumn icon="badge-account" label="Name" value={p?.name || '—'} />
@@ -239,7 +364,9 @@ export default function ClinicalInfo() {
           </Section>
         </Animated.View>
         <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(1)]}>
-          <Section title="Vitals">
+          <Section
+            title="Vitals"
+          >
             <View style={styles.statsRow}>
               {displayVitals.map((v) => (
                 <StatTile
@@ -259,7 +386,9 @@ export default function ClinicalInfo() {
           </Section>
         </Animated.View>
         <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(2)]}>
-          <Section title="History (Hx)">
+          <Section
+            title="History (Hx)"
+          >
             {historyItems.map((h, i) => (
               <View key={i} style={styles.historySection}>
                 <Text style={[styles.historyCategory, { color: "#C2185B" }]}>{h.category}</Text>
@@ -269,7 +398,9 @@ export default function ClinicalInfo() {
           </Section>
         </Animated.View>
         <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(3)]}>
-          <Section title="Physical Examination (PE)">
+          <Section
+            title="Physical Examination (PE)"
+          >
             {examItems.map((e, i) => (
               <BulletItem key={i}>{`${e.system}: ${e.findings}`}</BulletItem>
             ))}
@@ -370,6 +501,19 @@ const styles = StyleSheet.create({
   },
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
+  audioButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
   ecgSvg: { marginTop: 6, marginBottom: 6 },
   separatorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 6 },
   separatorLine: { flex: 1, height: 2, borderRadius: 2 },
@@ -528,6 +672,13 @@ const styles = StyleSheet.create({
   // Bottom sheet styles
   sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#11181C' },
+  auraOverlay: {
+    position: 'absolute',
+    right: 6,
+    width: AURA_SIZE,
+    height: AURA_SIZE,
+    zIndex: 20
+  },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)', backgroundColor: '#fff' },
   chipActive: { backgroundColor: 'rgba(255, 0, 102, 0.10)', borderColor: Colors.brand.darkPink },

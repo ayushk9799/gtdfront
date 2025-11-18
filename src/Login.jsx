@@ -117,6 +117,7 @@ function Login({ onLogin }) {
       if (typeof onLogin === 'function') {
         onLogin(loggedInUser);
       }
+      try { storage.set('forceLogin', false); } catch {}
       // TODO: navigate or store auth data as needed
     } catch (error) {
       console.error('Sign-in failed', error);

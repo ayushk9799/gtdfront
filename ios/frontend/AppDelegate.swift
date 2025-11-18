@@ -5,6 +5,7 @@ import ReactAppDependencyProvider
 import Firebase
 
 import GoogleSignIn
+import RNBootSplash
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -32,6 +33,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       in: window,
       launchOptions: launchOptions
     )
+    // if let rootView = window?.rootViewController?.view {
+    //   RNBootSplash.init(withStoryboard: "LaunchScreen", rootView: rootView)
+    // }
 
     return true
   }
@@ -50,6 +54,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
   override func sourceURL(for bridge: RCTBridge) -> URL? {
     self.bundleURL()
+  }
+  override func customize(_ rootView: RCTRootView) {
+    super.customize(rootView)
+    RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView) // ⬅️ initialize the splash screen
   }
 
   override func bundleURL() -> URL? {
