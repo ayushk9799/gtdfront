@@ -1,5 +1,5 @@
 import React, {  useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, PermissionsAndroid, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, PermissionsAndroid, Image, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/Colors';
 import { MMKV } from 'react-native-mmkv';
@@ -48,14 +48,7 @@ export default function NotificationPermission() {
     // Mark that the user has made a decision on notifications
     storage.set('notifDecided', true);
 
-    // If the user chose "I'll Set My Own Pace", do NOT ask for OS permission
-    if (!enableReminders) {
-      storage.set('notifEnabled', false);
-      navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
-      return;
-    }
-
-    // User wants reminders: request OS permission
+    // Request OS permission
     const granted = await requestUserPermission();
     storage.set('notifEnabled', granted);
 
@@ -94,7 +87,7 @@ export default function NotificationPermission() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <LinearGradient
         colors={['#FFF7FA', '#FFEAF2']}
         start={{ x: 0, y: 0 }}
@@ -157,7 +150,7 @@ export default function NotificationPermission() {
           <Text style={styles.secondaryButtonText}>Not now</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
