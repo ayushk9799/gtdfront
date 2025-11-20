@@ -35,6 +35,11 @@ const currentGameSlice = createSlice({
     setUserId(state, action) {
       state.userId = action.payload || null;
     },
+    setCaseData(state, action) {
+      state.caseId = action.payload.caseId || null;
+      state.caseData = action.payload.caseData || null;
+      state.status = 'in_progress';
+    },
     setSelectedTests(state, action) {
       state.selectedTestIds = Array.isArray(action.payload) ? action.payload : [];
     },
@@ -146,7 +151,7 @@ export const submitGameplay = createAsyncThunk(
   }
 );
 
-export const { setUserId, clearCurrentGame, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } = currentGameSlice.actions;
+export const { setUserId, setCaseData, clearCurrentGame, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } = currentGameSlice.actions;
 export default currentGameSlice.reducer;
 
 

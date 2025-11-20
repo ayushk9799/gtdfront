@@ -11,7 +11,7 @@ import { CASES_ARRAY } from '../../constants/Api';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch, useSelector } from 'react-redux';
-import { loadCaseById, setUserId } from '../store/slices/currentGameSlice';
+import { loadCaseById, setUserId, setCaseData } from '../store/slices/currentGameSlice';
 import { loadTodaysChallenge, selectCurrentChallenge, selectIsChallengeLoading, selectHasChallengeError, selectChallengeError } from '../store/slices/dailyChallengeSlice';
 import { fetchCategories } from '../store/slices/categoriesSlice';
 import departmentIcon from '../../constants/department.png';
@@ -107,8 +107,8 @@ export default function HomeScreen() {
                   activeOpacity={0.9} 
                   onPress={() => {
                     // Load the daily challenge case data and navigate
-                    dispatch(loadCaseById(currentChallenge?._id));
-                    navigation.navigate('ClinicalInfo', { caseData: currentChallenge?.caseData });
+                    dispatch(setCaseData({ caseId: currentChallenge?._id, caseData: currentChallenge?.caseData }));
+                    navigation.navigate('ClinicalInfo');
                   }}
                 >
                   <Text style={styles.primaryButtonText}>Solve the case</Text>
@@ -176,7 +176,10 @@ export default function HomeScreen() {
               <TouchableOpacity 
                 style={styles.primaryButton} 
                 activeOpacity={0.9} 
-                onPress={() => navigation.navigate('ClinicalInfo', { caseData: caseItem })}
+                onPress={() => {
+                  dispatch(setCaseData({ caseId: caseItem.caseId, caseData: caseItem }));
+                  navigation.navigate('ClinicalInfo');
+                }}
               >
                 <Text style={styles.primaryButtonText}>Start Case</Text>
               </TouchableOpacity>

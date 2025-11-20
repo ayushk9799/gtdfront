@@ -1,122 +1,111 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing, TouchableOpacity } from 'react-native';
+import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { Defs, RadialGradient, Stop, Circle, G } from 'react-native-svg';
 import { Colors } from '../../constants/Colors';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  withDelay,
+  cancelAnimation,
+  useAnimatedProps,
+  interpolate,
+  Extrapolation,
+  Easing as ReEasing,
+} from 'react-native-reanimated';
 
-const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-export default function AudioAura({ isPlaying, size = 160, onPress, disabled = false }) {
+function AudioAuraImpl({ size = 160, onPress, disabled = false }, ref) {
 
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-  const waveAnims = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
-  const waveLoopsRef = useRef([]);
+  const rotate = useSharedValue(0);
+  const pulse = useSharedValue(0);
+  const wave = [useSharedValue(0), useSharedValue(0), useSharedValue(0)];
+  const [active, setActive] = useState(false);
+  const onPressRef = useRef(onPress);
+  useEffect(() => { onPressRef.current = onPress; }, [onPress]);
+
+  const start = () => {
+    rotate.value = 0;
+    pulse.value = 0;
+    rotate.value = withRepeat(
+      withTiming(1, { duration: 9000, easing: ReEasing.linear }),
+      -1,
+      false
+    );
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1600, easing: ReEasing.inOut(ReEasing.sin) }),
+        withTiming(0, { duration: 1600, easing: ReEasing.inOut(ReEasing.sin) }),
+      ),
+      -1,
+      false
+    );
+    wave.forEach((w, idx) => {
+      w.value = 0;
+      w.value = withRepeat(
+        withSequence(
+          withDelay(idx * 600, withTiming(1, { duration: 2600, easing: ReEasing.out(ReEasing.quad) })),
+          withTiming(0, { duration: 0 })
+        ),
+        -1,
+        false
+      );
+    });
+    setActive(true);
+  };
+
+  const stop = () => {
+    cancelAnimation(rotate);
+    cancelAnimation(pulse);
+    wave.forEach((w) => cancelAnimation(w));
+    rotate.value = 0;
+    pulse.value = 0;
+    wave.forEach((w) => { w.value = 0; });
+    setActive(false);
+  };
+
+  useImperativeHandle(ref, () => ({
+    start,
+    stop,
+  }), []);
 
   useEffect(() => {
-    let rLoop = null;
-    let pLoop = null;
-
-    const start = () => {
-      try { rotateAnim.setValue(0); } catch (_) {}
-      try { pulseAnim.setValue(0); } catch (_) {}
-
-      const r = Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 9000,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      );
-      const p = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1600,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 0,
-            duration: 1600,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      rLoop = r;
-      pLoop = p;
-      r.start();
-      p.start();
-
-      // Projecting longitudinal waves
-      waveLoopsRef.current.forEach((loop) => {
-        try { loop.stop?.(); } catch (_) {}
-      });
-      waveLoopsRef.current = [];
-      waveAnims.forEach((av, idx) => {
-        try { av.setValue(0); } catch (_) {}
-        const seq = Animated.sequence([
-          Animated.delay(idx * 600),
-          Animated.timing(av, {
-            toValue: 1,
-            duration: 2600,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: false,
-          }),
-          Animated.timing(av, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: false,
-          }),
-        ]);
-        const loop = Animated.loop(seq);
-        waveLoopsRef.current.push(loop);
-        loop.start();
-      });
-    };
-
-    const stop = () => {
-      try { rotateAnim.stopAnimation(); } catch (_) {}
-      try { pulseAnim.stopAnimation(); } catch (_) {}
-      waveLoopsRef.current.forEach((loop) => {
-        try { loop.stop?.(); } catch (_) {}
-      });
-      waveLoopsRef.current = [];
-      waveAnims.forEach((av) => {
-        try { av.setValue(0); } catch (_) {}
-      });
-    };
-
-    if (isPlaying) start();
-    else stop();
-
     return () => {
       stop();
-      try { rotateAnim.setValue(0); } catch (_) {}
-      try { pulseAnim.setValue(0); } catch (_) {}
     };
-  }, [isPlaying, rotateAnim, pulseAnim]);
+  }, []);
 
-  const rotateDeg = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.08] });
+  const animatedWrapStyle = useAnimatedStyle(() => {
+    const scaleVal = 0.96 + (1.08 - 0.96) * pulse.value;
+    const rotateDeg = `${rotate.value * 360}deg`;
+    return {
+      transform: [{ rotate: rotateDeg }, { scale: scaleVal }],
+      opacity: 1,
+    };
+  }, []);
 
   const strokeMain = Colors.brand.darkPink;
   const strokeAlt = '#FB7185'; // soft rose
 
+  const waveAnimatedProps = wave.map((w) =>
+    useAnimatedProps(() => {
+      const r = size * 0.24 + (size * 0.56 - size * 0.24) * w.value;
+      const sw = 2.2 + (0.6 - 2.2) * w.value;
+      const v = w.value;
+      const opacity = v <= 0.2
+        ? (v / 0.2) * 0.8
+        : 0.8 * (1 - (v - 0.2) / 0.8);
+      return { r, strokeWidth: sw, strokeOpacity: opacity };
+    })
+  );
+
   return (
     <View pointerEvents="box-none" style={{ width: size, height: size }}>
-      <AnimatedView
-        style={[
-          styles.centerWrap,
-          {
-            transform: isPlaying ? [{ rotate: rotateDeg }, { scale }] : [{ rotate: '0deg' }, { scale: 1 }],
-            opacity: 1,
-          },
-        ]}
-      >
+      <Animated.View style={[styles.centerWrap, active ? animatedWrapStyle : null]}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <Defs>
             <RadialGradient id="aura" cx="50%" cy="50%" r="50%">
@@ -128,24 +117,13 @@ export default function AudioAura({ isPlaying, size = 160, onPress, disabled = f
 
           {/* Projecting longitudinal waves */}
           <G>
-            {waveAnims.map((av, idx) => (
+            {waveAnimatedProps.map((animatedProps, idx) => (
               <AnimatedCircle
                 key={`wave-${idx}`}
                 cx={size / 2}
                 cy={size / 2}
-                r={av.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [size * 0.24, size * 0.56],
-                })}
+                animatedProps={animatedProps}
                 stroke={strokeAlt}
-                strokeWidth={av.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [2.2, 0.6],
-                })}
-                strokeOpacity={av.interpolate({
-                  inputRange: [0, 0.2, 1],
-                  outputRange: [0, 0.8, 0],
-                })}
                 fill="none"
               />
             ))}
@@ -200,22 +178,32 @@ export default function AudioAura({ isPlaying, size = 160, onPress, disabled = f
             opacity={0.12}
           />
         </Svg>
-      </AnimatedView>
+      </Animated.View>
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={onPress}
+        onPress={() => onPressRef.current?.()}
         disabled={disabled}
         style={styles.centerIconWrap}
       >
         <MaterialCommunityIcons
           name="microphone"
           size={Math.max(20, Math.floor(size * 0.38))}
-          color={isPlaying ? '#ffffff' : Colors.brand.darkPink}
+          color={active ? '#ffffff' : Colors.brand.darkPink}
         />
       </TouchableOpacity>
     </View>
   );
 }
+
+const arePropsEqual = (prevProps, nextProps) => {
+  return (
+    prevProps.size === nextProps.size &&
+    prevProps.disabled === nextProps.disabled
+  );
+};
+
+const AudioAura = React.memo(forwardRef(AudioAuraImpl), arePropsEqual);
+export default AudioAura;
 
 const styles = StyleSheet.create({
   centerWrap: {

@@ -1,5 +1,6 @@
-import React, { useRef, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated } from 'react-native';
+import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable,TouchableOpacity,  Image, Animated, InteractionManager } from 'react-native';
+import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -34,11 +35,13 @@ function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, a
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{title}</Text>
           {typeof onPressAudio === 'function' ? (
-            <TouchableOpacity
+            <Pressable
               accessibilityRole="button"
               onPress={onPressAudio}
-              style={styles.audioButton}
-              activeOpacity={0.8}
+              style={({ pressed }) => [
+                styles.audioButton,
+                { opacity: pressed ? 0.8 : 1.0 },
+              ]}
               disabled={audioDisabled || audioLoading}
             >
               <MaterialCommunityIcons
@@ -46,7 +49,7 @@ function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, a
                 size={18}
                 color={audioDisabled ? 'rgba(0,0,0,0.25)' : Colors.brand.darkPink}
               />
-            </TouchableOpacity>
+            </Pressable>
           ) : null}
           <DecorativeSeparator />
         </View>
@@ -107,6 +110,7 @@ function InfoColumn({ icon, label, value }) {
 export default function ClinicalInfo() {
   const { width } = Dimensions.get('window');
   const [index, setIndex] = useState(0);
+  const [debouncedIndex, setDebouncedIndex] = useState(index);
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
@@ -114,10 +118,10 @@ export default function ClinicalInfo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPart, setCurrentPart] = useState(null);
+  const auraRef = useRef(null);
+  const [showAura, setShowAura] = useState(false);
   
-  const scrollRef = useRef(null);
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const pagerRef = useRef(null);
   const SLIDE_COUNT = 4; // Basic, Vitals, Hx, PE
 
   // Layout calculations for platform-consistent nav button positioning
@@ -134,146 +138,44 @@ export default function ClinicalInfo() {
   const caseData = caseDataFromRoute || caseDataFromStore || {};
   const caseId = (caseData?.caseId && String(caseData.caseId)) || '';
   
-  // Extract data from the CASES_ARRAY structure (steps[0].data)
-  const step1Data = caseData?.steps?.[0]?.data || {};
-  
-  const p = step1Data?.basicInfo || {};
-  console.log('p', p);
-  const chief = step1Data?.chiefComplaint || '';
-  const historyItems = step1Data?.history || [];
-  const examItems = step1Data?.physicalExamination || [];
-  const vitalsData = step1Data?.vitals || {};
-  
-  // Convert vitals object to array format for display
-  const vitalsArray = [
-    { name: 'Temperature', value: vitalsData.temperature },
-    { name: 'Heart Rate', value: vitalsData.heartRate },
-    { name: 'Blood Pressure', value: vitalsData.bloodPressure },
-    { name: 'Respiratory Rate', value: vitalsData.respiratoryRate },
-    { name: 'O2 Saturation', value: vitalsData.oxygenSaturation }
-  ].filter(v => v.value);
+  const handleClose = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
 
-  // Normalize vitals ordering to a friendly display
-  const vitalsOrder = ['Temperature', 'Heart Rate', 'Blood Pressure', 'Respiratory Rate', 'O2 Saturation', 'Weight'];
-  const displayVitals = vitalsOrder
-    .map((label) => vitalsArray.find((v) => v.name === label))
-    .filter(Boolean);
+  const handlePrevious = useCallback(() => {
+    const newIndex = Math.max(0, index - 1);
+    setIndex(newIndex);
+    pagerRef.current?.setPage(newIndex);
+  }, [index]);
 
-  const getSlideStyle = (i) => {
-    const inputRange = [
-      (i - 1) * width,
-      i * width,
-      (i + 1) * width,
-    ];
-    const rotateY = scrollX.interpolate({
-      inputRange,
-      outputRange: ['18deg', '0deg', '-18deg'],
-      extrapolate: 'clamp',
-    });
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.92, 1, 0.92],
-      extrapolate: 'clamp',
-    });
-    const translateX = scrollX.interpolate({
-      inputRange,
-      outputRange: [24, 0, -24],
-      extrapolate: 'clamp',
-    });
-    const opacity = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.85, 1, 0.85],
-      extrapolate: 'clamp',
-    });
-    return {
-      transform: [
-        { perspective: 900 },
-        { rotateY },
-        { scale },
-        { translateX },
-      ],
-      opacity,
-    };
-  };
-  const indexToPart = {
-    0: 'basicspeech',
-    1: 'vitalsspeech',
-    2: 'historyspeech',
-    3: 'physicalspeech',
-  };
-  const urlFor = (id, part) => `${API_BASE}/mp3files/${id}_${part}.mp3`;
+  const handleNext = useCallback(() => {
+    const newIndex = Math.min(SLIDE_COUNT - 1, index + 1);
+    setIndex(newIndex);
+    pagerRef.current?.setPage(newIndex);
+  }, [index]);
 
-  const stopPlayback = () => {
-    try {
-      soundRef.current?.stop?.();
-      soundRef.current?.release?.();
-    } catch (_) {}
-    soundRef.current = null;
-    setIsPlaying(false);
-    setIsLoading(false);
-    setCurrentPart(null);
-  };
+  const handleSendForTests = useCallback(() => {
+    navigation.navigate('SelectTests', { caseData });
+  }, [navigation, caseData]);
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
 
-  const playForIndex = (i) => {
-    if (!caseId) return;
-    const part = indexToPart[i];
-    const url = urlFor(caseId, part);
-    console.log('url', url);
-    // stop prior if any
-    stopPlayback();
-    setIsLoading(true);
-    try { Sound.setCategory('Playback', true); } catch (_) {}
-    try { Sound.enableInSilenceMode(true); } catch (_) {}
-    const s = new Sound(url, undefined, (error) => {
-      if (error) {
-        console.warn('Audio load error:', error);
-        setIsLoading(false);
-        setIsPlaying(false);
-        setCurrentPart(null);
-        return;
-      }
-      setIsLoading(false);
-      setIsPlaying(true);
-      setCurrentPart(part);
-      s.play(() => {
-        try { s.release(); } catch (_) {}
-        soundRef.current = null;
-        setIsPlaying(false);
-        setCurrentPart(null);
-      });
-    });
-    soundRef.current = s;
-  };
 
-  const togglePlayForIndex = (i) => {
-    const part = indexToPart[i];
-    console.log('part', part);
-    console.log(currentPart);
-    console.log(isPlaying);
-    if (isPlaying && currentPart === part) {
-      stopPlayback();
-    } else {
-      playForIndex(i);
-    }
-  };
+  const currentIndexRef = useRef(index);
+  useEffect(() => {
+    currentIndexRef.current = index;
+  }, [index]);
+  const handleAuraPress = useCallback(() => {
+    // stable handler: implementation lives in togglePlayForIndexRef
+    togglePlayForIndexRef.current?.(currentIndexRef.current);
+  }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      return () => {
-        stopPlayback();
-      };
-    }, [])
-  );
-
-  React.useEffect(() => {
-    // Autoplay the audio for the active slide; stop anything currently playing
-    if (!caseId) {
-      stopPlayback();
-      return;
-    }
-    playForIndex(index);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, caseId]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedIndex(index);
+    }, 300); // Wait 300ms after user stops scrolling
+    
+    return () => clearTimeout(timer);
+  }, [index]);
   React.useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(shimmerAnim, {
@@ -289,6 +191,157 @@ export default function ClinicalInfo() {
       shimmerAnim.setValue(0);
     };
   }, [shimmerAnim]);
+
+
+  // Extract data from the CASES_ARRAY structure (steps[0].data)
+  const step1Data = caseData?.steps?.[0]?.data || {};
+  
+  const p = step1Data?.basicInfo || {};
+  console.log('p', p);
+  const chief = step1Data?.chiefComplaint || '';
+  const historyItems = step1Data?.history || [];
+  const examItems = step1Data?.physicalExamination || [];
+  const vitalsData = step1Data?.vitals || {};
+  
+  // Convert vitals object to array format for display
+  const displayVitals = useMemo(() => {
+    const vitalsArray = [
+      { name: 'Temperature', value: vitalsData.temperature },
+      { name: 'Heart Rate', value: vitalsData.heartRate },
+      { name: 'Blood Pressure', value: vitalsData.bloodPressure },
+      { name: 'Respiratory Rate', value: vitalsData.respiratoryRate },
+      { name: 'O2 Saturation', value: vitalsData.oxygenSaturation }
+    ].filter(v => v.value);
+  
+    // Normalize vitals ordering to a friendly display
+    const vitalsOrder = ['Temperature', 'Heart Rate', 'Blood Pressure', 'Respiratory Rate', 'O2 Saturation', 'Weight'];
+    return vitalsOrder
+      .map((label) => vitalsArray.find((v) => v.name === label))
+      .filter(Boolean);
+  }, [vitalsData]);
+
+
+  const indexToPart = {
+    0: 'basicspeech',
+    1: 'vitalsspeech',
+    2: 'historyspeech',
+    3: 'physicalspeech',
+  };
+  const urlFor = (id, part) => `${API_BASE}/mp3files/${id}_${part}.mp3`;
+
+  const stopPlayback = useCallback(() => {
+    try {
+      soundRef.current?.stop?.();
+      soundRef.current?.release?.();
+    } catch (_) {}
+    soundRef.current = null;
+    setIsPlaying(false);
+    setIsLoading(false);
+    setCurrentPart(null);
+    try { auraRef.current?.stop?.(); } catch (_) {}
+  }, []);
+
+  const playForIndex = useCallback((i) => {
+    if (!caseId) return;
+    const part = indexToPart[i];
+    const url = urlFor(caseId, part);
+    // stop prior if any
+    stopPlayback();
+    setIsLoading(true);
+    try { Sound.setCategory('Playback', true); } catch (_) {}
+    try { Sound.enableInSilenceMode(true); } catch (_) {}
+    const s = new Sound(url, undefined, (error) => {
+      if (error) {
+        console.warn('Audio load error:', error);
+        setIsLoading(false);
+        setIsPlaying(false);
+        setCurrentPart(null);
+        try { auraRef.current?.stop?.(); } catch (_) {}
+        return;
+      }
+      setIsLoading(false);
+      setIsPlaying(true);
+      setCurrentPart(part);
+      try { auraRef.current?.start?.(); } catch (_) {}
+      s.play(() => {
+        try { s.release(); } catch (_) {}
+        soundRef.current = null;
+        setIsPlaying(false);
+        setCurrentPart(null);
+        try { auraRef.current?.stop?.(); } catch (_) {}
+      });
+    });
+    soundRef.current = s;
+  }, [caseId, stopPlayback]);
+
+  const togglePlayForIndex = useCallback((i) => {
+    const part = indexToPart[i];
+    if (isPlaying && currentPart === part) {
+      stopPlayback();
+    } else {
+      playForIndex(i);
+    }
+  }, [isPlaying, currentPart, playForIndex, stopPlayback]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        stopPlayback();
+      };
+    }, [stopPlayback])
+  );
+
+  React.useEffect(() => {
+    let audioTimer;
+    let interactionTask;
+
+    // Stop any active playback immediately when index changes
+    stopPlayback();
+
+    if (!caseId) {
+      return undefined;
+    }
+
+    interactionTask = InteractionManager.runAfterInteractions(() => {
+      audioTimer = setTimeout(() => {
+        playForIndex(debouncedIndex);
+      }, 500);
+    });
+
+    return () => {
+      if (audioTimer) {
+        clearTimeout(audioTimer);
+      }
+      interactionTask?.cancel?.();
+      stopPlayback();
+    };
+  }, [debouncedIndex, caseId, playForIndex, stopPlayback]);
+  // Defer mounting the heavy aura until interactions settle
+  useEffect(() => {
+    let task = InteractionManager.runAfterInteractions(() => {
+      setShowAura(true);
+    });
+    return () => {
+      task?.cancel?.();
+    };
+  }, []);
+  // Stabilize audio state refs for toggle without re-renders
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  const currentPartRef = useRef(currentPart);
+  useEffect(() => { currentPartRef.current = currentPart; }, [currentPart]);
+  const togglePlayForIndexRef = useRef(null);
+  useEffect(() => {
+    togglePlayForIndexRef.current = (i) => {
+      const part = indexToPart[i];
+      if (isPlayingRef.current && currentPartRef.current === part) {
+        stopPlayback();
+      } else {
+        playForIndex(i);
+      }
+    };
+  }, [playForIndex, stopPlayback]);
+  const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -297,54 +350,15 @@ export default function ClinicalInfo() {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View
-        style={[
-          styles.auraOverlay,
-          {
-            top: Math.max(
-              6,
-              12 + insets.top + (36 - AURA_SIZE) / 2 // align vertically with close button
-            ),
-          },
-        ]}
-        pointerEvents="box-none"
-      >
-        <AudioAura
-          isPlaying={isPlaying}
-          size={AURA_SIZE}
-          onPress={() => togglePlayForIndex(index)}
-          disabled={!caseId}
-        />
-      </View>
-      <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
-        <TouchableOpacity
-          accessibilityRole="button"
-          onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
-          style={styles.closeButton}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="close" size={22} color="#fff" />
-        </TouchableOpacity>
-      </View>
-      <Animated.ScrollView
-        ref={scrollRef}
-        style={{ flex: 1 }}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
-        )}
-        onMomentumScrollEnd={(e) => {
-          const x = e?.nativeEvent?.contentOffset?.x || 0;
-          const i = Math.round(x / width);
-          if (i !== index) setIndex(i);
+      <PagerView
+        ref={pagerRef}
+        style={styles.pagerView}
+        initialPage={0}
+        onPageSelected={(e) => {
+          setIndex(e.nativeEvent.position);
         }}
-        contentContainerStyle={[styles.carousel, { width: width * SLIDE_COUNT }]}
       >
-        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(0)]}>
+        <View key="1" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
             title="Basic Info & Chief Complaint"
           >
@@ -362,8 +376,8 @@ export default function ClinicalInfo() {
               <Text style={styles.chiefText}>{chief || '—'}</Text>
             </View>
           </Section>
-        </Animated.View>
-        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(1)]}>
+        </View>
+        <View key="2" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
             title="Vitals"
           >
@@ -384,8 +398,8 @@ export default function ClinicalInfo() {
               ))}
             </View>
           </Section>
-        </Animated.View>
-        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(2)]}>
+        </View>
+        <View key="3" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
             title="History (Hx)"
           >
@@ -396,8 +410,8 @@ export default function ClinicalInfo() {
               </View>
             ))}
           </Section>
-        </Animated.View>
-        <Animated.View style={[styles.slide, { width, paddingTop: Math.max(36, insets.top + 24) }, getSlideStyle(3)]}>
+        </View>
+        <View key="4" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
             title="Physical Examination (PE)"
           >
@@ -405,11 +419,50 @@ export default function ClinicalInfo() {
               <BulletItem key={i}>{`${e.system}: ${e.findings}`}</BulletItem>
             ))}
           </Section>
-        </Animated.View>
-        
-      </Animated.ScrollView>
+        </View>
+      </PagerView>
+
+      <View
+        style={[
+          styles.auraOverlay,
+          {
+            top: Math.max(
+              6,
+              12 + insets.top + (36 - AURA_SIZE) / 2 // align vertically with close button
+            ),
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        {showAura && (
+          <AudioAura
+            ref={auraRef}
+            size={AURA_SIZE}
+            onPress={handleAuraPress}
+            disabled={!caseId}
+          />
+        )}
+      </View>
+      <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleClose}
+          hitSlop={hitSlop}
+          style={({ pressed }) => [
+            styles.closeButton,
+            { opacity: pressed ? 0.8 : 1.0 },
+          ]}
+        >
+          <MaterialCommunityIcons name="close" size={22} color="#fff" />
+        </Pressable>
+      </View>
+
+      {/* DOTS INDICATOR (visual only) */}
       {(index < SLIDE_COUNT - 1) && (
-        <View style={[styles.dotsContainer, { bottom: Math.max(70, insets.bottom + 20) }]} pointerEvents="none">
+        <View
+          style={[styles.dotsContainer, { bottom: Math.max(100, insets.bottom + 90) }]}
+          pointerEvents="none"
+        >
           {Array.from({ length: SLIDE_COUNT }, (_, d) => d).map((d) => (
             <View
               key={d}
@@ -421,32 +474,56 @@ export default function ClinicalInfo() {
           ))}
         </View>
       )}
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() => {
-          const newIndex = Math.max(0, index - 1);
-          scrollRef.current?.scrollTo({ x: width * newIndex, animated: true });
-        }}
-        style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
-        activeOpacity={0.8}
+
+      {/* BOTTOM CONTROLS CONTAINER */}
+      <View
+        style={[
+          styles.bottomControls,
+          { paddingBottom: Math.max(24, insets.bottom + 24) },
+        ]}
+        pointerEvents="box-none"
       >
-        <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
-      </TouchableOpacity>
-      {index < SLIDE_COUNT - 1 && index !== 3 && (
-        <TouchableOpacity
-          accessibilityRole="button"
-          onPress={() => {
-            const newIndex = Math.min(SLIDE_COUNT - 1, index + 1);
-            scrollRef.current?.scrollTo({ x: width * newIndex, animated: true });
-          }}
-          style={[styles.navButton, styles.navRight, { bottom: Math.max(22, insets.bottom + 25) }]}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="chevron-right" size={28} color={Colors.brand.darkPink} />
-        </TouchableOpacity>
-      )}
-      {index === 3 && (
-        <TouchableOpacity
+       
+        {index > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={handlePrevious}
+            hitSlop={hitSlop}
+            style={({ pressed }) => [
+              styles.navButton,
+              { opacity: pressed ? 0.8 : 1.0 },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="chevron-left"
+              size={28}
+              color={Colors.brand.darkPink}
+            />
+          </Pressable>
+        ) : (
+          <View style={{ width: 48 }} />
+        )}
+
+        {index === 3 ? (
+          // <Pressable
+          //   accessibilityRole="button"
+          //   onPress={handleSendForTests}
+          //   hitSlop={hitSlop}
+          //   style={({ pressed }) => [
+          //     styles.primaryButton,
+          //     { opacity: pressed ? 0.9 : 1.0 },
+          //   ]}
+          // >
+          //   <LinearGradient
+          //     colors={["#F472B6", "#FB7185"]}
+          //     start={{ x: 0, y: 0 }}
+          //     end={{ x: 1, y: 0 }}
+          //     style={styles.primaryButtonGradient}
+          //   />
+          //   <Text style={styles.primaryButtonText}>Send for Tests</Text>
+          //   <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+          // </Pressable>
+          <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
             navigation.navigate('SelectTests', { caseData });
@@ -474,14 +551,32 @@ export default function ClinicalInfo() {
           <Text style={styles.primaryButtonText}>Send for Tests</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
         </TouchableOpacity>
-      )}
-      
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleNext}
+            hitSlop={hitSlop}
+            style={({ pressed }) => [
+              styles.navButton,
+              { opacity: pressed ? 0.8 : 1.0 },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={28}
+              color={Colors.brand.darkPink}
+            />
+          </Pressable>
+        )}
+      </View>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
+  pagerView: { flex: 1 },
   carousel: { },
   slide: { paddingHorizontal: 10, paddingTop: 36, paddingBottom: 120, height: '100%', justifyContent: 'center', alignItems: 'stretch' },
   sectionBlock: { marginBottom: 20, alignItems: 'center' },
@@ -559,7 +654,8 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     right: 12,
-    zIndex: 10,
+    zIndex: 100,
+    elevation: 100,
   },
   closeButton: {
     width: 36,
@@ -569,6 +665,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0,
+    elevation: 100,
   },
   heroImage: { width: '100%', height: 200, borderRadius: 16, marginBottom: 12, resizeMode: 'cover' },
   infoGrid: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 12 },
@@ -593,7 +690,6 @@ const styles = StyleSheet.create({
   tipSubtitle: { fontSize: 12, color: '#333' },
   tipCta: { marginTop: 8, fontSize: 14, fontWeight: '800', color: Colors.brand.blue },
   primaryButton: {
-    marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -610,6 +706,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
   shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
+
   primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 18 },
   testGrid: { flexDirection: 'column', gap: 12 },
   testCard: {
@@ -651,8 +748,19 @@ const styles = StyleSheet.create({
   },
   diagnosisName: { marginTop: 0, marginLeft: 12, textAlign: 'left', fontWeight: '700', flex: 1 },
   diagnosisNameSelected: { color: Colors.brand.darkPink },
-  navButton: {
+  bottomControls: {
     position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    elevation: 1000,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  navButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -666,9 +774,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  navLeft: { left: 16 },
-  navRight: { right: 16 },
-  navRightCta: { position: 'absolute', right: 16, paddingHorizontal: 16 },
   // Bottom sheet styles
   sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#11181C' },
@@ -677,7 +782,8 @@ const styles = StyleSheet.create({
     right: 6,
     width: AURA_SIZE,
     height: AURA_SIZE,
-    zIndex: 20
+    zIndex: 120,
+    elevation: 120,
   },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)', backgroundColor: '#fff' },
