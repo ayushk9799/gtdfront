@@ -26,29 +26,107 @@ const INFO_BG = '#F6EFE4';
 
 const TABS = ['Tests', 'Diagnosis', 'Treatment'];
 
+// Local animated number to avoid re-rendering the whole screen each frame
+function AnimatedNumber({ value, duration = 800, easing = Easing.out(Easing.cubic), style, formatter }) {
+  const animatedValueRef = React.useRef(new Animated.Value(0));
+  const animatedValue = animatedValueRef.current;
+  const [display, setDisplay] = React.useState(0);
+  React.useEffect(() => {
+    const id = animatedValue.addListener(({ value: v }) => setDisplay(v));
+    return () => animatedValue.removeListener(id);
+  }, [animatedValue]);
+  React.useEffect(() => {
+    animatedValue.stopAnimation();
+    Animated.timing(animatedValue, {
+      toValue: value || 0,
+      duration,
+      easing,
+      useNativeDriver: false,
+    }).start();
+  }, [value, duration, easing, animatedValue]);
+  const text = typeof formatter === 'function' ? formatter(display) : String(Math.round(display));
+  return <Text style={style}>{text}</Text>;
+}
+
 export default function ClinicalInsight() {
   const themeColors =  Colors.light;
   const route = useRoute();
   const navigation = useNavigation();
   const initialTabParam = route?.params?.initialTab;
   const caseDataFromRoute = route?.params?.caseData;
+
+  const handleBackPress = React.useCallback(() => {
+    const fromParam =
+      route?.params?.from ||
+      route?.params?.source ||
+      route?.params?.openedFrom ||
+      route?.params?.origin ||
+      null;
+    let prevRouteName = null;
+    try {
+      const state = navigation.getState && navigation.getState();
+      const routes = state?.routes || [];
+      const idx = typeof state?.index === 'number' ? state.index : routes.length - 1;
+      if (idx > 0 && routes[idx - 1]?.name) prevRouteName = routes[idx - 1].name;
+    } catch {}
+    const fromStr = typeof fromParam === 'string' ? fromParam.toLowerCase() : '';
+    const openedFromSelectTreatment =
+      (fromStr.includes('treatment') || fromStr.includes('selecttreatment')) ||
+      prevRouteName === 'SelectTreatment';
+    const openedFromLearning =
+      (fromStr.includes('learning')) ||
+      prevRouteName === 'Learning';
+    if (openedFromSelectTreatment) {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'Tabs',
+              state: {
+                routes: [{ name: 'Home' }],
+              },
+            },
+          ],
+        })
+      );
+      return;
+    }
+    if (openedFromLearning) {
+      navigation.goBack();
+      return;
+    }
+    navigation.goBack();
+  }, [navigation, route]);
+
   const {
     caseData: caseDataFromStore,
     selectedTestIds,
     selectedDiagnosisId,
     selectedTreatmentIds,
   } = useSelector((s) => s.currentGame);
+
+  const { isPremium } = useSelector(state => state.user);
+
+
   const caseData = caseDataFromRoute || caseDataFromStore || {};
+
   const layout = useWindowDimensions();
   // Alias mapping for initial tab labels coming from previous screens
   const normalizedInitialTab = (initialTabParam === 'Treatment Plan') ? 'Treatment' : initialTabParam;
   const [index, setIndex] = React.useState(
     Math.max(0, TABS.indexOf(TABS.includes(normalizedInitialTab) ? normalizedInitialTab : 'Tests'))
   );
+
   const [routes] = React.useState(
     TABS.map((t) => ({ key: t.toLowerCase(), title: t }))
   );
+
   const [insightsExpanded, setInsightsExpanded] = React.useState(true);
+  const [howExpanded, setHowExpanded] = React.useState(true);
+  const [rationaleExpanded, setRationaleExpanded] = React.useState(true);
+  const [txExpanded, setTxExpanded] = React.useState(true);
+  const [whyExpanded, setWhyExpanded] = React.useState(true);
 
   // Compute normalized scores (30/40/30)
   const scores = React.useMemo(() => {
@@ -64,57 +142,10 @@ export default function ClinicalInsight() {
   }, [caseData, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds]);
 
   // Animated total score value
-  const totalScoreAnim = React.useRef(new Animated.Value(0)).current;
-  const [displayTotalScore, setDisplayTotalScore] = React.useState(0);
-  React.useEffect(() => {
-    const id = totalScoreAnim.addListener(({ value }) => setDisplayTotalScore(value));
-    return () => totalScoreAnim.removeListener(id);
-  }, [totalScoreAnim]);
-  React.useEffect(() => {
-    Animated.timing(totalScoreAnim, {
-      toValue: scores.total || 0,
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [scores.total, totalScoreAnim]);
+  // Animated via local AnimatedNumber to avoid screen-wide re-renders
 
   // Animated per-tab category scores (animate on tab change)
-  const categoryAnimValuesRef = React.useRef({
-    tests: new Animated.Value(0),
-    diagnosis: new Animated.Value(0),
-    treatment: new Animated.Value(0),
-  });
-  const [categoryDisplay, setCategoryDisplay] = React.useState({ tests: 0, diagnosis: 0, treatment: 0 });
-  React.useEffect(() => {
-    const subs = [];
-    const ref = categoryAnimValuesRef.current;
-    Object.keys(ref).forEach((k) => {
-      subs.push(ref[k].addListener(({ value }) => {
-        setCategoryDisplay((prev) => ({ ...prev, [k]: value }));
-      }));
-    });
-    return () => {
-      const ref2 = categoryAnimValuesRef.current;
-      Object.keys(ref2).forEach((k, i) => {
-        ref2[k].removeListener(subs[i]);
-      });
-    };
-  }, []);
-  React.useEffect(() => {
-    const activeKey = routes[index]?.key;
-    if (!activeKey) return;
-    const toVal = activeKey === 'tests' ? (scores.tests || 0) : activeKey === 'diagnosis' ? (scores.diagnosis || 0) : (scores.treatment || 0);
-    const anim = categoryAnimValuesRef.current[activeKey];
-    anim.stopAnimation();
-    anim.setValue(0);
-    Animated.timing(anim, {
-      toValue: toVal,
-      duration: 650,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [index, scores.tests, scores.diagnosis, scores.treatment, routes]);
+  // Animated locally per scene via AnimatedNumber
 
   // Subtle fade/slide-in for active tab content
   const sceneAnimsRef = React.useRef({
@@ -122,6 +153,7 @@ export default function ClinicalInsight() {
     diagnosis: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
     treatment: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
   });
+
   React.useEffect(() => {
     const activeKey = routes[index]?.key;
     if (!activeKey) return;
@@ -223,6 +255,11 @@ export default function ClinicalInsight() {
     return out;
   }, [caseData]);
 
+  // Full case review (step 5) data for additional reference cards
+  const caseReview = React.useMemo(() => {
+    return caseData?.steps?.[4]?.data || null;
+  }, [caseData]);
+
   // Header diagnosis values
   const headerDx = React.useMemo(() => {
     const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
@@ -241,21 +278,7 @@ export default function ClinicalInsight() {
       />
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable
-          onPress={() =>
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [
-                  {
-                    name: 'Tabs',
-                    state: {
-                      routes: [{ name: 'Home' }],
-                    },
-                  },
-                ],
-              })
-            )
-          }
+          onPress={handleBackPress}
           style={styles.backBtnInline}
           hitSlop={10}
         >
@@ -268,7 +291,12 @@ export default function ClinicalInsight() {
             style={styles.scoreBoardBg}
             imageStyle={styles.scoreBoardBgImage}
           >
-            <Text style={styles.scoreBoardText}>{`Score: ${Math.round(displayTotalScore)} / 100`}</Text>
+            <AnimatedNumber
+              style={styles.scoreBoardText}
+              value={scores.total}
+              duration={800}
+              formatter={(v) => `Score: ${Math.round(v)} / 100`}
+            />
             {/* Bottom fade to blend image into page background */}
             <LinearGradient
               pointerEvents="none"
@@ -333,7 +361,6 @@ export default function ClinicalInsight() {
               const currentSections = sections[key] || [];
               const categoryMax = key === 'diagnosis' ? 40 : 30;
               const categoryScore = key === 'tests' ? scores.tests : key === 'diagnosis' ? scores.diagnosis : scores.treatment;
-              const animatedCategory = (categoryDisplay && typeof categoryDisplay[key] === 'number') ? categoryDisplay[key] : categoryScore;
               return (
                 <ScrollView 
                   style={{ flex: 1 }}
@@ -341,7 +368,12 @@ export default function ClinicalInsight() {
                   contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12 }}
                 >
                   <Animated.View style={{ opacity: sceneAnimsRef.current[key].opacity, transform: [{ translateY: sceneAnimsRef.current[key].translateY }] }}>
-                    <Text style={[styles.bulletText, { marginLeft: 0, fontWeight: '900', color: Colors.brand.darkPink }]}>{`Score: ${Math.round(animatedCategory)} / ${categoryMax}`}</Text>
+                    <AnimatedNumber
+                      style={[styles.bulletText, { marginLeft: 0, fontWeight: '900', color: Colors.brand.darkPink }]}
+                      value={categoryScore}
+                      duration={650}
+                      formatter={(v) => `Score: ${Math.round(v)} / ${categoryMax}`}
+                    />
                     {currentSections.length === 0 ? (
                       <Text style={[styles.bulletText, { marginLeft: 0 }]}>No items to display.</Text>
                     ) : (
@@ -388,12 +420,260 @@ export default function ClinicalInsight() {
             </>
           )}
         </View>
+
+        {/* how we landed on the diagnosis */}
+        {caseReview?.howWeLandedOnTheDiagnosis?.length ? (
+          <View style={[styles.insightCard, styles.insightCardBlue]}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => setHowExpanded((v) => !v)}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapBlue]}>
+                  <MaterialCommunityIcons name="chevron-right" size={16} color="#2A4670" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextBlue]}>How We Landed on the Diagnosis</Text>
+              </View>
+              <MaterialCommunityIcons name={howExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#2A4670" />
+            </Pressable>
+            {howExpanded && (
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                <HowDiagnosisList items={caseReview.howWeLandedOnTheDiagnosis} />
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {/* rationale behind test selection */}
+        {caseReview?.rationaleBehindTestSelection?.length ? (
+          <View style={[styles.insightCard, styles.insightCardOrange]}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => setRationaleExpanded((v) => !v)}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
+                  <MaterialCommunityIcons name="chevron-right" size={16} color="#6E4A13" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Rationale Behind Test Selection</Text>
+              </View>
+              <MaterialCommunityIcons name={rationaleExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#6E4A13" />
+            </Pressable>
+            {rationaleExpanded && (
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                <TestRationaleList items={caseReview.rationaleBehindTestSelection} />
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {/* treatment priority and sequencing */}
+        {caseReview?.treatmentPriorityAndSequencing?.length ? (
+          <View style={[styles.insightCard, styles.insightCardPurple]}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => setTxExpanded((v) => !v)}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
+                  <MaterialCommunityIcons name="chevron-right" size={16} color="#5B2E91" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Treatment Priority and Sequencing</Text>
+              </View>
+              <MaterialCommunityIcons name={txExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#5B2E91" />
+            </Pressable>
+            {txExpanded && (
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                <TreatmentPriorityList items={caseReview.treatmentPriorityAndSequencing} />
+              </View>
+            )} 
+          </View>
+        ) : null}
+
+        {/* why other diagnoses didn't fit */}
+        {caseReview?.whyOtherDiagnosesDidntFit?.length ? (
+          <View style={[styles.insightCard, styles.insightCardRed]}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => setWhyExpanded((v) => !v)}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapRed]}>
+                  <MaterialCommunityIcons name="chevron-right" size={16} color="#7B1F24" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextRed]}>Why Other Diagnoses Didn’t Fit</Text>
+              </View>
+              <MaterialCommunityIcons name={whyExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#7B1F24" />
+            </Pressable>
+            {whyExpanded && (
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                <WhyNotList items={caseReview.whyOtherDiagnosesDidntFit} />
+              </View>
+            )}
+          </View>
+        ) : null}
       </ScrollView>
 
       {/* <Pressable style={styles.fab}>
         <MaterialCommunityIcons name="chevron-down" size={26} color="#FFFFFF" />
       </Pressable> */}
     </SafeAreaView>
+  );
+}
+
+function BulletList({ bullets }) {
+  if (!Array.isArray(bullets) || bullets.length === 0) return null;
+  return (
+    <View style={{ paddingTop: 16 }}>
+      {bullets.map((b, i) => (
+        <Text key={i} style={styles.insightBullet}>{`\u2022 ${b}`}</Text>
+      ))}
+    </View>
+  );
+}
+
+function WhyNotList({ items }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return (
+    <View style={{ paddingTop: 16 }}>
+      {items.map((it, i) => (
+        <View key={i} style={{ marginBottom: 10 }}>
+          <Text style={styles.insightTitle}>{it?.diagnosisName || 'Alternative Diagnosis'}</Text>
+          {!!it?.reasoning && (
+            <Text style={styles.insightBullet}>{`\u2022 ${it.reasoning}`}</Text>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function TreatmentPriorityList({ items }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const parseItem = (text, index) => {
+    if (typeof text !== 'string') {
+      return { step: index + 1, title: '', desc: String(text) };
+    }
+    let raw = text.trim();
+    // Strip starting bold markers if present
+    if (raw.startsWith('**')) raw = raw.slice(2);
+    const boldSplit = raw.split('**');
+    const head = boldSplit[0] || raw;
+    const remainder = boldSplit.slice(1).join('**').trim();
+    // Extract "N. Title[:]" from head
+    const m = head.match(/^\s*(\d+)\.\s*(.*?)(:)?\s*$/);
+    const step = m ? parseInt(m[1], 10) : (index + 1);
+    const title = m ? (m[2] || '').trim() : head.replace(/^(\d+)\.\s*/, '').trim().replace(/:$/, '');
+    const desc = remainder && remainder.length > 0 ? remainder : (raw.includes(':') ? raw.split(':').slice(1).join(':').trim() : '');
+    return { step, title, desc };
+  };
+  return (
+    <View style={{ paddingTop: 16 }}>
+      {items.map((it, idx) => {
+        const { step, title, desc } = parseItem(it, idx);
+        return (
+          <View key={idx} style={styles.treatmentStepRow}>
+            <View style={styles.treatmentStepBadge}>
+              <Text style={styles.treatmentStepBadgeText}>{step}</Text>
+            </View>
+            <View style={styles.treatmentStepContent}>
+              {!!title && <Text style={styles.treatmentStepTitle}>{title}</Text>}
+              {!!desc && <Text style={styles.treatmentStepDesc}>{desc}</Text>}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function TestRationaleList({ items }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const parseRationale = (text) => {
+    if (typeof text !== 'string') return { name: String(text), priority: '', desc: '' };
+    let raw = text.trim();
+    // Remove starting/ending bold markers if present
+    if (raw.startsWith('**')) raw = raw.slice(2);
+    if (raw.endsWith('**')) raw = raw.slice(0, -2);
+    // Split head (before **) and remainder (after **)
+    const parts = text.startsWith('**') ? text.split('**') : [raw];
+    // head is typically the bold section
+    const head = parts.length > 1 ? parts[1] : parts[0];
+    const after = parts.length > 2 ? parts.slice(2).join('**').trim() : '';
+    // From head, extract "Name (Priority):"
+    const headClean = head.replace(/\*\*/g, '').trim();
+    const colonIdx = headClean.lastIndexOf(':');
+    const headNoColon = colonIdx >= 0 ? headClean.slice(0, colonIdx).trim() : headClean;
+    // Extract "(Priority)" if present
+    let name = headNoColon;
+    let priority = '';
+    const prMatch = headNoColon.match(/\(([^)]+)\)\s*$/);
+    if (prMatch) {
+      priority = prMatch[1].trim();
+      name = headNoColon.replace(/\(([^)]+)\)\s*$/, '').trim();
+    }
+    // Description: prefer "after", else split raw after the first colon
+    let desc = after && after.length ? after : '';
+    if (!desc) {
+      const firstColon = raw.indexOf(':');
+      if (firstColon >= 0) {
+        desc = raw.slice(firstColon + 1).trim();
+      }
+    }
+    return { name, priority, desc };
+  };
+  return (
+    <View style={{ paddingTop: 16 }}>
+      {items.map((it, i) => {
+        const { name, priority, desc } = parseRationale(it);
+        return (
+          <View key={i} style={styles.rationaleRow}>
+            <View style={styles.rationaleHeader}>
+              <Text style={styles.rationaleTitle}>{name}</Text>
+              {!!priority && (
+                <View style={styles.rationaleChip}>
+                  <Text style={styles.rationaleChipText}>{priority}</Text>
+                </View>
+              )}
+            </View>
+            {!!desc && <Text style={styles.rationaleDesc}>{desc}</Text>}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function HowDiagnosisList({ items }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const parseHow = (text) => {
+    if (typeof text !== 'string') return { title: String(text), desc: '' };
+    let raw = text.trim();
+    // Remove leading/trailing bold markers
+    if (raw.startsWith('**')) raw = raw.slice(2);
+    if (raw.endsWith('**')) raw = raw.slice(0, -2);
+    // If the original had bold, split to get head and remainder
+    const parts = text.startsWith('**') ? text.split('**') : [raw];
+    const head = parts.length > 1 ? parts[1] : parts[0];
+    const after = parts.length > 2 ? parts.slice(2).join('**').trim() : '';
+    const headClean = head.replace(/\*\*/g, '').trim();
+    // Split at first colon to get title and description
+    const colonIdx = headClean.indexOf(':');
+    const title = colonIdx >= 0 ? headClean.slice(0, colonIdx).trim() : headClean;
+    let desc = after && after.length ? after : '';
+    if (!desc) {
+      const firstColon = raw.indexOf(':');
+      if (firstColon >= 0) {
+        desc = raw.slice(firstColon + 1).trim();
+      }
+    }
+    return { title, desc };
+  };
+  return (
+    <View style={{ paddingTop: 16 }}>
+      {items.map((it, i) => {
+        const { title, desc } = parseHow(it);
+        return (
+          <View key={i} style={styles.howRow}>
+            <View style={styles.howBullet}>
+              <MaterialCommunityIcons name="check-circle-outline" size={16} color="#2A4670" />
+            </View>
+            <View style={styles.howContent}>
+              {!!title && <Text style={styles.howTitle}>{title}</Text>}
+              {!!desc && <Text style={styles.howDesc}>{desc}</Text>}
+            </View>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -443,7 +723,7 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   container: { paddingHorizontal: 8, paddingBottom: 120 },
   screenWrap: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
-  topWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 12 },
+  topWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 24 },
   topImage: {
     width: 96,
     height: 96,
@@ -564,6 +844,73 @@ const styles = StyleSheet.create({
   
   insightTitle: { fontSize: 18, fontWeight: '900', color: '#163D3A', marginBottom: 6 },
   insightBullet: { fontSize: 15.5, color: '#163D3A', lineHeight: 22, marginLeft: 6 },
+  // Themed variants for additional cards
+  insightCardBlue: {
+    borderColor: '#B7C7E6',
+    backgroundColor: '#EAF1FB',
+  },
+  insightHeaderTextBlue: { color: '#2A4670' },
+  insightIconWrapBlue: { backgroundColor: '#D6E4FB' },
+  insightCardOrange: {
+    borderColor: '#E6D5B8',
+    backgroundColor: '#F6EFE4',
+  },
+  insightHeaderTextOrange: { color: '#6E4A13' },
+  insightIconWrapOrange: { backgroundColor: '#F2E3CA' },
+  insightCardPurple: {
+    borderColor: '#D8C8F2',
+    backgroundColor: '#F2ECFA',
+  },
+  insightHeaderTextPurple: { color: '#5B2E91' },
+  insightIconWrapPurple: { backgroundColor: '#E6DDF7' },
+  insightCardRed: {
+    borderColor: '#F0C9CD',
+    backgroundColor: '#FBECEE',
+  },
+  insightHeaderTextRed: { color: '#7B1F24' },
+  insightIconWrapRed: { backgroundColor: '#F6D9DB' },
+  treatmentStepRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
+  treatmentStepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#C8EFE9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 2,
+  },
+  treatmentStepBadgeText: { color: SUCCESS_COLOR, fontWeight: '900' },
+  treatmentStepContent: { flex: 1 },
+  treatmentStepTitle: { fontSize: 16.5, fontWeight: '900', color: '#163D3A' },
+  treatmentStepDesc: { fontSize: 15.5, color: '#163D3A', lineHeight: 22, marginTop: 2 },
+  rationaleRow: { marginBottom: 14 },
+  rationaleHeader: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+  rationaleTitle: { fontSize: 16.5, fontWeight: '900', color: '#6E4A13', marginRight: 8 },
+  rationaleChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#F2E3CA',
+    borderWidth: 1,
+    borderColor: '#E6D5B8',
+  },
+  rationaleChipText: { fontSize: 12.5, fontWeight: '800', color: '#6E4A13' },
+  rationaleDesc: { fontSize: 15.5, color: '#6E4A13', lineHeight: 22, marginTop: 4 },
+  howRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
+  howBullet: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#D6E4FB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 2,
+  },
+  howContent: { flex: 1 },
+  howTitle: { fontSize: 16.5, fontWeight: '900', color: '#2A4670' },
+  howDesc: { fontSize: 15.5, color: '#2A4670', lineHeight: 22, marginTop: 2 },
   fab: {
     position: 'absolute',
     right: 16,

@@ -1,13 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import inappicon from '../../constants/inappicon.png';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 
 export default function LeagueHeader() {
   const navigation = useNavigation();
-  const { isPremium } = useSelector(state => state.user);
+  const { isPremium, userData } = useSelector(state => state.user);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 10, flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 10 }}>
@@ -46,24 +45,17 @@ export default function LeagueHeader() {
         </TouchableOpacity>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 5, flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
-         {/* <StatPill icon="heart" iconBg="#FFD1E1" iconColor="#FF0000" label="2" style={{ marginRight: 6 }} /> */}
-        <StatPill icon="fire" iconBg="#FFD7AE" iconColor="#FF6A00" label="100" /> 
+        <View style={[pillStyle(), { flexShrink: 1 }]}>
+      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#FFD1E1", alignItems: 'center', justifyContent: 'center' }}>
+        <MaterialCommunityIcons name={'heart'} size={12} color="#FF0000" />
       </View>
+      <Text style={pillText()}>0</Text>
+      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#FFD7AE", alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}>
+        <MaterialCommunityIcons name={'fire'} size={10} color="#FF6A00" />
+      </View>
+      <Text style={pillText()}>{parseInt(userData?.cumulativePoints?.total || 0)}</Text>
     </View>
-  );
-}
-
-function StatPill({ icon, iconBg, iconColor, label, style }) {
-  return (
-    <View style={[pillStyle(), { flexShrink: 1 }, style]}>
-      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center' }}>
-        <MaterialCommunityIcons name={'heart'} size={12} color={iconColor} />
       </View>
-      <Text style={pillText()}>{3}</Text>
-      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}>
-        <MaterialCommunityIcons name={'fire'} size={10} color={iconColor} />
-      </View>
-      <Text style={pillText()}>{2000}</Text>
     </View>
   );
 }

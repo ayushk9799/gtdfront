@@ -21,12 +21,11 @@ export default function PremiumScreen() {
 
   const features = useMemo(
     () => [
-      { label: 'Intern, Resident and Attending level cases', free: true, pro: true },
-      { label: 'Specialist and Super Specialist level cases', free: false, pro: true },
-      { label: 'Followup Cases', free: false, pro: true },
-      { label: 'Play endlessly with Unlimited Hearts', free: false, pro: true },
-      { label: 'Clinical images within cases', free: false, pro: true },
-      { label: 'Clinical Deep Dive after cases', free: false, pro: true },
+      { label: 'Intern to Attending cases', free: true, pro: true },
+      { label: 'Specialist-level cases', free: false, pro: true },
+      { label: 'Unlimited Hearts', free: false, pro: true },
+      { label: 'Clinical images', free: false, pro: true },
+      { label: 'Deep Dive explanations', free: false, pro: true },
       { label: 'No ads', free: false, pro: true },
     ],
     [],

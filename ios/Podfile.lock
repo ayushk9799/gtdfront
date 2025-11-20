@@ -14,9 +14,6 @@ PODS:
   - Firebase/CoreOnly (12.4.0):
     - FirebaseCore (~> 12.4.0)
   - Firebase/Messaging (12.4.0):
-  - Firebase/CoreOnly (12.4.0):
-    - FirebaseCore (~> 12.4.0)
-  - Firebase/Messaging (12.4.0):
     - Firebase/CoreOnly
     - FirebaseMessaging (~> 12.4.0)
   - FirebaseCore (12.4.0):
@@ -103,8 +100,8 @@ PODS:
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - PromisesObjC (2.4.0)
-  - PurchasesHybridCommon (17.17.0):
-    - RevenueCat (= 5.47.0)
+  - PurchasesHybridCommon (17.18.0):
+    - RevenueCat (= 5.48.0)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -1803,7 +1800,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-keyboard-controller (1.19.3):
+  - react-native-keyboard-controller (1.19.5):
     - boost
     - DoubleConversion
     - fast_float
@@ -1822,7 +1819,7 @@ PODS:
     - React-hermes
     - React-ImageManager
     - React-jsi
-    - react-native-keyboard-controller/common (= 1.19.3)
+    - react-native-keyboard-controller/common (= 1.19.5)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1833,7 +1830,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-keyboard-controller/common (1.19.3):
+  - react-native-keyboard-controller/common (1.19.5):
     - boost
     - DoubleConversion
     - fast_float
@@ -2484,6 +2481,7 @@ PODS:
     - React-perflogger (= 0.80.1)
     - React-utils (= 0.80.1)
     - SocketRocket
+  - RevenueCat (5.48.0)
   - RNBootSplash (6.3.11):
     - boost
     - DoubleConversion
@@ -2495,9 +2493,6 @@ PODS:
     - RCT-Folly/Fabric
     - RCTRequired
     - RCTTypeSafety
-  - RevenueCat (5.47.0)
-  - RNFBApp (23.5.0):
-    - Firebase/CoreOnly (= 12.4.0)
     - React-Core
     - React-debug
     - React-Fabric
@@ -2521,12 +2516,10 @@ PODS:
     - React-Core
   - RNFBMessaging (23.5.0):
     - Firebase/Messaging (= 12.4.0)
-  - RNFBMessaging (23.5.0):
-    - Firebase/Messaging (= 12.4.0)
     - FirebaseCoreExtension
     - React-Core
     - RNFBApp
-  - RNGestureHandler (2.29.0):
+  - RNGestureHandler (2.29.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -2555,8 +2548,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNPurchases (9.6.5):
-    - PurchasesHybridCommon (= 17.17.0)
+  - RNPurchases (9.6.6):
+    - PurchasesHybridCommon (= 17.18.0)
     - React-Core
   - RNReanimated (3.19.4):
     - boost
@@ -2797,7 +2790,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSVG (15.14.0):
+  - RNSVG (15.15.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2824,10 +2817,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNSVG/common (= 15.14.0)
+    - RNSVG/common (= 15.15.0)
     - SocketRocket
     - Yoga
-  - RNSVG/common (15.14.0):
+  - RNSVG/common (15.15.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -3214,7 +3207,7 @@ SPEC CHECKSUMS:
   hermes-engine: 4f07404533b808de66cf48ac4200463068d0e95a
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  PurchasesHybridCommon: fc38c0596d63ad06a3acab2937496fbf77f8af07
+  PurchasesHybridCommon: 31ec0e6adbe08e27e9b5eead7b4b2337b5baa849
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: efa5010912100e944a7ac9a93a157e1def1988fe
   RCTRequired: bbc4cf999ddc4a4b076e076c74dd1d39d0254630
@@ -3250,10 +3243,9 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: d9499269ad1f484ae71319bac1d9231447f2094e
   react-native-blur: 477fac85a42b5506232ef1d2b82aad359feadd26
   react-native-credentials-manager: 0c4f107ad932bff0aac011d592b857ea4c21a5f2
-  react-native-keyboard-controller: 79202cb514ec8771d104efe46485bec40a83636b
+  react-native-keyboard-controller: c81685e57a7f40b07d322fdbee5cdb564e26a4a4
   react-native-mmkv: b189248d0ad153f44ef126270c201a1828a056fd
   react-native-pager-view: b9ba7f584ded35913d033e88e65067492b4736ce
-  react-native-safe-area-context: 01f6d357d42395422eed7c3bfe715614728f2989
   react-native-safe-area-context: 01f6d357d42395422eed7c3bfe715614728f2989
   React-NativeModulesApple: 983f3483ef0a3446b56d490f09d579fba2442e17
   React-oscompat: 114036cd8f064558c9c1a0c04fc9ae5e1453706a
@@ -3286,20 +3278,16 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: afd905e84ee36e1678016ae04d7370c75ed539be
   ReactCodegen: f8d5fb047c4cd9d2caade972cad9edac22521362
   ReactCommon: 17fd88849a174bf9ce45461912291aca711410fc
+  RevenueCat: 1e61140a343a77dc286f171b3ffab99ca09a4b57
   RNBootSplash: 8f8a2647aeb4b8268bbb6fb1c32cc3fcc70b0afc
   RNFBApp: 255fa19a91d6c1309e021ee75d5d209754e5961b
   RNFBMessaging: c304c1d8949f996d3eed1cf4eeba33148d13b4ea
-  RNGestureHandler: b10adefe65287088d425204632d519c800a935e5
-  RNReanimated: 1132bdde58659cf48013092741fbb2110e553b0c
-  RevenueCat: e9024be15991ff39bf6bd887def57693115ec8c5
-  RNFBApp: 255fa19a91d6c1309e021ee75d5d209754e5961b
-  RNFBMessaging: c304c1d8949f996d3eed1cf4eeba33148d13b4ea
   RNGestureHandler: 5b17f2ffba1909187924a248aaca7d077673d857
-  RNPurchases: 60cc16dc28bab3e800fdc363b42c0579c8bc4ee3
+  RNPurchases: 2cd08046168c16debfed082c7da92c93fef34d6b
   RNReanimated: 845c4547c576a2e88479d86eb4cca7fcddca566a
   RNScreens: f35bcc83b6e3a871635b1c28728e63c9560f159a
   RNSound: ddbba0e2aee6c5894b4f9b230f79a999a644ae00
-  RNSVG: cb3156ab4865f6a8bc145fb431a1003f02df2ff7
+  RNSVG: 1adedbdb9108898c4d6a9606aac746789ba7330b
   RNVectorIcons: be4d047a76ad307ffe54732208fb0498fcb8477f
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   TextToSpeech: 89b239221ec378d213af422d14789a729705360b
