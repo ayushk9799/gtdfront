@@ -7,7 +7,6 @@ import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import { styles } from './styles';
 import LeagueHeader from './LeagueHeader';
-import { CASES_ARRAY } from '../../constants/Api';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch, useSelector } from 'react-redux';
@@ -76,9 +75,9 @@ export default function HomeScreen() {
                 <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
               </View>
-              <View style={styles.badge}>
+              {/* <View style={styles.badge}>
                 <Text style={styles.badgeText}>New</Text>
-              </View>
+              </View> */}
             </View>
             
             {isChallengeLoading && (
@@ -100,7 +99,7 @@ export default function HomeScreen() {
             {currentChallenge && !isChallengeLoading && !hasChallengeError && (
               <>
                 <Text style={[styles.cardDesc, { marginTop: 8 }]}>
-                  {currentChallenge?.metadata?.description || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                  {currentChallenge?.caseData?.caseTitle|| 'Solve today\'s case in under 3 tries to keep your streak alive.'}
                 </Text>
                 <TouchableOpacity 
                   style={styles.primaryButton} 
@@ -158,34 +157,7 @@ export default function HomeScreen() {
             )}
           </View>
 
-        {CASES_ARRAY.map((caseItem, index) => (
-          <View key={caseItem.caseId} style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-            <Image source={inappicon} style={styles.gameImage} />
-            <View style={styles.cardContent}>
-              <View style={styles.rowCenterBetween}>
-                <Text style={[styles.cardTitle, { color: themeColors.text, flex: 1 }]}>{caseItem.caseTitle}</Text>
-                {index === 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>New</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.cardDesc}>
-                {caseItem.steps?.[0]?.data?.chiefComplaint || 'Clinical case study'}
-              </Text>
-              <TouchableOpacity 
-                style={styles.primaryButton} 
-                activeOpacity={0.9} 
-                onPress={() => {
-                  dispatch(setCaseData({ caseId: caseItem.caseId, caseData: caseItem }));
-                  navigation.navigate('ClinicalInfo');
-                }}
-              >
-                <Text style={styles.primaryButtonText}>Start Case</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+        
       </ScrollView>
     </SafeAreaView>
   );

@@ -28,9 +28,13 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
     return <Text style={[styles.cardDesc, { color: '#C62828', marginTop: 8 }]}>{error}</Text>;
   }
 
+  const visibleItems = Array.isArray(items)
+    ? items.filter((dept) => Number(dept?.totalCount || 0) > 0)
+    : [];
+
   return (
     <View style={{ marginTop: 8}}>
-      {items.map((dept) => {
+      {visibleItems.map((dept) => {
         const title = (dept.name || '').charAt(0).toUpperCase() + (dept.name || '').slice(1);
         const firstCase = (Array.isArray(dept.unsolvedCases) ? dept.unsolvedCases : [])[0];
         const subtitle = firstCase?.chiefComplaint || 'No pending cases – great job!';

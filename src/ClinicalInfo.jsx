@@ -12,6 +12,8 @@ import Svg, { Path } from 'react-native-svg';
 import Sound from 'react-native-sound';
 import { API_BASE } from '../constants/Api';
 import AudioAura from './components/AudioAura';
+import ComingSoonImage from './components/ComingSoonImage';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -24,7 +26,7 @@ const AURA_SIZE = 96;
 
 // DecorativeSeparator is now a shared component
 
-function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, audioLoading }) {
+function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, audioLoading, footer }) {
   const themeColors =  Colors.light;
   return (
     <View style={styles.sectionBlock}>
@@ -62,6 +64,11 @@ function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, a
         >
           {children}
         </ScrollView>
+        {footer ? (
+          <View style={styles.sectionFooterOverlay}>
+            {footer}
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -137,6 +144,23 @@ export default function ClinicalInfo() {
   const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
   const caseData = caseDataFromRoute || caseDataFromStore || {};
   const caseId = (caseData?.caseId && String(caseData.caseId)) || '';
+  const [heroLoadError, setHeroLoadError] = useState(false);
+  const mainImageUrl = caseData?.mainimage || '';
+  const [heroLoaded, setHeroLoaded] = useState(false);
+  const [selectedPhysImageIndex, setSelectedPhysImageIndex] = useState(0);
+  const [isImageSheetOpen, setIsImageSheetOpen] = useState(false);
+  const imageSheetRef = useRef(null);
+  const imageSnapPoints = useMemo(() => ['35%', '60%'], []);
+  const physPagerRef = useRef(null);
+  const physScrollRef = useRef(null);
+  const [physContainerWidth, setPhysContainerWidth] = useState(0);
+  
+
+
+  useEffect(() => {
+    setHeroLoadError(false);
+    setHeroLoaded(false);
+  }, [mainImageUrl]);
   
   const handleClose = useCallback(() => {
     navigation.goBack();
@@ -201,7 +225,40 @@ export default function ClinicalInfo() {
   const chief = step1Data?.chiefComplaint || '';
   const historyItems = step1Data?.history || [];
   const examItems = step1Data?.physicalExamination || [];
+  const physicalImages = caseData?.physicalimage|| [];
+  console.log('caseData', caseData);
+  console.log('physicalImages', physicalImages);
   const vitalsData = step1Data?.vitals || {};
+  const totalPhysImages = Array.isArray(physicalImages) ? physicalImages.length : 0;
+  const goPrevPhysImage = useCallback(() => {
+    if (totalPhysImages < 1) return;
+    const i = Math.max(0, selectedPhysImageIndex - 1);
+    setSelectedPhysImageIndex(i);
+    try { physPagerRef.current?.setPage?.(i); } catch (_) {}
+    try {
+      if (physContainerWidth > 0) {
+        physScrollRef.current?.scrollTo?.({ x: i * physContainerWidth, animated: true });
+      }
+    } catch (_) {}
+  }, [selectedPhysImageIndex, totalPhysImages, physContainerWidth]);
+  const goNextPhysImage = useCallback(() => {
+    if (totalPhysImages < 1) return;
+    const i = Math.min(totalPhysImages - 1, selectedPhysImageIndex + 1);
+    setSelectedPhysImageIndex(i);
+    try { physPagerRef.current?.setPage?.(i); } catch (_) {}
+    try {
+      if (physContainerWidth > 0) {
+        physScrollRef.current?.scrollTo?.({ x: i * physContainerWidth, animated: true });
+      }
+    } catch (_) {}
+  }, [selectedPhysImageIndex, totalPhysImages, physContainerWidth]);
+  useEffect(() => {
+    try {
+      if (physContainerWidth > 0) {
+        physScrollRef.current?.scrollTo?.({ x: selectedPhysImageIndex * physContainerWidth, animated: false });
+      }
+    } catch (_) {}
+  }, [physContainerWidth]);
   
   // Convert vitals object to array format for display
   const displayVitals = useMemo(() => {
@@ -362,7 +419,22 @@ export default function ClinicalInfo() {
           <Section
             title="Basic Info & Chief Complaint"
           >
-            <Image source={require('../constants/inappicon.png')} style={styles.heroImage} />
+            {!heroLoadError && mainImageUrl ? (
+              <Image
+                source={{ uri: mainImageUrl }}
+                onLoad={() => {
+                  setHeroLoaded(true);
+                  try { console.log('Main image loaded:', mainImageUrl); } catch (_) {}
+                }}
+                onError={(e) => {
+                  setHeroLoadError(true);
+                  try { console.warn('Main image failed:', mainImageUrl, e?.nativeEvent); } catch (_) {}
+                }}
+                style={styles.heroImage}
+              />
+            ) : (
+              <ComingSoonImage style={styles.heroImage} />
+            )}
             <View style={styles.infoGrid}>
               <InfoColumn icon="badge-account" label="Name" value={p?.name || '—'} />
               <InfoColumn icon="gender-male-female" label="Sex" value={p?.gender || '—'} />
@@ -414,13 +486,135 @@ export default function ClinicalInfo() {
         <View key="4" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
             title="Physical Examination (PE)"
+            footer={
+              physicalImages.length > 0 ? (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={() => {
+                    try { setSelectedPhysImageIndex(0); } catch (_) {}
+                    imageSheetRef.current?.expand?.();
+                  }}
+                  style={styles.sectionFloatingButton}
+                  activeOpacity={0.95}
+                >
+                  <LinearGradient
+                    colors={["#F472B6", "#FB7185"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.sectionFloatingButtonGradient}
+                  />
+                  <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#fff" />
+                  <Text style={styles.sectionFloatingButtonText}>View Images</Text>
+                </TouchableOpacity>
+              ) : null
+            }
           >
-            {examItems.map((e, i) => (
-              <BulletItem key={i}>{`${e.system}: ${e.findings}`}</BulletItem>
-            ))}
+            {
+  examItems.map((e, i) => (
+    <BulletItem key={i}>{`${e.system}: ${e.findings}`}</BulletItem>
+  ))}
           </Section>
         </View>
       </PagerView>
+
+      <BottomSheet
+        ref={imageSheetRef}
+        index={-1}
+        snapPoints={imageSnapPoints}
+        enablePanDownToClose
+        backgroundStyle={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 18, borderTopRightRadius: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: -2 } }}
+        handleIndicatorStyle={{ backgroundColor: Colors.brand.darkPink }}
+        onChange={(idx) => {
+          try { setIsImageSheetOpen(typeof idx === 'number' && idx >= 0); } catch (_) {}
+        }}
+      >
+        <BottomSheetView style={{ paddingHorizontal: 12, paddingBottom: 16 }}>
+          <LinearGradient
+            colors={['#FFF7FA', '#F3F6FF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View style={styles.sheetHeaderRow}>
+            <Text style={styles.sheetHeaderTitle}>Physical Exam Images</Text>
+            {totalPhysImages > 0 ? (
+              <Text style={styles.sheetHeaderMeta}>{`${selectedPhysImageIndex + 1}/${totalPhysImages}`}</Text>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => imageSheetRef.current?.close?.()}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={({ pressed }) => [{ marginLeft: 'auto', opacity: pressed ? 0.8 : 1.0 }]}
+            >
+              <MaterialCommunityIcons name="close" size={18} color={Colors.brand.darkPink} />
+            </Pressable>
+          </View>
+          {totalPhysImages > 0 ? (
+            <>
+              <View style={styles.physImageContainer} onLayout={(e) => { try { setPhysContainerWidth(e.nativeEvent.layout.width); } catch (_) {} }}>
+                <ScrollView
+                  ref={physScrollRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={(e) => {
+                    const w = Math.max(1, physContainerWidth);
+                    const x = e?.nativeEvent?.contentOffset?.x || 0;
+                    const i = Math.round(x / w);
+                    setSelectedPhysImageIndex(Math.min(Math.max(0, i), totalPhysImages - 1));
+                  }}
+                >
+                  {physicalImages.map((item, idx) => (
+                    <View key={String(idx)} style={{ width: physContainerWidth, height: '100%' }}>
+                      {item?.url ? (
+                        <Image
+                          source={{ uri: item.url }}
+                          style={styles.physImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <ComingSoonImage style={{ width: '100%', height: '100%' }} />
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+                {/* Nav chevrons */}
+                <TouchableOpacity
+                  onPress={goPrevPhysImage}
+                  disabled={selectedPhysImageIndex <= 0}
+                  style={[styles.navOverlayButton, { left: 10, opacity: selectedPhysImageIndex <= 0 ? 0.5 : 1 }]}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="chevron-left" size={22} color="#11181C" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={goNextPhysImage}
+                  disabled={selectedPhysImageIndex >= totalPhysImages - 1}
+                  style={[styles.navOverlayButton, { right: 10, opacity: selectedPhysImageIndex >= totalPhysImages - 1 ? 0.5 : 1 }]}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="chevron-right" size={22} color="#11181C" />
+                </TouchableOpacity>
+              </View>
+              {/* Dots + caption */}
+              <View style={styles.indicatorDotsRow}>
+                {physicalImages.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[styles.indicatorDot, i === selectedPhysImageIndex && styles.indicatorDotActive]}
+                  />
+                ))}
+              </View>
+              <Text style={styles.sheetCaptionText}>
+                {(physicalImages[selectedPhysImageIndex]?.tag) || 'Image'}
+              </Text>
+            </>
+          ) : (
+            <ComingSoonImage style={{ width: '100%', aspectRatio: 16/9 }} />
+          )}
+        </BottomSheetView>
+      </BottomSheet>
 
       <View
         style={[
@@ -484,7 +678,7 @@ export default function ClinicalInfo() {
         pointerEvents="box-none"
       >
        
-        {index > 0 ? (
+        {index > 0 && !isImageSheetOpen ? (
           <Pressable
             accessibilityRole="button"
             onPress={handlePrevious}
@@ -504,7 +698,7 @@ export default function ClinicalInfo() {
           <View style={{ width: 48 }} />
         )}
 
-        {index === 3 ? (
+        {!isImageSheetOpen && index === 3 ? (
           // <Pressable
           //   accessibilityRole="button"
           //   onPress={handleSendForTests}
@@ -551,7 +745,7 @@ export default function ClinicalInfo() {
           <Text style={styles.primaryButtonText}>Send for Tests</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
         </TouchableOpacity>
-        ) : (
+        ) : !isImageSheetOpen ? (
           <Pressable
             accessibilityRole="button"
             onPress={handleNext}
@@ -567,7 +761,7 @@ export default function ClinicalInfo() {
               color={Colors.brand.darkPink}
             />
           </Pressable>
-        )}
+        ) : <View style={{ width: 48 }} />}
       </View>
 
     </SafeAreaView>
@@ -596,6 +790,13 @@ const styles = StyleSheet.create({
   },
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
+  sectionFooterOverlay: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 14,
+    alignItems: 'flex-end',
+  },
   audioButton: {
     position: 'absolute',
     right: 0,
@@ -777,6 +978,16 @@ const styles = StyleSheet.create({
   // Bottom sheet styles
   sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#11181C' },
+  sheetHeaderMeta: { fontSize: 12, fontWeight: '800', color: '#687076' },
+  sheetTabsContainer: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: '#F7F9FC',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    marginBottom: 8,
+  },
   auraOverlay: {
     position: 'absolute',
     right: 6,
@@ -803,6 +1014,96 @@ const styles = StyleSheet.create({
   secondaryButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)', backgroundColor: '#fff' },
   secondaryButtonText: { fontWeight: '800', color: Colors.brand.darkPink },
   sheetPrimaryInRow: { paddingHorizontal: 16 },
+  // Tabs for Physical Exam images
+  sectionFloatingButton: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  sectionFloatingButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
+  sectionFloatingButtonText: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  tabPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+  },
+  tabPillActive: {
+    backgroundColor: 'rgba(255, 0, 102, 0.08)',
+    borderColor: Colors.brand.darkPink,
+  },
+  tabPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#11181C',
+  },
+  tabPillTextActive: {
+    color: Colors.brand.darkPink,
+  },
+  physImageContainer: {
+    marginTop: 6,
+    width: '100%',
+    aspectRatio: 16/9,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  physImage: {
+    width: '100%',
+    height: '100%',
+  },
+  navOverlayButton: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indicatorDotsRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  indicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  indicatorDotActive: {
+    backgroundColor: Colors.brand.darkPink,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  sheetCaptionText: {
+    marginTop: 6,
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#687076',
+    fontWeight: '700',
+  },
 });
-
-
