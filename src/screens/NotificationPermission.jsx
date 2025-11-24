@@ -51,6 +51,8 @@ export default function NotificationPermission() {
     // Request OS permission
     const granted = await requestUserPermission();
     storage.set('notifEnabled', granted);
+    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+
 
     // If granted, ensure device is registered and subscribe to topic
     if (granted) {
@@ -77,7 +79,6 @@ export default function NotificationPermission() {
       }
     }
 
-    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   };
 
   const skip = () => {

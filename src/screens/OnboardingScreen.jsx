@@ -7,6 +7,7 @@ import doctorsilhoute from '../../constants/doctorsilhoute3.png';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Sound from 'react-native-sound';
+import { MMKV } from 'react-native-mmkv';
 
 export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
@@ -15,6 +16,7 @@ export default function OnboardingScreen() {
   const [showCTA, setShowCTA] = useState(false);
   const [currentLine, setCurrentLine] = useState('');
   const [optionLines, setOptionLines] = useState([]);
+  const [shouldPlayExperience, setShouldPlayExperience] = useState(false);
   const fade = useRef(new Animated.Value(0)).current;
   const flicker = useRef(new Animated.Value(0)).current;
   const optionOpacities = useRef([
@@ -25,6 +27,7 @@ export default function OnboardingScreen() {
     new Animated.Value(0),
   ]).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const storage = useMemo(() => new MMKV(), []);
 
   const script = useMemo(() => ([
     { type: 'line', text: 'You are a doctor.', duration: 200, pause: 600, flicker: false },
@@ -40,6 +43,15 @@ export default function OnboardingScreen() {
   function run(animation) {
     return new Promise(resolve => animation.start(() => resolve(undefined)));
   }
+  useEffect(() => {
+    const skipOnboarding = storage.getBoolean && storage.getBoolean('forceLogin');
+    if (skipOnboarding) {
+      navigation.replace('Login');
+      return;
+    }
+    setShouldPlayExperience(true);
+  }, [navigation, storage]);
+
 
   // Audio playback using react-native-sound
   const soundRef = useRef(null);
@@ -102,6 +114,7 @@ export default function OnboardingScreen() {
   }, []);
 
   useEffect(() => {
+    if (!shouldPlayExperience) return;
     let isMounted = true;
     async function play() {
       // Fire-and-forget audio: start it but don't block UI
@@ -148,7 +161,7 @@ export default function OnboardingScreen() {
     }
     play();
     return () => { isMounted = false; };
-  }, [fade, flicker, optionOpacities, script, playAudio]);
+  }, [shouldPlayExperience, fade, flicker, optionOpacities, script, playAudio]);
 
   useEffect(() => {
     if (!showCTA) {

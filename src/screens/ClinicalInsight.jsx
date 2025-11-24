@@ -9,6 +9,7 @@ import Svg, { Line } from 'react-native-svg';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import blackboard from '../../constants/seniorblackboard.png';
+import { BlurView } from '@react-native-community/blur';
 import { useSelector } from 'react-redux';
 import { computeGameplayScoreNormalized } from '../services/scoring';
 
@@ -25,6 +26,25 @@ const INFO_COLOR = '#6E4A13';
 const INFO_BG = '#F6EFE4';
 
 const TABS = ['Tests', 'Diagnosis', 'Treatment'];
+
+// Premium benefits (mirroring PremiumScreen)
+const PREMIUM_BENEFITS = [
+  'Specialist-level cases',
+  'Unlimited Hearts',
+  'Clinical images',
+  'Deep Dive explanations',
+  'No ads',
+];
+
+// Exact features matrix to mirror PremiumScreen
+const PREMIUM_FEATURES = [
+  { label: 'Intern to Attending cases', free: true, pro: true },
+  { label: 'Specialist-level cases', free: false, pro: true },
+  { label: 'Unlimited Hearts', free: false, pro: true },
+  { label: 'Clinical images', free: false, pro: true },
+  { label: 'Deep Dive explanations', free: false, pro: true },
+  { label: 'No ads', free: false, pro: true },
+];
 
 // Local animated number to avoid re-rendering the whole screen each frame
 function AnimatedNumber({ value, duration = 800, easing = Easing.out(Easing.cubic), style, formatter }) {
@@ -124,9 +144,9 @@ export default function ClinicalInsight() {
 
   const [insightsExpanded, setInsightsExpanded] = React.useState(true);
   const [howExpanded, setHowExpanded] = React.useState(true);
-  const [rationaleExpanded, setRationaleExpanded] = React.useState(true);
-  const [txExpanded, setTxExpanded] = React.useState(true);
-  const [whyExpanded, setWhyExpanded] = React.useState(true);
+  const [rationaleExpanded, setRationaleExpanded] = React.useState(false);
+  const [txExpanded, setTxExpanded] = React.useState(false);
+  const [whyExpanded, setWhyExpanded] = React.useState(false);
 
   // Compute normalized scores (30/40/30)
   const scores = React.useMemo(() => {
@@ -434,8 +454,25 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={howExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#2A4670" />
             </Pressable>
             {howExpanded && (
-              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }}>
                 <HowDiagnosisList items={caseReview.howWeLandedOnTheDiagnosis} />
+                {!isPremium && (
+                  <>
+                    <BlurView
+                      style={styles.premiumBlur}
+                      blurType={'light'}
+                      blurAmount={10}
+                      overlayColor="transparent"
+                    />
+                    <View style={styles.premiumOverlay}>
+                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <PremiumBenefitsTable />
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium')}>
+                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
               </View>
             )}
           </View>
@@ -454,8 +491,25 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={rationaleExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#6E4A13" />
             </Pressable>
             {rationaleExpanded && (
-              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }}>
                 <TestRationaleList items={caseReview.rationaleBehindTestSelection} />
+                {!isPremium && (
+                  <>
+                    <BlurView
+                      style={styles.premiumBlur}
+                      blurType={'light'}
+                      blurAmount={10}
+                      overlayColor="transparent"
+                    />
+                    <View style={styles.premiumOverlay}>
+                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <PremiumBenefitsTable />
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium')}>
+                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
               </View>
             )}
           </View>
@@ -474,8 +528,25 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={txExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#5B2E91" />
             </Pressable>
             {txExpanded && (
-              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }}>
                 <TreatmentPriorityList items={caseReview.treatmentPriorityAndSequencing} />
+                {!isPremium && (
+                  <>
+                    <BlurView
+                      style={styles.premiumBlur}
+                      blurType={'light'}
+                      blurAmount={10}
+                      overlayColor="transparent"
+                    />
+                    <View style={styles.premiumOverlay}>
+                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <PremiumBenefitsTable />
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium')}>
+                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
               </View>
             )} 
           </View>
@@ -494,8 +565,25 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={whyExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#7B1F24" />
             </Pressable>
             {whyExpanded && (
-              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+              <View style={{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }}>
                 <WhyNotList items={caseReview.whyOtherDiagnosesDidntFit} />
+                {!isPremium && (
+                  <>
+                    <BlurView
+                      style={styles.premiumBlur}
+                      blurType={'light'}
+                      blurAmount={10}
+                      overlayColor="transparent"
+                    />
+                    <View style={styles.premiumOverlay}>
+                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <PremiumBenefitsTable />
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium')}>
+                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
               </View>
             )}
           </View>
@@ -673,6 +761,51 @@ function HowDiagnosisList({ items }) {
           </View>
         );
       })}
+    </View>
+  );
+}
+
+function PremiumBenefitsTable() {
+  return (
+    <View style={styles.premiumTableCard}>
+      <View style={styles.premiumTableHeader}>
+        <View style={{ flex: 1 }} />
+        <View style={styles.premiumTableHeaderCell}>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: '#6C6C6C' }}>FREE</Text>
+        </View>
+        <View style={styles.premiumTableHeaderCell}>
+          <View style={styles.premiumProPill}>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF' }}>PRO</Text>
+          </View>
+        </View>
+      </View>
+      {PREMIUM_FEATURES.map((f, idx) => (
+        <View
+          key={f.label}
+          style={[
+            styles.premiumTableRow,
+            { borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: '#F2F2F2' },
+          ]}
+        >
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={styles.premiumTableLabel}>{f.label}</Text>
+          </View>
+          <View style={styles.premiumTableCell}>
+            {f.free ? (
+              <MaterialCommunityIcons name="check" size={20} color="#4CAF50" />
+            ) : (
+              <MaterialCommunityIcons name="minus" size={20} color="#B0B7BF" />
+            )}
+          </View>
+          <View style={styles.premiumTableCell}>
+            {f.pro ? (
+              <MaterialCommunityIcons name="check" size={20} color="#00C4B3" />
+            ) : (
+              <MaterialCommunityIcons name="minus" size={20} color="#B0B7BF" />
+            )}
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -911,6 +1044,103 @@ const styles = StyleSheet.create({
   howContent: { flex: 1 },
   howTitle: { fontSize: 16.5, fontWeight: '900', color: '#2A4670' },
   howDesc: { fontSize: 15.5, color: '#2A4670', lineHeight: 22, marginTop: 2 },
+  premiumBlur: { ...StyleSheet.absoluteFillObject, borderRadius: 12 },
+  premiumCta: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumCtaText: {
+    backgroundColor: '#2A4670',
+    color: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    fontWeight: '900',
+    overflow: 'hidden',
+  },
+  premiumOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  premiumOverlayText: {
+    color: '#0D0D0D',
+    // color : Colors.brand.darkPink,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 10,
+    fontSize:20,
+  },
+  premiumBenefits: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  premiumBenefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  premiumBenefitText: {
+    marginLeft: 6,
+    color: '#2A4670',
+    fontWeight: '800',
+    fontSize: 13.5,
+  },
+  premiumCtaButton: {
+    backgroundColor: Colors.brand.darkPink,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  premiumCtaButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  premiumTableCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EDEDED',
+    overflow: 'hidden',
+    width: '100%',
+    marginBottom: 12,
+  },
+  premiumTableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: '#FAFAFA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F2',
+  },
+  premiumTableHeaderCell: { width: 56, alignItems: 'center', justifyContent: 'center' },
+  premiumProPill: {
+    backgroundColor: Colors.brand.darkPink,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  premiumTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: 'transparent',
+  },
+  premiumTableLabel: { color: '#24323D', fontSize: 14, fontWeight: '700' },
+  premiumTableCell: { width: 56, alignItems: 'center', justifyContent: 'center' },
   fab: {
     position: 'absolute',
     right: 16,
