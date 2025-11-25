@@ -21,7 +21,7 @@ const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 // Card height as a percentage of the screen height
 const CARD_HEIGHT_PCT = 0.70;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
-const AURA_SIZE = 96;
+const AURA_SIZE = 70;
 
 
 // DecorativeSeparator is now a shared component
@@ -399,6 +399,7 @@ export default function ClinicalInfo() {
     };
   }, [playForIndex, stopPlayback]);
   const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+  
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -654,7 +655,7 @@ export default function ClinicalInfo() {
       {/* DOTS INDICATOR (visual only) */}
       {(index < SLIDE_COUNT - 1) && (
         <View
-          style={[styles.dotsContainer, { bottom: Math.max(100, insets.bottom + 90) }]}
+          style={[styles.dotsContainer, { bottom: Math.max(80, insets.bottom + 70) }]}
           pointerEvents="none"
         >
           {Array.from({ length: SLIDE_COUNT }, (_, d) => d).map((d) => (
@@ -722,7 +723,7 @@ export default function ClinicalInfo() {
           onPress={() => {
             navigation.navigate('SelectTests', { caseData });
           }}
-          style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }]}
+          style={[styles.primaryButton, styles.navRightCta]}
           activeOpacity={0.9}
         >
           <LinearGradient
@@ -834,10 +835,11 @@ const styles = StyleSheet.create({
     height: 96,
     alignItems: 'flex-start',
     justifyContent: 'center',
+    // alignItems : 'center'
   },
   statHeaderRow: { flexDirection: 'row', alignItems: 'center' },
   statIcon: { marginRight: 8 },
-  statValue: { fontSize: 18, fontWeight: '800' },
+  statValue: { fontSize: 16, fontWeight: '600', marginTop: 4 },
   statLabel: { marginTop: 4, fontSize: 12, color: '#687076', fontWeight: '700' },
   dotsContainer: {
     position: 'absolute',
@@ -872,7 +874,7 @@ const styles = StyleSheet.create({
   infoGrid: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 12 },
   infoCol: { alignItems: 'center', minWidth: 90 },
   infoLabel: { marginTop: 6, fontSize: 12, fontWeight: '800', opacity: 0.8 },
-  infoValue: { marginTop: 2, fontSize: 16, fontWeight: '900', color: '#11181C' },
+  infoValue: { marginTop: 2, fontSize: 16, fontWeight: '500', color: '#11181C' },
   subHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   chiefContainer: {
     marginTop: 8,
@@ -882,8 +884,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
   },
-  subHeaderText: { fontSize: 14, fontWeight: '800', color: '#11181C' },
-  chiefText: { marginTop: 6, fontSize: 16, fontWeight: '800' },
+  subHeaderText: { fontSize: 16, fontWeight: '700', color: '#11181C' },
+  chiefText: { marginTop: 6, fontSize: 16, fontWeight: '400', fontFamily : 'Roboto-Medium' },
   tipCard: { borderWidth: 1, borderRadius: 14, marginTop: 16, padding: 12 },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   tipImage: { width: 44, height: 44, borderRadius: 8, resizeMode: 'contain' },
@@ -895,9 +897,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 24,
-    minHeight: 60,
+    minHeight: 50,
     borderRadius: 999,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -908,7 +910,7 @@ const styles = StyleSheet.create({
   primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
   shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
 
-  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 18 },
+  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 16},
   testGrid: { flexDirection: 'column', gap: 12 },
   testCard: {
     width: '100%',

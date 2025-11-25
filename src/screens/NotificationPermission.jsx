@@ -99,7 +99,7 @@ export default function NotificationPermission() {
         <View style={styles.logoBadge}>
           <MaterialCommunityIcons name="bell-ring" size={28} color="#ffffff" />
         </View>
-        <Text style={styles.title}>Build your habit with gentle nudges</Text>
+        <Text style={styles.title}>Don't miss case of the day</Text>
         <Text style={styles.subtitle}>We’ll remind you once a day to keep your clinical skills sharp.</Text>
       </View>
 
@@ -108,19 +108,19 @@ export default function NotificationPermission() {
         <View style={styles.benefits}>
           <View style={styles.benefitRow}>
             <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
-            <Text style={styles.benefitText}>Daily reminder to complete a quick case</Text>
+            <Text style={styles.benefitText}>Daily reminder</Text>
           </View>
           <View style={styles.benefitRow}>
             <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
             <Text style={styles.benefitText}>Turn on/off anytime from Account → Settings</Text>
           </View>
-          <View style={styles.benefitRow}>
+          {/* <View style={styles.benefitRow}>
             <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
             <Text style={styles.benefitText}>We never spam. Just a single nudge per day</Text>
-          </View>
+          </View> */}
         </View>
 
-        <View style={[styles.previewCard, styles.cardShadow]}>
+        {/* <View style={[styles.previewCard, styles.cardShadow]}>
           <View style={styles.previewIconWrap}>
             <Image source={require('../../constants/inappicon.png')} style={styles.previewIcon} resizeMode="contain" />
           </View>
@@ -129,7 +129,7 @@ export default function NotificationPermission() {
             <Text style={styles.previewBody}>Your daily case awaits. Ready for today’s challenge?</Text>
           </View>
           <Text style={styles.previewTime}>9:00 AM</Text>
-        </View>
+        </View> */}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
           <MaterialCommunityIcons name="shield-lock-outline" size={14} color="#6B7280" />
@@ -159,7 +159,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 48,
-    paddingHorizontal: 16,
   },
   headerBg: {
     position: 'absolute',
@@ -186,7 +185,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     lineHeight: 34,
     fontWeight: '900',
     color: '#1F2937',
@@ -194,7 +193,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    marginTop: 8,
+    marginTop: 18,
     fontSize: 16,
     color: '#4B5563',
     fontWeight: '700',
@@ -207,7 +206,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#F1F5F9',
     backgroundColor: '#ffffff',
-    padding: 16,
+    padding: 30,
+    // width: '90%',
+    alignSelf: 'center',
+    margin : 20
   },
   cardShadow: {
     shadowColor: '#000',
@@ -324,16 +326,17 @@ const styles = StyleSheet.create({
   bottomActions: {
     marginTop: 'auto',
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 40,
     gap: 10,
   },
   primaryButton: {
-    width: '100%',
+    // width: '90%',
     backgroundColor: 'transparent',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
     overflow: 'hidden',
+    marginHorizontal : 20,
   },
   primaryButtonGradient: {
     position: 'absolute',
@@ -353,13 +356,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    // backgroundColor: '#F8FAFC',
+    // borderWidth: 1,
+    // borderColor: '#E5E7EB',
   },
   secondaryButtonText: {
     color: '#0F172A',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
+    opacity: 0.4,
   },
 });

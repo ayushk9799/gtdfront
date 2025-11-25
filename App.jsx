@@ -29,8 +29,9 @@ import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPermission from './src/screens/NotificationPermission';
+import HeartScreen from './src/screens/HeartScreen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { getUser, updateUser } from './src/store/slices/userSlice';
+import { getUser, updateUser, refreshHearts } from './src/store/slices/userSlice';
 import RNBootSplash from 'react-native-bootsplash';
 import {
   registerDeviceForRemoteMessages,
@@ -206,16 +207,38 @@ export default function App() {
   const dispatch = useDispatch();
   const {userData} = useSelector(state => state.user);
 
-  const configurePurchases = async (email) => {
-    Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-    if (Platform.OS === 'ios') {
-      Purchases.configure({apiKey: 'appl_OYDSUPXLqzuDLJSlmdMlsUJffIH'});
-    } else if (Platform.OS === 'android') {
-      Purchases.configure({apiKey: 'goog_GZJTkFQaWlmsypgjConPmrRlioL'});
+  // Ensure Purchases SDK is configured exactly once per app launch
+  const purchasesConfiguredRef = React.useRef(false);
+  const initPurchases = React.useCallback(async () => {
+    try {
+      if (purchasesConfiguredRef.current) return;
+      Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+      if (Platform.OS === 'ios') {
+        Purchases.configure({ apiKey: 'appl_OYDSUPXLqzuDLJSlmdMlsUJffIH' });
+      } else if (Platform.OS === 'android') {
+        Purchases.configure({ apiKey: 'goog_GZJTkFQaWlmsypgjConPmrRlioL' });
+      }
+      purchasesConfiguredRef.current = true;
+    } catch (e) {
+      // no-op; SDK will throw if misconfigured
     }
-    await Purchases.logIn(email);
-    getCustomerInfo();
-  }
+  }, []);
+
+  const identifyPurchasesUser = React.useCallback(async (appUserId) => {
+    try {
+      // Only attempt identification if SDK was configured
+      await initPurchases();
+      if (appUserId) {
+        await Purchases.logIn(String(appUserId));
+      } else {
+        // If no ID, make sure we are anonymous
+        try { await Purchases.logOut(); } catch {}
+      }
+      await getCustomerInfo();
+    } catch (e) {
+      // swallow; UI can still work, and Premium screen will retry fetching
+    }
+  }, [initPurchases]);
 
   /* load stored credential once */
   useEffect(() => {
@@ -224,10 +247,6 @@ export default function App() {
       if (stored) {
         const parsed = JSON.parse(stored);
         setUser(parsed);
-        // const uid = parsed?.userId || parsed?._id || parsed?.id;
-        // console.log("uid", uid);
-
-        configurePurchases(parsed?.email);
       }
     } catch (e) {
       console.warn('Failed to load user from storage', e);
@@ -242,6 +261,16 @@ export default function App() {
     dispatch(setCustomerInfo(customerInfo));
   }
 
+  // Configure Purchases SDK on app start (anonymous); user identification happens below
+  useEffect(() => {
+    initPurchases();
+  }, [initPurchases]);
+
+  // Initialize hearts from storage on app launch
+  useEffect(() => {
+    dispatch(refreshHearts());
+  }, [dispatch]);
+
   // After interactive login, user state changes; fetch fresh user data from server
   useEffect(() => {
     if (!user) return;
@@ -250,6 +279,13 @@ export default function App() {
       dispatch(getUser(uid));
     }
   }, [dispatch, user]);
+
+  // Identify RevenueCat user after first-time login (or when restored from storage)
+  useEffect(() => {
+    if (!user) return;
+    const uid =  user?.email || null;
+    identifyPurchasesUser(uid);
+  }, [user, identifyPurchasesUser]);
   // Listen for MMKV 'user' changes to react to logout/login instantly
   useEffect(() => {
     const listener = storage.addOnValueChangedListener((changedKey) => {
@@ -488,6 +524,15 @@ export default function App() {
               <Stack.Screen
                 name="Premium"
                 component={PremiumScreen}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="Heart"
+                component={HeartScreen}
                 options={{
                   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
                   presentation: 'card',
