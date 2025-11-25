@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Colors } from '../../constants/Colors';
 import premiumImage from '../../constants/premium-image.png';
@@ -62,9 +62,14 @@ export default function PremiumScreen() {
     [],
   );
 
-  useEffect(() => {
-    getOfferingsAndEntitlements();
-  }, []);
+  // useEffect(() => {
+  //   getOfferingsAndEntitlements();
+  // }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      getOfferingsAndEntitlements();
+    }, [])
+  );
 
   const syncServerPremium = async (customerInfo) => {
     try {
@@ -130,6 +135,8 @@ export default function PremiumScreen() {
   };
 
   const getOfferingsAndEntitlements = async () => {
+    console.log('getOfferingsAndEntitlements');
+    
     try {
       setLoading(true);
       const o = await Purchases.getOfferings();

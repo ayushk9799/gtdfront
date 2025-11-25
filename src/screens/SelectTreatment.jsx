@@ -12,6 +12,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import medImg from '../../constants/medicine.png';
 import surgImg from '../../constants/surgical.png';
+import { useHeart } from '../store/slices/userSlice';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
@@ -64,6 +65,7 @@ export default function SelectTreatment() {
   const themeColors =  Colors.light;
   const dispatch = useDispatch();
   const { userId, caseId, selectedTreatmentIds } = useSelector((s) => s.currentGame);
+  const { isPremium } = useSelector(state => state.user);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
 
   const caseData = route?.params?.caseData || {};
@@ -222,6 +224,9 @@ export default function SelectTreatment() {
           try {
             await dispatch(submitGameplay());
           } catch (e) {}
+          if(!isPremium) {
+            dispatch(useHeart());
+          }
           navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan' });
         }}
         disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
@@ -373,10 +378,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
+    gap: 8,
+    paddingVertical: 10,
     paddingHorizontal: 24,
-    minHeight: 60,
+    minHeight: 50,
     borderRadius: 999,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -386,7 +391,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
   shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
-  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 18 },
+  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   navRightCta: { 
     position: 'absolute', 
     right: 16, 
