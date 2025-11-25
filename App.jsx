@@ -2,7 +2,7 @@
  * App entry – uses a drawer (vertical tab) when the user is signed-in.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
@@ -46,6 +46,7 @@ import { getApp } from '@react-native-firebase/app';
 import PremiumScreen from './src/screens/PremiumScreen';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { setCustomerInfo } from './src/store/slices/userSlice';
+import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -82,20 +83,16 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
 
     const localFCMToken = localUserData?.fcmToken;
     
-    // console.log('Current FCM Token:', currentFCMToken);
-    // console.log('Local FCM Token:', localFCMToken);
-    // console.log('Server FCM Token:', userData?.fcmToken);
+   
 
     // Step 3: Compare current token with local token and update local if different
     if (localFCMToken !== currentFCMToken && localUserData) {
-      // console.log('FCM token changed, updating local storage...');
       localUserData.fcmToken = currentFCMToken;
       storage.set('user', JSON.stringify(localUserData));
     }
 
     // Step 4: Compare with server token - update server only if different
     if (userData && userData.fcmToken !== currentFCMToken) {
-      // console.log('Server FCM token differs, updating server...');
       
       const userId = userData?.userId || userData?._id || userData?.id;
       if (userId) {
@@ -180,7 +177,7 @@ function RootTabs() {
         tabBarIcon: ({ color, size, focused }) => {
           let icon = 'circle-outline';
           if (route.name === 'Home') icon = focused ? 'home-variant' : 'home-outline';
-          if (route.name === 'Learning') icon = 'book-open-variant';
+          if (route.name === 'Learnings') icon = 'book-open-variant';
           if (route.name === 'League') icon = focused ? 'trophy' : 'trophy-outline';
           if (route.name === 'Account') icon = focused ? 'account-heart' : 'account-heart-outline';
           return <MaterialCommunityIcons name={icon} size={size} color={color} />;
@@ -189,7 +186,7 @@ function RootTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Learning" component={LearningScreen} />
+      <Tab.Screen name="Learnings" component={LearningScreen} />
       <Tab.Screen name="League" component={LeagueScreen} />
       <Tab.Screen name="Account" component={AccountScreen} />
     </Tab.Navigator>
@@ -205,6 +202,7 @@ export default function App() {
   const pendingTapDataRef = React.useRef(null);
   const dispatch = useDispatch();
   const {userData} = useSelector(state => state.user);
+  const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
 
   const configurePurchases = async (email) => {
     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
@@ -238,9 +236,54 @@ export default function App() {
 
   const getCustomerInfo = async () => {
     const customerInfo = await Purchases.getCustomerInfo();
-    console.log('customerInfo', customerInfo);
     dispatch(setCustomerInfo(customerInfo));
   }
+
+  useEffect(() => {
+    if (__DEV__) {
+      return;
+    }
+    let statusListener;
+    const checkForUpdates = async () => {
+      try {
+        const result = await inAppUpdates.checkNeedsUpdate();
+        if (!result?.shouldUpdate) {
+          return;
+        }
+        if (Platform.OS === 'android') {
+          statusListener = (event) => {
+            if (event.status === IAUInstallStatus.DOWNLOADED) {
+              Alert.alert(
+                'Update ready',
+                'A newer version has finished downloading. Restart to install now?',
+                [
+                  { text: 'Later', style: 'cancel' },
+                  { text: 'Restart', onPress: () => inAppUpdates.installUpdate() },
+                ],
+              );
+            }
+          };
+          inAppUpdates.addStatusUpdateListener(statusListener);
+          await inAppUpdates.startUpdate({ updateType: IAUUpdateKind.IMMEDIATE });
+        } else {
+          await inAppUpdates.startUpdate({
+            title: 'Update available',
+            message: 'A new version is ready on the App Store.',
+            buttonUpgradeText: 'Update',
+            buttonCancelText: 'Later',
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to run in-app update check', error);
+      }
+    };
+    checkForUpdates();
+    return () => {
+      if (statusListener) {
+        inAppUpdates.removeStatusUpdateListener(statusListener);
+      }
+    };
+  }, [inAppUpdates]);
 
   // After interactive login, user state changes; fetch fresh user data from server
   useEffect(() => {
@@ -319,21 +362,14 @@ export default function App() {
 
     // B. For when the user taps a notification and the app is in the background
     onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
-      console.log(
-        'Notification caused app to open from background state:',
-        remoteMessage.notification,
-      );
+     
       // e.g., navigate to a specific screen
     });
 
     // C. For when the user taps a notification and the app is closed (quit)
     getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
-      console.log("remoteMessage", remoteMessage);
         if (remoteMessage) {
-          console.log(
-            'Notification caused app to open from quit state:',
-            remoteMessage.notification,
-          );
+         
         }
       });
 

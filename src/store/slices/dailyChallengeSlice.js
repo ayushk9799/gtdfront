@@ -7,7 +7,6 @@ export const loadTodaysChallenge = createAsyncThunk(
   async () => {
     // Get user's timezone
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    console.log("userTimezone", userTimezone);
     
     const res = await fetch(`${API_BASE}/api/daily-challenge/today?timezone=${encodeURIComponent(userTimezone)}`);
     if (!res.ok) {

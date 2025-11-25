@@ -221,13 +221,11 @@ export default function ClinicalInfo() {
   const step1Data = caseData?.steps?.[0]?.data || {};
   
   const p = step1Data?.basicInfo || {};
-  console.log('p', p);
   const chief = step1Data?.chiefComplaint || '';
   const historyItems = step1Data?.history || [];
   const examItems = step1Data?.physicalExamination || [];
   const physicalImages = caseData?.physicalimage|| [];
-  console.log('caseData', caseData);
-  console.log('physicalImages', physicalImages);
+
   const vitalsData = step1Data?.vitals || {};
   const totalPhysImages = Array.isArray(physicalImages) ? physicalImages.length : 0;
   const goPrevPhysImage = useCallback(() => {
@@ -267,7 +265,8 @@ export default function ClinicalInfo() {
       { name: 'Heart Rate', value: vitalsData.heartRate },
       { name: 'Blood Pressure', value: vitalsData.bloodPressure },
       { name: 'Respiratory Rate', value: vitalsData.respiratoryRate },
-      { name: 'O2 Saturation', value: vitalsData.oxygenSaturation }
+      { name: 'O2 Saturation', value: vitalsData.oxygenSaturation },
+      { name: 'Weight', value: vitalsData.weight }
     ].filter(v => v.value);
   
     // Normalize vitals ordering to a friendly display
@@ -284,7 +283,7 @@ export default function ClinicalInfo() {
     2: 'historyspeech',
     3: 'physicalspeech',
   };
-  const urlFor = (id, part) => `${API_BASE}/mp3files/${id}_${part}.mp3`;
+  const urlFor = (id, part) => `https://gtdthousandways1.s3.ap-south-1.amazonaws.com/mp3files/${id}_${part}.mp3`;
 
   const stopPlayback = useCallback(() => {
     try {
@@ -424,7 +423,9 @@ export default function ClinicalInfo() {
                 source={{ uri: mainImageUrl }}
                 onLoad={() => {
                   setHeroLoaded(true);
-                  try { console.log('Main image loaded:', mainImageUrl); } catch (_) {}
+                  try { 
+                    
+                   } catch (_) {}
                 }}
                 onError={(e) => {
                   setHeroLoadError(true);
@@ -462,7 +463,8 @@ export default function ClinicalInfo() {
                     v.name === 'Heart Rate' ? 'heart' :
                     v.name === 'Blood Pressure' ? 'blood-bag' :
                     v.name === 'Respiratory Rate' ? 'lungs' :
-                    v.name?.includes('O2') ? 'oxygen-tank' : 'dots-horizontal'
+                    v.name?.includes('O2') ? 'diving-scuba-tank' :
+                    v.name === 'Weight' ? 'weight-kilogram' : 'dots-horizontal'
                   }
                   label={v.name}
                   value={v.value}

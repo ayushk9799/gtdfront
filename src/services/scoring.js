@@ -51,21 +51,14 @@ export function computeGameplayScoreNormalized(caseData, {
   const testsCorrect = countIntersect(selTests, correctTests);
   const testsMissed = countMinus(correctTests, selTests);
   const testsUnnecessary = countMinus(selTests, correctTests);
-  console.log("testsCorrect", testsCorrect);
-  console.log("testsMissed", testsMissed);
-  console.log("testsUnnecessary", testsUnnecessary);
+ 
   const rawLabScore = 3 * testsCorrect - 2 * testsMissed - 1 * testsUnnecessary;
-  console.log("rawLabScore", rawLabScore);
   const rawDiagScore = selectedDiagnosisId && correctDiagnosisId && selectedDiagnosisId === correctDiagnosisId ? 10 : 0;
-  console.log("rawDiagScore", rawDiagScore);
   const medsCorrect = countIntersect(selTreats, correctTreats);
   const medsMissed = countMinus(correctTreats, selTreats);
   const medsUnnecessary = countMinus(selTreats, correctTreats);
-  console.log("medsCorrect", medsCorrect);
-  console.log("medsMissed", medsMissed);
-  console.log("medsUnnecessary", medsUnnecessary);
+ 
   const rawMedScore = 3 * medsCorrect - 2 * medsMissed - 1 * medsUnnecessary;
-  console.log("rawMedScore", rawMedScore);
 
   // 4) Normalization to 30/40/30
   const maxPossibleLabScore = (correctTestIds.length || 0) * 3;

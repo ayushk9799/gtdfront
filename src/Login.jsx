@@ -32,7 +32,6 @@ async function platformSpecificSignUp() {
           '125181194595-uautevfk4s33h57gi28hougs7lruet70.apps.googleusercontent.com',
         autoSelectEnabled: false,
       });
-   console.log(googleCredential);
       const ans = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
         method: 'POST',
         headers: {
@@ -47,9 +46,7 @@ async function platformSpecificSignUp() {
       return data;
     } else {
       // iOS: Google Sign-In via native module (keep Android flow unchanged)
-      console.log("signing in with google", googleAuth);
       const result = await googleAuth.signIn();
-      console.log("result", result);
       if (!result?.idToken) throw new Error('No idToken from Google');
       const ans = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
         method: 'POST',
@@ -76,7 +73,6 @@ function Login({ onLogin }) {
       setIsLoading(true);
       const credential = await platformSpecificSignUp();
 
-      console.log("credential", credential);
     
       // Persist user credential
       const loggedInUser = credential?.user || {};

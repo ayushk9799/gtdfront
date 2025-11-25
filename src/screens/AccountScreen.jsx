@@ -31,9 +31,7 @@ export default function AccountScreen() {
   const [refresh, setRefresh] = useState(0);
   const [osPermissionEnabled, setOsPermissionEnabled] = useState(true);
   const { isPremium, customerInfo } = useSelector(state => state.user);
-  console.log('isPremiumAccountScreen', isPremium);
-  console.log('customerInfoAccountScreen', customerInfo);
-  
+ 
   const user = useMemo(() => {
     try {
       const raw = storage.getString('user');

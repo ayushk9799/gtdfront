@@ -95,7 +95,6 @@ export default function PremiumScreen() {
         }
       }));
     } catch (e) {
-      console.log('Failed to sync premium status to server', e);
     }
   };
 
@@ -106,7 +105,6 @@ export default function PremiumScreen() {
       setEntitlements(customerInfo.entitlements.active);
       await syncServerPremium(customerInfo);
     } catch (e) {
-      console.log('Error checking entitlements:', e);
     }
   };
 
@@ -114,7 +112,6 @@ export default function PremiumScreen() {
     try {
       setLoading(true);
       const { customerInfo } = await Purchases.purchasePackage(pkg);
-      console.log('Purchase successful', customerInfo);
       dispatch(setCustomerInfo(customerInfo));
       await checkEntitlements(); // Update entitlements after successful purchase
     } catch (e) {
@@ -125,7 +122,6 @@ export default function PremiumScreen() {
           Alert.alert('Purchase cancelled');
         }
       } else {
-        console.log('Purchase failed:', e);
       }
       return;
     } finally {
@@ -137,9 +133,7 @@ export default function PremiumScreen() {
     try {
       setLoading(true);
       const o = await Purchases.getOfferings();
-      console.log('o', o);
       if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
-        console.log('offerings', o);
         setOfferings(o);
         // pick default: prefer monthly, else weekly
         if (o.current.monthly) {
@@ -155,7 +149,6 @@ export default function PremiumScreen() {
       }
       await checkEntitlements();
     } catch (e) {
-      console.log('Failed to load offerings', e);
       setOfferings(null);
       setSelectedPlan(null);
     } finally {
