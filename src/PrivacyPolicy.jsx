@@ -9,7 +9,19 @@ const PrivacyPolicy = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Account')}
+          onPress={() => {
+            try {
+              if (navigation.canGoBack && navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Tabs', { screen: 'Account' });
+              }
+            } catch (_) {
+              try {
+                navigation.navigate('Tabs', { screen: 'Account' });
+              } catch {}
+            }
+          }}
           style={styles.backButton}
           accessibilityRole="button"
           accessibilityLabel="Go back"
@@ -18,8 +30,8 @@ const PrivacyPolicy = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView>
-        <View style={styles.content}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollInner}>
+        <View style={styles.contentCard}>
           <Text style={styles.h1}>Privacy Policy</Text>
           <Text style={styles.p}>
             <Text style={styles.strong}>Effective Date:</Text> July 31, 2025 •{' '}
@@ -163,17 +175,18 @@ const PrivacyPolicy = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f4f4f4' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10 },
   backButton: {
     width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E8E8E8',
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 }, elevation: 2, marginRight: 6,
   },
-  content: {
-    maxWidth: 800, marginVertical: 20, marginHorizontal: 'auto', backgroundColor: '#fff',
-    padding: 30, borderRadius: 8, shadowColor: '#000', shadowOpacity: 0.1,
-    shadowRadius: 10, elevation: 5,
+  scrollInner: { padding: 20, paddingBottom: 40, alignItems: 'center' },
+  contentCard: {
+    width: '100%', maxWidth: 800, backgroundColor: '#fff',
+    padding: 24, borderRadius: 12,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
   h1: { fontSize: 26, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 20 },
   h2: { fontSize: 20, fontWeight: 'bold', color: '#333', marginTop: 30, marginBottom: 10 },

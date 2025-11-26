@@ -58,6 +58,8 @@ const Tab = createBottomTabNavigator();
 // Initialize MMKV storage
 const storage = new MMKV();
 
+// Global navigation ref to allow programmatic navigation
+export const navigationRef = createNavigationContainerRef();
 
 export const handleFCMTokenUpdate = async (dispatch, userData) => {
   try {
@@ -199,7 +201,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const themeColors =  Colors.light;
-  const navigationRef = React.useRef(createNavigationContainerRef());
   const pendingTapDataRef = React.useRef(null);
   const dispatch = useDispatch();
   const {userData} = useSelector(state => state.user);
@@ -415,9 +416,9 @@ export default function App() {
   function tryNavigateToClinicalInfo(data) {
     const payload = data || {};
     // If navigator is ready, navigate immediately; else queue
-    if (navigationRef.current && navigationRef.current.isReady()) {
+    if (navigationRef && navigationRef.isReady && navigationRef.isReady()) {
       try {
-        navigationRef.current.navigate(`${payload.screen}`, payload);
+        navigationRef.navigate(`${payload.screen}`, payload);
         pendingTapDataRef.current = null;
       } catch (e) {
         console.warn('Navigation to ClinicalInfo failed', e);

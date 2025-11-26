@@ -130,6 +130,9 @@ export default function ClinicalInfo() {
   
   const pagerRef = useRef(null);
   const SLIDE_COUNT = 4; // Basic, Vitals, Hx, PE
+  
+  // Track if user manually paused audio - prevents auto-play on slide change
+  const userPausedAudioRef = useRef(false);
 
   // Layout calculations for platform-consistent nav button positioning
   const slidePaddingTop = Math.max(36, insets.top + 24);
@@ -173,6 +176,7 @@ export default function ClinicalInfo() {
   }, [index]);
 
   const handleNext = useCallback(() => {
+    
     const newIndex = Math.min(SLIDE_COUNT - 1, index + 1);
     setIndex(newIndex);
     pagerRef.current?.setPage(newIndex);
@@ -307,6 +311,12 @@ export default function ClinicalInfo() {
     try { Sound.setCategory('Playback', true); } catch (_) {}
     try { Sound.enableInSilenceMode(true); } catch (_) {}
     const s = new Sound(url, undefined, (error) => {
+      // Race condition guard: check if this sound is still the current one
+      // If user swiped away while loading, soundRef.current will be different/null
+      if (soundRef.current !== s) {
+        try { s.release(); } catch (_) {}
+        return;
+      }
       if (error) {
         console.warn('Audio load error:', error);
         setIsLoading(false);
@@ -321,10 +331,13 @@ export default function ClinicalInfo() {
       try { auraRef.current?.start?.(); } catch (_) {}
       s.play(() => {
         try { s.release(); } catch (_) {}
-        soundRef.current = null;
-        setIsPlaying(false);
-        setCurrentPart(null);
-        try { auraRef.current?.stop?.(); } catch (_) {}
+        // Only update state if this sound is still the active one
+        if (soundRef.current === s) {
+          soundRef.current = null;
+          setIsPlaying(false);
+          setCurrentPart(null);
+          try { auraRef.current?.stop?.(); } catch (_) {}
+        }
       });
     });
     soundRef.current = s;
@@ -333,8 +346,12 @@ export default function ClinicalInfo() {
   const togglePlayForIndex = useCallback((i) => {
     const part = indexToPart[i];
     if (isPlaying && currentPart === part) {
+      // User manually paused - prevent auto-play on slide changes
+      userPausedAudioRef.current = true;
       stopPlayback();
     } else {
+      // User manually started - allow auto-play again
+      userPausedAudioRef.current = false;
       playForIndex(i);
     }
   }, [isPlaying, currentPart, playForIndex, stopPlayback]);
@@ -354,13 +371,17 @@ export default function ClinicalInfo() {
     // Stop any active playback immediately when index changes
     stopPlayback();
 
-    if (!caseId) {
+    // Don't auto-play if user manually paused, or no caseId
+    if (!caseId || userPausedAudioRef.current) {
       return undefined;
     }
 
     interactionTask = InteractionManager.runAfterInteractions(() => {
       audioTimer = setTimeout(() => {
-        playForIndex(debouncedIndex);
+        // Double-check user hasn't paused while waiting
+        if (!userPausedAudioRef.current) {
+          playForIndex(debouncedIndex);
+        }
       }, 500);
     });
 
@@ -391,8 +412,12 @@ export default function ClinicalInfo() {
     togglePlayForIndexRef.current = (i) => {
       const part = indexToPart[i];
       if (isPlayingRef.current && currentPartRef.current === part) {
+        // User manually paused - prevent auto-play on slide changes
+        userPausedAudioRef.current = true;
         stopPlayback();
       } else {
+        // User manually started - allow auto-play again
+        userPausedAudioRef.current = false;
         playForIndex(i);
       }
     };
@@ -1111,3 +1136,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

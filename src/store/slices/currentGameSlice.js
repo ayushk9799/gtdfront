@@ -13,13 +13,16 @@ export const loadCaseById = createAsyncThunk(
     }
     const data = await res.json();
     const caseDoc = data?.case;
-    return { caseId: caseDoc?._id, caseData: caseDoc?.caseData };
+    return { caseId: caseDoc?._id, caseData: caseDoc?.caseData, sourceType: 'case' };
   }
 );
 
 const initialState = {
   userId: null,
+  // Source type: 'case' or 'dailyChallenge'
+  sourceType: 'case',
   caseId: null,
+  dailyChallengeId: null,
   caseData: null,
   selectedTestIds: [],
   selectedDiagnosisId: null,
@@ -35,9 +38,25 @@ const currentGameSlice = createSlice({
     setUserId(state, action) {
       state.userId = action.payload || null;
     },
+    // setCaseData now supports both case and dailyChallenge
+    // For case: { caseId, caseData, sourceType: 'case' }
+    // For dailyChallenge: { dailyChallengeId, caseData, sourceType: 'dailyChallenge' }
     setCaseData(state, action) {
-      state.caseId = action.payload.caseId || null;
-      state.caseData = action.payload.caseData || null;
+      const { caseId, dailyChallengeId, caseData, sourceType } = action.payload || {};
+      
+      // Determine source type
+      const effectiveSourceType = sourceType || (dailyChallengeId ? 'dailyChallenge' : 'case');
+      state.sourceType = effectiveSourceType;
+      
+      if (effectiveSourceType === 'dailyChallenge') {
+        state.dailyChallengeId = dailyChallengeId || null;
+        state.caseId = null;
+      } else {
+        state.caseId = caseId || null;
+        state.dailyChallengeId = null;
+      }
+      
+      state.caseData = caseData || null;
       state.status = 'in_progress';
     },
     setSelectedTests(state, action) {
@@ -50,7 +69,9 @@ const currentGameSlice = createSlice({
       state.selectedTreatmentIds = Array.isArray(action.payload) ? action.payload : [];
     },
     clearCurrentGame(state) {
+      state.sourceType = 'case';
       state.caseId = null;
+      state.dailyChallengeId = null;
       state.caseData = null;
       state.gameplayId = null;
       state.selectedTestIds = [];
@@ -68,7 +89,9 @@ const currentGameSlice = createSlice({
       })
       .addCase(loadCaseById.fulfilled, (state, action) => {
         state.status = 'in_progress';
+        state.sourceType = action.payload.sourceType || 'case';
         state.caseId = action.payload.caseId || null;
+        state.dailyChallengeId = null;
         state.caseData = action.payload.caseData || null;
       })
       .addCase(loadCaseById.rejected, (state, action) => {
@@ -79,12 +102,26 @@ const currentGameSlice = createSlice({
 });
 
 // Submit gameplay thunk: maps selected IDs to indices and sends to backend submit endpoint
+// Supports both Case and DailyChallenge gameplays
 export const submitGameplay = createAsyncThunk(
   'currentGame/submitGameplay',
   async (_, { getState }) => {
     const state = getState();
-    const { userId, caseId, caseData, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds } = state.currentGame;
-    if (!userId || !caseId) throw new Error('Missing userId or caseId');
+    const { 
+      userId, 
+      sourceType, 
+      caseId, 
+      dailyChallengeId, 
+      caseData, 
+      selectedTestIds, 
+      selectedDiagnosisId, 
+      selectedTreatmentIds 
+    } = state.currentGame;
+    
+    // Validate based on source type
+    if (!userId) throw new Error('Missing userId');
+    if (sourceType === 'case' && !caseId) throw new Error('Missing caseId');
+    if (sourceType === 'dailyChallenge' && !dailyChallengeId) throw new Error('Missing dailyChallengeId');
     if (!caseData) throw new Error('Missing case data');
 
     // Map tests to indices
@@ -123,25 +160,35 @@ export const submitGameplay = createAsyncThunk(
       selectedTreatmentIds,
     });
     
+    // Build request body based on source type
+    const requestBody = {
+      userId,
+      sourceType,
+      diagnosisIndex,
+      testIndices,
+      treatmentIndices,
+      points: {
+        total: normalized.total,
+        tests: normalized.tests,
+        diagnosis: normalized.diagnosis,
+        treatment: normalized.treatment,
+      },
+      complete: true,
+    };
+
+    // Add the appropriate ID based on source type
+    if (sourceType === 'dailyChallenge') {
+      requestBody.dailyChallengeId = dailyChallengeId;
+    } else {
+      requestBody.caseId = caseId;
+    }
 
     const res = await fetch(`${API_BASE}/api/gameplays/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-          userId,
-          caseId,
-          diagnosisIndex,
-          testIndices,
-          treatmentIndices,
-          points: {
-            total: normalized.total,
-            tests: normalized.tests,
-            diagnosis: normalized.diagnosis,
-            treatment: normalized.treatment,
-          },
-          complete: true,
-        })
-      });
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+    
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Failed to submit gameplay (${res.status})`);
@@ -153,5 +200,3 @@ export const submitGameplay = createAsyncThunk(
 
 export const { setUserId, setCaseData, clearCurrentGame, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } = currentGameSlice.actions;
 export default currentGameSlice.reducer;
-
-

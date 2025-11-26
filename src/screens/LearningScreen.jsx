@@ -11,7 +11,7 @@ import { MMKV } from 'react-native-mmkv';
 import { useDispatch } from 'react-redux';
 import { setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setUserId } from '../store/slices/currentGameSlice';
 
-// Will fetch brief gameplay list for user
+// Will fetch brief gameplay list for user (supports both Case and DailyChallenge)
 
 export default function LearningScreen() {
   const colorScheme = useColorScheme();
@@ -83,6 +83,38 @@ export default function LearningScreen() {
       .map(([, v]) => v);
   }, [items]);
 
+  // Helper to get title based on sourceType
+  const getItemTitle = (it) => {
+    if (it.sourceType === 'dailyChallenge') {
+      return it.dailyChallenge?.title || 'Daily Challenge';
+    }
+    return it.case?.title || 'Case';
+  };
+
+  // Helper to get category based on sourceType
+  const getItemCategory = (it) => {
+    if (it.sourceType === 'dailyChallenge') {
+      return it.dailyChallenge?.category || 'Daily';
+    }
+    return it.case?.category || 'General';
+  };
+
+  // Helper to get correct diagnosis based on sourceType
+  const getItemDiagnosis = (it) => {
+    if (it.sourceType === 'dailyChallenge') {
+      return it.dailyChallenge?.correctDiagnosis || '';
+    }
+    return it.case?.correctDiagnosis || '';
+  };
+
+  // Helper to get mainimage based on sourceType
+  const getItemMainImage = (it) => {
+    if (it.sourceType === 'dailyChallenge') {
+      return it.dailyChallenge?.mainimage || null;
+    }
+    return it.case?.mainimage || null;
+  };
+
   const openGameplay = async (gameplayId) => {
     try {
       const res = await fetch(`${API_BASE}/api/gameplays/${encodeURIComponent(gameplayId)}`);
@@ -92,8 +124,21 @@ export default function LearningScreen() {
       }
       const data = await res.json();
       const gp = data?.gameplay;
-      const caseDoc = gp?.caseId || {};
-      const caseData = caseDoc?.caseData || {};
+      
+      // Handle both case and dailyChallenge gameplays
+      const sourceType = gp?.sourceType || 'case';
+      let caseData;
+      
+      if (sourceType === 'dailyChallenge') {
+        // For daily challenges, caseData is embedded in the dailyChallengeId document
+        const challengeDoc = gp?.dailyChallengeId || {};
+        caseData = challengeDoc?.caseData || {};
+      } else {
+        // For regular cases
+        const caseDoc = gp?.caseId || {};
+        caseData = caseDoc?.caseData || {};
+      }
+      
       // Map indices -> IDs
       const tests = caseData?.steps?.[1]?.data?.availableTests || [];
       const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
@@ -137,29 +182,84 @@ export default function LearningScreen() {
         {!loading && error && (
           <Text style={[styles.learnSummary, { color: '#C62828' }]}>{error}</Text>
         )}
-        {!loading && !error && groupedByDate.map((group, idx) => (
+        {!loading && !error && groupedByDate.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateEmoji}>📚</Text>
+            <Text style={styles.emptyStateTitle}>No cases solved yet</Text>
+            <Text style={styles.emptyStateDesc}>
+              Start solving cases from the Home screen to see your learning history here.
+            </Text>
+          </View>
+        )}
+        {!loading && !error && groupedByDate.length > 0 && groupedByDate.map((group, idx) => (
           <View key={idx} style={{...styles.learnSection}}>
             <Text style={[styles.learnDate, { color: themeColors.text }]}>{group.label}</Text>
-            {group.items.map((it) => (
-              <Pressable
-                key={String(it.gameplayId)}
-                onPress={() => openGameplay(it.gameplayId)}
-                style={[styles.learnCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
-              >
-                <View style={styles.learnCardRow}>
-                  <View style={styles.learnCardTextWrap}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Text style={[styles.learnTitle, { color: themeColors.text, flex: 1 }]} numberOfLines={1} ellipsizeMode="tail">{it.case?.title || 'Case'}</Text>
+            {group.items.map((it) => {
+              const isDailyChallenge = it.sourceType === 'dailyChallenge';
+              return (
+                <Pressable
+                  key={String(it.gameplayId)}
+                  onPress={() => openGameplay(it.gameplayId)}
+                  style={[
+                    styles.learnCard, 
+                    { 
+                      backgroundColor: themeColors.card, 
+                      borderColor: isDailyChallenge ? '#FFA726' : themeColors.border,
+                      borderWidth: isDailyChallenge ? 2 : 1,
+                    }
+                  ]}
+                >
+                  <View style={styles.learnCardRow}>
+                    <View style={styles.learnCardTextWrap}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={[styles.learnTitle, { color: themeColors.text, flex: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                          {getItemTitle(it)}
+                        </Text>
+                        {isDailyChallenge && (
+                          <View style={styles.dailyBadge}>
+                            <Text style={styles.dailyBadgeText}>Daily</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.learnSummary, { marginTop: 2 }]} numberOfLines={1} ellipsizeMode="tail">
+                        {getItemDiagnosis(it)}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                        <View style={{ 
+                          alignSelf: 'flex-start', 
+                          paddingHorizontal: 8, 
+                          paddingVertical: 3, 
+                          borderRadius: 6, 
+                          backgroundColor: isDailyChallenge ? '#FF9800' : '#C24467', 
+                          borderWidth: 1, 
+                          borderColor: isDailyChallenge ? '#F57C00' : '#D3D9E3' 
+                        }}>
+                          <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }} numberOfLines={1} ellipsizeMode="tail">
+                            {getItemCategory(it)}
+                          </Text>
+                        </View>
+                        {isDailyChallenge && it.dailyChallenge?.date && (
+                          <Text style={styles.dateLabel}>
+                            {it.dailyChallenge.date}
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                    <Text style={[styles.learnSummary, { marginTop: 2 }]} numberOfLines={1} ellipsizeMode="tail">{it.case?.correctDiagnosis || ''}</Text>
-                    <View style={{ alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#C24467', borderWidth: 1, borderColor: '#D3D9E3' }}>
-                      <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }} numberOfLines={1} ellipsizeMode="tail">{it.case?.category || 'General'}</Text>
-                    </View>
+                    {getItemMainImage(it) ? (
+                      <Image 
+                        source={{ uri: getItemMainImage(it) }} 
+                        style={styles.learnThumb} 
+                      />
+                    ) : (
+                      <Image 
+                        source={inappicon} 
+                        style={styles.learnThumb} 
+                      />
+                    )}
                   </View>
-                  <Image source={inappicon} style={styles.learnThumb} />
-                </View>
-              </Pressable>
-            ))}
+                </Pressable>
+              );
+            })}
           </View>
         ))}
       </ScrollView>
@@ -199,7 +299,47 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     backgroundColor: '#F3F6FA',
   },
+  dailyBadge: {
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  dailyBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  dateLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 60,
+  },
+  emptyStateEmoji: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#374151',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateDesc: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
   // removed local sheet styles; handled inside component
 });
-
-
