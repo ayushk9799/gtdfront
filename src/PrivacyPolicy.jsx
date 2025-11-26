@@ -174,7 +174,7 @@ const PrivacyPolicy = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f4f4' },
+  container: { flex: 1, backgroundColor: '#f4f4f4', paddingTop: 50 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10 },
   backButton: {
     width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',

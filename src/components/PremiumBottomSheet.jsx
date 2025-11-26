@@ -63,7 +63,6 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
         }
       }));
     } catch (e) {
-      console.log('Failed to sync premium status to server', e);
     }
   };
 
@@ -74,7 +73,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
       setEntitlements(customerInfo.entitlements.active);
       await syncServerPremium(customerInfo);
     } catch (e) {
-      console.log('Error checking entitlements:', e);
+      // console.log('Error checking entitlements:', e);
     }
   };
 
@@ -92,7 +91,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
           Alert.alert('Purchase cancelled');
         }
       } else {
-        console.log('Purchase failed:', e);
+        // console.log('Purchase failed:', e);
       }
       return;
     } finally {
@@ -119,7 +118,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
       }
       await checkEntitlements();
     } catch (e) {
-      console.log('Failed to load offerings', e);
+      // console.log('Failed to load offerings', e);
       setOfferings(null);
       setSelectedPlan(null);
     } finally {

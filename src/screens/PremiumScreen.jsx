@@ -135,7 +135,7 @@ export default function PremiumScreen() {
   };
 
   const getOfferingsAndEntitlements = async () => {
-    console.log('getOfferingsAndEntitlements');
+    // console.log('getOfferingsAndEntitlements');
     
     try {
       setLoading(true);

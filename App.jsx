@@ -7,7 +7,7 @@ import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert }
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import { MMKV } from 'react-native-mmkv';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,7 +59,7 @@ const Tab = createBottomTabNavigator();
 const storage = new MMKV();
 
 // Global navigation ref to allow programmatic navigation
-// export const navigationRef = createNavigationContainerRef();
+export const navigationRef = createNavigationContainerRef();
 
 export const handleFCMTokenUpdate = async (dispatch, userData) => {
   try {
@@ -406,7 +406,7 @@ export default function App() {
     // C. For when the user taps a notification and the app is closed (quit)
     getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
         if (remoteMessage) {
-         console.log('remoteMessage', remoteMessage);
+        //  console.log('remoteMessage', remoteMessage);
         }
       });
 
@@ -446,6 +446,7 @@ export default function App() {
           style={StyleSheet.absoluteFill}
         />
         <NavigationContainer
+          ref={navigationRef}
           onReady={() => {
             // Hide native splash once navigation tree is ready
             try {
