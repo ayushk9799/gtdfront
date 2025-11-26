@@ -13,7 +13,7 @@ import Sound from 'react-native-sound';
 import { API_BASE } from '../constants/Api';
 import AudioAura from './components/AudioAura';
 import ComingSoonImage from './components/ComingSoonImage';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -142,6 +142,7 @@ export default function ClinicalInfo() {
 
   const caseDataFromRoute = route?.params?.caseData;
   const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
+  const { isPremium } = useSelector((s) => s.user || {});
   const caseData = caseDataFromRoute || caseDataFromStore || {};
   const caseId = (caseData?.caseId && String(caseData.caseId)) || '';
   const [heroLoadError, setHeroLoadError] = useState(false);
@@ -150,7 +151,19 @@ export default function ClinicalInfo() {
   const [selectedPhysImageIndex, setSelectedPhysImageIndex] = useState(0);
   const [isImageSheetOpen, setIsImageSheetOpen] = useState(false);
   const imageSheetRef = useRef(null);
-  const imageSnapPoints = useMemo(() => ['35%', '60%'], []);
+  const imageSnapPoints = useMemo(() => ['45%'], []);
+  const renderImageBackdrop = useCallback(
+    (props) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        pressBehavior="close"
+        opacity={0.25}
+      />
+    ),
+    []
+  );
   const physPagerRef = useRef(null);
   const physScrollRef = useRef(null);
   const [physContainerWidth, setPhysContainerWidth] = useState(0);
@@ -525,13 +538,14 @@ export default function ClinicalInfo() {
         index={-1}
         snapPoints={imageSnapPoints}
         enablePanDownToClose
+        backdropComponent={renderImageBackdrop}
         backgroundStyle={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 18, borderTopRightRadius: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: -2 } }}
         handleIndicatorStyle={{ backgroundColor: Colors.brand.darkPink }}
         onChange={(idx) => {
           try { setIsImageSheetOpen(typeof idx === 'number' && idx >= 0); } catch (_) {}
         }}
       >
-        <BottomSheetView style={{ paddingHorizontal: 12, paddingBottom: 16 }}>
+        <BottomSheetView style={{ paddingTop: 30, paddingHorizontal: 16, paddingBottom: 16 }}>
           <LinearGradient
             colors={['#FFF7FA', '#F3F6FF']}
             start={{ x: 0, y: 0 }}
@@ -550,7 +564,7 @@ export default function ClinicalInfo() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={({ pressed }) => [{ marginLeft: 'auto', opacity: pressed ? 0.8 : 1.0 }]}
             >
-              <MaterialCommunityIcons name="close" size={18} color={Colors.brand.darkPink} />
+              <MaterialCommunityIcons name="close" size={25} color={Colors.brand.darkPink} />
             </Pressable>
           </View>
           {totalPhysImages > 0 ? (
@@ -575,6 +589,7 @@ export default function ClinicalInfo() {
                           source={{ uri: item.url }}
                           style={styles.physImage}
                           resizeMode="contain"
+                          blurRadius={!isPremium ? 30 : 0}
                         />
                       ) : (
                         <ComingSoonImage style={{ width: '100%', height: '100%' }} />
@@ -980,8 +995,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   // Bottom sheet styles
-  sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sheetHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#11181C' },
+  sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  sheetHeaderTitle: { fontSize: 18, fontWeight: '800', color: '#11181C', marginRight : 10 },
   sheetHeaderMeta: { fontSize: 12, fontWeight: '800', color: '#687076' },
   sheetTabsContainer: {
     borderWidth: 1,

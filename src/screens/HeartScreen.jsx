@@ -1,12 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { useSelector, useDispatch } from 'react-redux';
-import { useHeart } from '../store/slices/userSlice';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
+import heartImage from '../../constants/heart.png';
+import LinearGradient from 'react-native-linear-gradient';
+
+const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
+
 
 export default function HeartScreen() {
   // Static, presentational values (no calculations)
@@ -25,6 +29,12 @@ export default function HeartScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+        <LinearGradient
+        colors={SUBTLE_PINK_GRADIENT}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="arrow-back" size={24} color="#2D3142" />
@@ -34,7 +44,7 @@ export default function HeartScreen() {
       </View>
 
       <View style={styles.headerHero}>
-        <Ionicons name="heart" size={150} color={Colors.brand.darkPink} />
+        <Image source={heartImage} style={{ width: 200, height: 200 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollInner} showsVerticalScrollIndicator={false}>
