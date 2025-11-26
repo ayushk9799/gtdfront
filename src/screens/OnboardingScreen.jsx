@@ -71,9 +71,9 @@ export default function OnboardingScreen() {
   const playAudio = React.useCallback(() => {
     return new Promise((resolve) => {
       try {
-        if (Platform.OS === 'android') {
+      if (Platform.OS === 'android'|| Platform.OS === 'ios') {
           // Load from android/app/src/main/res/raw (filename without extension)
-          const s = new Sound('onboardingspeech1', Sound.MAIN_BUNDLE, (error) => {
+          const s = new Sound('onboardingspeech1.mp3', Sound.MAIN_BUNDLE, (error) => {
             if (error) {
               console.warn('Audio load error (android raw):', error);
               resolve();
@@ -92,6 +92,7 @@ export default function OnboardingScreen() {
           // iOS: bundle via require
           const s = new Sound(require('../../constants/onboardingspeech1.mp3'), (error) => {
             if (error) {
+              console.log('Audio load error (ios bundle):', error);
               console.warn('Audio load error (ios bundle):', error);
               resolve();
               return;
@@ -99,6 +100,7 @@ export default function OnboardingScreen() {
             soundRef.current = s;
             try { s.setVolume(1.0); } catch (_) {}
             s.play((success) => {
+              console.log('Audio play success (ios bundle):', success);
               try { s.release(); } catch (_) {}
               soundRef.current = null;
               if (!success) console.warn('Audio play failed');
