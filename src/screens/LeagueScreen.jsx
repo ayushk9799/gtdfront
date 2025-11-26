@@ -6,7 +6,7 @@ import LeagueHeader from './LeagueHeader';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTop10 } from '../store/slices/leaderboardSlice';
 import rankingImage from '../../constants/ranking.png';
-import rankingImage1 from '../../constants/ranking1.png';
+// import rankingImage1 from '../../constants/ranking1.png';
 
 
 export default function LeagueScreen() {

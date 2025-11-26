@@ -58,6 +58,8 @@ const Tab = createBottomTabNavigator();
 // Initialize MMKV storage
 const storage = new MMKV();
 
+// Global navigation ref to allow programmatic navigation
+// export const navigationRef = createNavigationContainerRef();
 
 export const handleFCMTokenUpdate = async (dispatch, userData) => {
   try {

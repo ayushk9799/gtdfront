@@ -10,12 +10,13 @@ import LeagueHeader from './LeagueHeader';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch, useSelector } from 'react-redux';
-import { loadCaseById, setUserId, setCaseData } from '../store/slices/currentGameSlice';
+import { loadCaseById, setUserId, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } from '../store/slices/currentGameSlice';
 import { loadTodaysChallenge, selectCurrentChallenge, selectIsChallengeLoading, selectHasChallengeError, selectChallengeError } from '../store/slices/dailyChallengeSlice';
 import { fetchCategories } from '../store/slices/categoriesSlice';
 import departmentIcon from '../../constants/department.png';
 import calendarIcon from '../../constants/calendar.png';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
+import { API_BASE } from '../../constants/Api';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
   const { hearts } = useSelector(state => state.user);
   const [currentUserId, setCurrentUserId] = useState(undefined);
+  const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
 
@@ -76,6 +78,99 @@ export default function HomeScreen() {
       navigation.navigate('ClinicalInfo');
     } catch (_) {}
   };
+
+  // Handle daily challenge press - check if already completed
+  const handleDailyChallengePress = async () => {
+    if (!currentChallenge?._id || !currentUserId) {
+      // Fallback to normal flow if no challenge or user
+      dispatch(setCaseData({ 
+        dailyChallengeId: currentChallenge?._id, 
+        caseData: currentChallenge?.caseData,
+        sourceType: 'dailyChallenge'
+      }));
+      navigation.navigate('ClinicalInfo');
+      return;
+    }
+
+    setIsDailyChallengeLoading(true);
+    
+    try {
+      // Check if there's an existing gameplay for this daily challenge
+      const res = await fetch(
+        `${API_BASE}/api/gameplays?userId=${encodeURIComponent(currentUserId)}&dailyChallengeId=${encodeURIComponent(currentChallenge._id)}&sourceType=dailyChallenge`
+      );
+      
+      if (!res.ok) {
+        throw new Error('Failed to check gameplay status');
+      }
+      
+      const data = await res.json();
+      const gameplays = data?.gameplays || [];
+      const completedGameplay = gameplays.find(gp => gp.status === 'completed');
+      
+      if (completedGameplay) {
+        // Already completed - load selections and navigate to ClinicalInsight
+        const caseData = currentChallenge?.caseData || {};
+        
+        // Map indices -> IDs for selections
+        const tests = caseData?.steps?.[1]?.data?.availableTests || [];
+        const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
+        const step4 = caseData?.steps?.[3]?.data || {};
+        const treatmentGroups = step4?.treatmentOptions || {};
+        const flatTreatments = [
+          ...(treatmentGroups.medications || []),
+          ...(treatmentGroups.surgicalInterventional || []),
+          ...(treatmentGroups.nonSurgical || []),
+          ...(treatmentGroups.psychiatric || []),
+        ];
+
+        const selectedTestIds = (completedGameplay?.selections?.testIndices || [])
+          .map((i) => (typeof i === 'number' && tests[i] ? tests[i].testId : null))
+          .filter(Boolean);
+        const selectedDiagnosisId = (typeof completedGameplay?.selections?.diagnosisIndex === 'number' && diags[completedGameplay.selections.diagnosisIndex])
+          ? diags[completedGameplay.selections.diagnosisIndex].diagnosisId
+          : null;
+        const selectedTreatmentIds = (completedGameplay?.selections?.treatmentIndices || [])
+          .map((i) => (typeof i === 'number' && flatTreatments[i] ? flatTreatments[i].treatmentId : null))
+          .filter(Boolean);
+
+        // Set case data and selections in Redux
+        dispatch(setCaseData({ 
+          dailyChallengeId: currentChallenge?._id, 
+          caseData: caseData,
+          sourceType: 'dailyChallenge'
+        }));
+        dispatch(setSelectedTests(selectedTestIds));
+        dispatch(setSelectedDiagnosis(selectedDiagnosisId));
+        dispatch(setSelectedTreatments(selectedTreatmentIds));
+
+        // Navigate to ClinicalInsight to review the completed case
+        navigation.navigate('ClinicalInsight', { caseData, from: 'HomeScreen' });
+        
+        ToastAndroid.show('You\'ve already completed today\'s challenge!', ToastAndroid.SHORT);
+      } else {
+        // Not completed - proceed with normal flow
+        dispatch(setCaseData({ 
+          dailyChallengeId: currentChallenge?._id, 
+          caseData: currentChallenge?.caseData,
+          sourceType: 'dailyChallenge'
+        }));
+        navigation.navigate('ClinicalInfo');
+      }
+    } catch (error) {
+      // On error, fallback to normal flow
+      console.warn('Error checking daily challenge status:', error);
+      dispatch(setCaseData({ 
+        dailyChallengeId: currentChallenge?._id, 
+        caseData: currentChallenge?.caseData,
+        sourceType: 'dailyChallenge'
+      }));
+      navigation.navigate('ClinicalInfo');
+    } finally {
+      setIsDailyChallengeLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
       <LeagueHeader onPressPro={() => {}} />
@@ -110,19 +205,25 @@ export default function HomeScreen() {
             
             {currentChallenge && !isChallengeLoading && !hasChallengeError && (
               <>
+              {currentChallenge?.caseData?.mainimage && 
+              <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
+                <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
+              </View>
+              }
                 <Text style={[styles.cardDesc, { marginTop: 8 }]}>
                   {currentChallenge?.caseData?.caseTitle|| 'Solve today\'s case in under 3 tries to keep your streak alive.'}
                 </Text>
                 <TouchableOpacity 
-                  style={styles.primaryButton} 
+                  style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]} 
                   activeOpacity={0.9} 
-                  onPress={() => {
-                    // Load the daily challenge case data and navigate
-                    dispatch(setCaseData({ caseId: currentChallenge?._id, caseData: currentChallenge?.caseData }));
-                    navigation.navigate('ClinicalInfo');
-                  }}
+                  onPress={handleDailyChallengePress}
+                  disabled={isDailyChallengeLoading}
                 >
-                  <Text style={styles.primaryButtonText}>Solve the case</Text>
+                  {isDailyChallengeLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Solve the case</Text>
+                  )}
                 </TouchableOpacity>
               </>
             )}
@@ -175,5 +276,3 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-
-

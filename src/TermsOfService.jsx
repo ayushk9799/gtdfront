@@ -17,7 +17,19 @@ const TermsOfServiceScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            try {
+              if (navigation.canGoBack && navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Tabs', { screen: 'Account' });
+              }
+            } catch (_) {
+              try {
+                navigation.navigate('Tabs', { screen: 'Account' });
+              } catch {}
+            }
+          }}
           style={styles.backButton}
           accessibilityRole="button"
           accessibilityLabel="Go back"
@@ -25,11 +37,8 @@ const TermsOfServiceScreen = () => {
           <MaterialCommunityIcons name="arrow-left" size={22} color="#222222" />
         </TouchableOpacity>
       </View>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.content}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollInner}>
+        <View style={styles.contentCard}>
           <Text style={styles.title}>Terms of Service</Text>
           <Text style={styles.effectiveDate}>
             Effective Date: July 31, 2025
@@ -163,12 +172,14 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
+  scrollInner: { padding: 20, paddingBottom: 40, alignItems: 'center' },
+  contentCard: {
+    width: '100%', maxWidth: 800, backgroundColor: '#fff',
+    padding: 24, borderRadius: 12,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 8,
@@ -191,15 +202,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 12,
   },
   text: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#333',
-    lineHeight: 22,
+    lineHeight: 24,
     marginBottom: 8,
   },
   bold: {
