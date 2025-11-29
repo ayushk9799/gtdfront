@@ -23,11 +23,14 @@ export default function HomeScreen() {
   const themeColors =  Colors.light;
   const navigation = useNavigation();
   const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
-  const { userData, hearts } = useSelector(state => state.user);
+  const { hearts } = useSelector(state => state.user);
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
+
+  
+
   // Daily challenge selectors
   const currentChallenge = useSelector(selectCurrentChallenge);
   const isChallengeLoading = useSelector(selectIsChallengeLoading);
@@ -62,6 +65,8 @@ export default function HomeScreen() {
   }, [dispatch]);
 
   const openCaseById = async (caseId) => {
+    console.log('caseId', caseId);
+    
     try {
       if(hearts <=0) {
         ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);

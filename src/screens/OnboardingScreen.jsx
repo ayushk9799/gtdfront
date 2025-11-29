@@ -92,15 +92,13 @@ export default function OnboardingScreen() {
           // iOS: bundle via require
           const s = new Sound(require('../../constants/onboardingspeech1.mp3'), (error) => {
             if (error) {
-              console.log('Audio load error (ios bundle):', error);
-              console.warn('Audio load error (ios bundle):', error);
+            
               resolve();
               return;
             }
             soundRef.current = s;
             try { s.setVolume(1.0); } catch (_) {}
             s.play((success) => {
-              console.log('Audio play success (ios bundle):', success);
               try { s.release(); } catch (_) {}
               soundRef.current = null;
               if (!success) console.warn('Audio play failed');

@@ -7,7 +7,7 @@ import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert }
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import { MMKV } from 'react-native-mmkv';
-import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -140,7 +140,7 @@ function RootTabs() {
         headerStyle: { backgroundColor: themeColors.card, height: 44 },
         headerTitleStyle: { color: themeColors.text, fontWeight: '700', fontSize: 18 },
         headerTintColor: themeColors.text,
-        tabBarActiveTintColor: '#333333',
+        tabBarActiveTintColor: Colors.brand.darkPink,
         tabBarInactiveTintColor: '#8A8A8A',
         tabBarStyle: {
           position: 'absolute',
@@ -164,16 +164,16 @@ function RootTabs() {
               />
             );
           }
-          if (isAndroid12Plus) {
-            return (
-              <BlurView
-                style={StyleSheet.absoluteFill}
-                blurAmount={16}
-                overlayColor="transparent"
-                reducedTransparencyFallbackColor="rgba(242,242,242,0.92)"
-              />
-            );
-          }
+          // if (isAndroid12Plus) {
+          //   return (
+          //     <BlurView
+          //       style={StyleSheet.absoluteFill}
+          //       blurAmount={16}
+          //       overlayColor="transparent"
+          //       reducedTransparencyFallbackColor="rgba(242,242,242,0.92)"
+          //     />
+          //   );
+          // }
           return <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(242,242,242,0.92)' }]} />;
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
@@ -181,7 +181,7 @@ function RootTabs() {
           let icon = 'circle-outline';
           if (route.name === 'Home') icon = focused ? 'home-variant' : 'home-outline';
           if (route.name === 'Learnings') icon = 'book-open-variant';
-          if (route.name === 'League') icon = focused ? 'trophy' : 'trophy-outline';
+          if (route.name === 'Ranking') icon = focused ? 'trophy' : 'trophy-outline';
           if (route.name === 'Account') icon = focused ? 'account-heart' : 'account-heart-outline';
           return <MaterialCommunityIcons name={icon} size={size} color={color} />;
         },
@@ -190,7 +190,7 @@ function RootTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Learnings" component={LearningScreen} />
-      <Tab.Screen name="League" component={LeagueScreen} />
+      <Tab.Screen name="Ranking" component={LeagueScreen} />
       <Tab.Screen name="Account" component={AccountScreen} />
     </Tab.Navigator>
   );
@@ -201,7 +201,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const themeColors =  Colors.light;
-  const pendingTapDataRef = React.useRef(null);
   const dispatch = useDispatch();
   const {userData} = useSelector(state => state.user);
   const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
@@ -323,6 +322,7 @@ export default function App() {
       dispatch(getUser(uid));
     }
   }, [dispatch, user]);
+  // storage.set('remoteMessage', JSON.stringify(remoteMessage?.data));
 
   // Identify RevenueCat user after first-time login (or when restored from storage)
   useEffect(() => {
@@ -394,7 +394,7 @@ export default function App() {
   useEffect(() => {
     // A. For foreground messages (when the app is open)
     const unsubscribe = onMessage(getMessaging(getApp()), async remoteMessage => {
-      Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
+      // Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
     });
 
     // B. For when the user taps a notification and the app is in the background
@@ -406,27 +406,14 @@ export default function App() {
     // C. For when the user taps a notification and the app is closed (quit)
     getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
         if (remoteMessage) {
-         
+        //  console.log('remoteMessage', remoteMessage);
         }
       });
 
     return unsubscribe;
   }, []);
 
-  function tryNavigateToClinicalInfo(data) {
-    const payload = data || {};
-    // If navigator is ready, navigate immediately; else queue
-    if (navigationRef && navigationRef.isReady && navigationRef.isReady()) {
-      try {
-        navigationRef.navigate(`${payload.screen}`, payload);
-        pendingTapDataRef.current = null;
-      } catch (e) {
-        console.warn('Navigation to ClinicalInfo failed', e);
-      }
-    } else {
-      pendingTapDataRef.current = payload;
-    }
-  }
+ 
 
   // Do not return a JS splash; native bootsplash covers until we hide it.
 
@@ -465,9 +452,6 @@ export default function App() {
             try {
               RNBootSplash.hide({ fade: true });
             } catch {}
-            if (pendingTapDataRef.current) {
-              tryNavigateToClinicalInfo(pendingTapDataRef.current);
-            }
           }}
           theme={mergedTheme}
         >

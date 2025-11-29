@@ -1,10 +1,13 @@
 import React, { useEffect } from 'react';
-import { useColorScheme, View, Text, ScrollView } from 'react-native';
+import { useColorScheme, View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import LinearGradient from 'react-native-linear-gradient';
 import LeagueHeader from './LeagueHeader';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTop10 } from '../store/slices/leaderboardSlice';
+import rankingImage from '../../constants/ranking.png';
+// import rankingImage1 from '../../constants/ranking1.png';
 
 
 export default function LeagueScreen() {
@@ -26,10 +29,48 @@ export default function LeagueScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16, paddingTop: 8 }}>
         {/* big heart badge placeholder */}
         <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 18 }}>
-          <View style={{ width: 220, height: 220, borderRadius: 110, backgroundColor: '#FFD1E1', alignItems: 'center', justifyContent: 'center', shadowColor: '#C2185B', shadowOpacity: 0.25, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 }}>
+          {/* <View style={{ width: 220, height: 220, borderRadius: 110, backgroundColor: '#FFD1E1', alignItems: 'center', justifyContent: 'center', shadowColor: '#C2185B', shadowOpacity: 0.25, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 }}>
             <View style={{ width: 160, height: 160, borderRadius: 80, backgroundColor: '#FFB6CE', alignItems: 'center', justifyContent: 'center' }}>
               <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#FF8FB6', alignItems: 'center', justifyContent: 'center' }}>
                 <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#7C2A4A' }} />
+              </View>
+            </View>
+          </View> */}
+          <View style={{ width: '100%', height: 320, borderRadius: 16, overflow: 'hidden', position: 'relative' }}>
+            <Image source={rankingImage} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <LinearGradient
+              colors={['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.4)']}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <LinearGradient
+              colors={['rgba(255,255,255,0)', '#FFFFFF']}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 160,
+              }}
+            />
+            <View style={{ position: 'absolute', bottom: 32, width: '100%', alignItems: 'center', paddingHorizontal: 24 }}>
+              <View
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.95)',
+                  paddingVertical: 14,
+                  paddingHorizontal: 20,
+                  borderRadius: 20,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.08,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 2,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.brand.darkPink }}>Top Learners</Text>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
+                  Leaderboard
+                </Text>
               </View>
             </View>
           </View>

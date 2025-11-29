@@ -64,7 +64,7 @@ export default function SelectTreatment() {
   const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   const dispatch = useDispatch();
-  const { userId, caseId, selectedTreatmentIds } = useSelector((s) => s.currentGame);
+  const { userId, caseId, selectedTreatmentIds, sourceType } = useSelector((s) => s.currentGame);
   const { isPremium } = useSelector(state => state.user);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -224,7 +224,7 @@ export default function SelectTreatment() {
           try {
             await dispatch(submitGameplay());
           } catch (e) {}
-          if(!isPremium) {
+          if(!isPremium && sourceType === 'case') {
             dispatch(useHeart());
           }
           navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan' });
