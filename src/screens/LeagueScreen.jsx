@@ -1,18 +1,20 @@
 import React, { useEffect } from 'react';
 import { useColorScheme, View, Text, ScrollView, Image, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
 import LeagueHeader from './LeagueHeader';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTop10 } from '../store/slices/leaderboardSlice';
 import rankingImage from '../../constants/ranking.png';
+import CloudBottom from '../components/CloudBottom';
 // import rankingImage1 from '../../constants/ranking1.png';
 
 
 export default function LeagueScreen() {
   const themeColors = Colors.light;
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   const { items: top10, me, status, error } = useSelector((state) => state.leaderboard || { items: [], me: null, status: 'idle', error: null });
   const currentUserId = useSelector((state) => state.user?.userData?._id);
 
@@ -164,6 +166,8 @@ export default function LeagueScreen() {
             </View>
           </>
         ) : null}
+        <View style={{ height: 130 }} />
+        <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
       </ScrollView>
     </SafeAreaView>
   );

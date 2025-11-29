@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../constants/Colors';
@@ -17,11 +17,13 @@ import departmentIcon from '../../constants/department.png';
 import calendarIcon from '../../constants/calendar.png';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { API_BASE } from '../../constants/Api';
+import CloudBottom from '../components/CloudBottom';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
   const { hearts } = useSelector(state => state.user);
   const [currentUserId, setCurrentUserId] = useState(undefined);
@@ -245,7 +247,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-          <View style={{}}>
+          <View style={{marginBottom: 120}}>
             <View style={styles.rowCenterBetween}>
               <View style={styles.rowCenter}>
                 <Image source={departmentIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
@@ -272,6 +274,7 @@ export default function HomeScreen() {
           <PremiumBottomSheet ref={premiumSheetRef} />
 
         
+      <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
       </ScrollView>
     </SafeAreaView>
   );

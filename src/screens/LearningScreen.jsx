@@ -1,6 +1,6 @@
 import React from 'react';
 import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
 import LeagueHeader from './LeagueHeader';
@@ -10,6 +10,7 @@ import { API_BASE } from '../../constants/Api';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch } from 'react-redux';
 import { setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setUserId } from '../store/slices/currentGameSlice';
+import CloudBottom from '../components/CloudBottom';
 
 // Will fetch brief gameplay list for user (supports both Case and DailyChallenge)
 
@@ -18,6 +19,7 @@ export default function LearningScreen() {
   const themeColors = Colors.light;
   const navigation = useNavigation();
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   const [userId, setUid] = React.useState(undefined);
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -262,6 +264,8 @@ export default function LearningScreen() {
             })}
           </View>
         ))}
+        <View style={{ height: 100 }} />
+        <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
       </ScrollView>
       <LearningDetailSheet ref={detailSheetRef} themeColors={themeColors} snapPoints={['45%','90%']} />
     </SafeAreaView>

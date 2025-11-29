@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { useColorScheme, View, Text, ScrollView, TouchableOpacity, Alert, Platform, PermissionsAndroid } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { styles } from './styles';
 import LeagueHeader from './LeagueHeader';
@@ -21,11 +21,13 @@ import {
   AuthorizationStatus,
 } from '@react-native-firebase/messaging';
 import { useSelector } from 'react-redux';
+import CloudBottom from '../components/CloudBottom';
 
 export default function AccountScreen() {
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const storage = useMemo(() => new MMKV(), []);
   const dispatch = useDispatch();
   const [refresh, setRefresh] = useState(0);
@@ -305,9 +307,8 @@ export default function AccountScreen() {
             </View>
           </TouchableOpacity>
         </View>
+        <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-
