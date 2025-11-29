@@ -43,6 +43,9 @@ target 'frontend' do
         config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
         config.build_settings['GCC_TREAT_WARNINGS_AS_ERRORS'] = 'NO'
 
+          # Add dSYM generation for all configurations (including Hermes)
+          config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+
         # Ensure warnings are not treated as errors even if pods add -Werror
         %w[OTHER_CFLAGS OTHER_CPLUSPLUSFLAGS].each do |flags_key|
           current = config.build_settings[flags_key]

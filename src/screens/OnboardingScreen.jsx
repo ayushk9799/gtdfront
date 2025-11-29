@@ -71,9 +71,9 @@ export default function OnboardingScreen() {
   const playAudio = React.useCallback(() => {
     return new Promise((resolve) => {
       try {
-        if (Platform.OS === 'android') {
+        // if (Platform.OS === 'android') {
           // Load from android/app/src/main/res/raw (filename without extension)
-          const s = new Sound('onboardingspeech1', Sound.MAIN_BUNDLE, (error) => {
+          const s = new Sound('onboardingspeech1.mp3', Sound.MAIN_BUNDLE, (error) => {
             if (error) {
               console.warn('Audio load error (android raw):', error);
               resolve();
@@ -88,24 +88,24 @@ export default function OnboardingScreen() {
             });
             setTimeout(resolve, 150);
           });
-        } else {
-          // iOS: bundle via require
-          const s = new Sound(require('../../constants/onboardingspeech1.mp3'), (error) => {
-            if (error) {
-              console.warn('Audio load error (ios bundle):', error);
-              resolve();
-              return;
-            }
-            soundRef.current = s;
-            try { s.setVolume(1.0); } catch (_) {}
-            s.play((success) => {
-              try { s.release(); } catch (_) {}
-              soundRef.current = null;
-              if (!success) console.warn('Audio play failed');
-            });
-            setTimeout(resolve, 150);
-          });
-        }
+        // } else {
+        //   // iOS: bundle via require
+        //   const s = new Sound(require('../../constants/onboardingspeech1.mp3'), (error) => {
+        //     if (error) {
+        //       console.warn('Audio load error (ios bundle):', error);
+        //       resolve();
+        //       return;
+        //     }
+        //     soundRef.current = s;
+        //     try { s.setVolume(1.0); } catch (_) {}
+        //     s.play((success) => {
+        //       try { s.release(); } catch (_) {}
+        //       soundRef.current = null;
+        //       if (!success) console.warn('Audio play failed');
+        //     });
+        //     setTimeout(resolve, 150);
+        //   });
+        // }
       } catch (e) {
         console.warn('Audio init error:', e);
         resolve();
