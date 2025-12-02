@@ -31,7 +31,6 @@ export default function HomeScreen() {
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
 
-  console.log('home screen');
   
 
   // Daily challenge selectors

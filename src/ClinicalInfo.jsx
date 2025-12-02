@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable,TouchableOpacity,  Image, Animated, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable,TouchableOpacity,  Image, Animated, InteractionManager, Platform } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -14,6 +14,8 @@ import { API_BASE } from '../constants/Api';
 import AudioAura from './components/AudioAura';
 import ComingSoonImage from './components/ComingSoonImage';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { BlurView } from '@react-native-community/blur';
+import PremiumBottomSheet from './components/PremiumBottomSheet';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -117,14 +119,14 @@ function InfoColumn({ icon, label, value }) {
 export default function ClinicalInfo() {
   const { width } = Dimensions.get('window');
   const [index, setIndex] = useState(0);
-  const [debouncedIndex, setDebouncedIndex] = useState(index);
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const soundRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentPart, setCurrentPart] = useState(null);
+  // Use refs instead of state for audio status to avoid re-renders
+  const isPlayingRef = useRef(false);
+  const isLoadingRef = useRef(false);
+  const currentPartRef = useRef(null);
   const auraRef = useRef(null);
   const [showAura, setShowAura] = useState(false);
   
@@ -154,6 +156,7 @@ export default function ClinicalInfo() {
   const [selectedPhysImageIndex, setSelectedPhysImageIndex] = useState(0);
   const [isImageSheetOpen, setIsImageSheetOpen] = useState(false);
   const imageSheetRef = useRef(null);
+  const premiumSheetRef = useRef(null);
   const imageSnapPoints = useMemo(() => ['45%'], []);
   const renderImageBackdrop = useCallback(
     (props) => (
@@ -210,13 +213,8 @@ export default function ClinicalInfo() {
     togglePlayForIndexRef.current?.(currentIndexRef.current);
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedIndex(index);
-    }, 300); // Wait 300ms after user stops scrolling
-    
-    return () => clearTimeout(timer);
-  }, [index]);
+  // Audio playback timer ref for cleanup
+  const audioTimerRef = useRef(null);
   React.useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(shimmerAnim, {
@@ -308,9 +306,9 @@ export default function ClinicalInfo() {
       soundRef.current?.release?.();
     } catch (_) {}
     soundRef.current = null;
-    setIsPlaying(false);
-    setIsLoading(false);
-    setCurrentPart(null);
+    isPlayingRef.current = false;
+    isLoadingRef.current = false;
+    currentPartRef.current = null;
     try { auraRef.current?.stop?.(); } catch (_) {}
   }, []);
 
@@ -320,7 +318,7 @@ export default function ClinicalInfo() {
     const url = urlFor(caseId, part);
     // stop prior if any
     stopPlayback();
-    setIsLoading(true);
+    isLoadingRef.current = true;
     try { Sound.setCategory('Playback', true); } catch (_) {}
     try { Sound.enableInSilenceMode(true); } catch (_) {}
     const s = new Sound(url, undefined, (error) => {
@@ -332,23 +330,23 @@ export default function ClinicalInfo() {
       }
       if (error) {
         console.warn('Audio load error:', error);
-        setIsLoading(false);
-        setIsPlaying(false);
-        setCurrentPart(null);
+        isLoadingRef.current = false;
+        isPlayingRef.current = false;
+        currentPartRef.current = null;
         try { auraRef.current?.stop?.(); } catch (_) {}
         return;
       }
-      setIsLoading(false);
-      setIsPlaying(true);
-      setCurrentPart(part);
+      isLoadingRef.current = false;
+      isPlayingRef.current = true;
+      currentPartRef.current = part;
       try { auraRef.current?.start?.(); } catch (_) {}
       s.play(() => {
         try { s.release(); } catch (_) {}
-        // Only update state if this sound is still the active one
+        // Only update refs if this sound is still the active one
         if (soundRef.current === s) {
           soundRef.current = null;
-          setIsPlaying(false);
-          setCurrentPart(null);
+          isPlayingRef.current = false;
+          currentPartRef.current = null;
           try { auraRef.current?.stop?.(); } catch (_) {}
         }
       });
@@ -358,7 +356,7 @@ export default function ClinicalInfo() {
 
   const togglePlayForIndex = useCallback((i) => {
     const part = indexToPart[i];
-    if (isPlaying && currentPart === part) {
+    if (isPlayingRef.current && currentPartRef.current === part) {
       // User manually paused - prevent auto-play on slide changes
       userPausedAudioRef.current = true;
       stopPlayback();
@@ -367,7 +365,7 @@ export default function ClinicalInfo() {
       userPausedAudioRef.current = false;
       playForIndex(i);
     }
-  }, [isPlaying, currentPart, playForIndex, stopPlayback]);
+  }, [playForIndex, stopPlayback]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -378,9 +376,12 @@ export default function ClinicalInfo() {
   );
 
   React.useEffect(() => {
-    let audioTimer;
-    let interactionTask;
-
+    // Clear any pending audio timer
+    if (audioTimerRef.current) {
+      clearTimeout(audioTimerRef.current);
+      audioTimerRef.current = null;
+    }
+    
     // Stop any active playback immediately when index changes
     stopPlayback();
 
@@ -389,23 +390,21 @@ export default function ClinicalInfo() {
       return undefined;
     }
 
-    interactionTask = InteractionManager.runAfterInteractions(() => {
-      audioTimer = setTimeout(() => {
-        // Double-check user hasn't paused while waiting
-        if (!userPausedAudioRef.current) {
-          playForIndex(debouncedIndex);
-        }
-      }, 500);
-    });
+    // Single 200ms delay - simple and predictable
+    audioTimerRef.current = setTimeout(() => {
+      if (!userPausedAudioRef.current) {
+        playForIndex(index);
+      }
+    }, 200);
 
     return () => {
-      if (audioTimer) {
-        clearTimeout(audioTimer);
+      if (audioTimerRef.current) {
+        clearTimeout(audioTimerRef.current);
+        audioTimerRef.current = null;
       }
-      interactionTask?.cancel?.();
       stopPlayback();
     };
-  }, [debouncedIndex, caseId, playForIndex, stopPlayback]);
+  }, [index, caseId, playForIndex, stopPlayback]);
   // Defer mounting the heavy aura until interactions settle
   useEffect(() => {
     let task = InteractionManager.runAfterInteractions(() => {
@@ -415,26 +414,11 @@ export default function ClinicalInfo() {
       task?.cancel?.();
     };
   }, []);
-  // Stabilize audio state refs for toggle without re-renders
-  const isPlayingRef = useRef(isPlaying);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  const currentPartRef = useRef(currentPart);
-  useEffect(() => { currentPartRef.current = currentPart; }, [currentPart]);
-  const togglePlayForIndexRef = useRef(null);
+  // Stable ref for toggle function used by AudioAura
+  const togglePlayForIndexRef = useRef(togglePlayForIndex);
   useEffect(() => {
-    togglePlayForIndexRef.current = (i) => {
-      const part = indexToPart[i];
-      if (isPlayingRef.current && currentPartRef.current === part) {
-        // User manually paused - prevent auto-play on slide changes
-        userPausedAudioRef.current = true;
-        stopPlayback();
-      } else {
-        // User manually started - allow auto-play again
-        userPausedAudioRef.current = false;
-        playForIndex(i);
-      }
-    };
-  }, [playForIndex, stopPlayback]);
+    togglePlayForIndexRef.current = togglePlayForIndex;
+  }, [togglePlayForIndex]);
   const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
   
   return (
@@ -610,12 +594,33 @@ export default function ClinicalInfo() {
                   {physicalImages.map((item, idx) => (
                     <View key={String(idx)} style={{ width: physContainerWidth, height: '100%' }}>
                       {item?.url ? (
-                        <Image
-                          source={{ uri: item.url }}
-                          style={styles.physImage}
-                          resizeMode="contain"
-                          blurRadius={!isPremium ? 30 : 0}
-                        />
+                        <>
+                          <Image
+                            source={{ uri: item.url }}
+                            style={styles.physImage}
+                            resizeMode="contain"
+                          />
+                          {!isPremium && (
+                            <>
+                              <BlurView
+                                style={styles.premiumBlur}
+                                blurType={'dark'}
+                                blurAmount={5}
+                                overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0.1)' : 'transparent'}
+                              />
+                              <View style={styles.premiumOverlay}>
+                                <Text style={styles.premiumOverlayText}>Premium Feature</Text>
+                                <TouchableOpacity
+                                  style={styles.premiumCtaButton}
+                                  onPress={() => premiumSheetRef.current?.present()}
+                                  activeOpacity={0.9}
+                                >
+                                  <Text style={styles.premiumCtaButtonText}>Subscribe Premium</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </>
+                          )}
+                        </>
                       ) : (
                         <ComingSoonImage style={{ width: '100%', height: '100%' }} />
                       )}
@@ -807,6 +812,7 @@ export default function ClinicalInfo() {
         ) : <View style={{ width: 48 }} />}
       </View>
 
+      <PremiumBottomSheet ref={premiumSheetRef} />
     </SafeAreaView>
   );
 }
@@ -1149,6 +1155,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#687076',
     fontWeight: '700',
+  },
+  premiumBlur: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  premiumOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    zIndex: 2,
+  },
+  premiumOverlayText: {
+    color: '#fff',
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontSize: 18,
+  },
+  premiumCtaButton: {
+    backgroundColor: Colors.brand.darkPink,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  premiumCtaButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 14,
   },
 });
 

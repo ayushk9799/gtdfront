@@ -1,4 +1,4 @@
-import { signUpWithGoogle } from 'react-native-credentials-manager';
+import { signUpWithGoogle, signUpWithApple } from 'react-native-credentials-manager';
 
 import React, { useState } from 'react';
 import { API_BASE } from '../constants/Api.jsx';
@@ -12,7 +12,7 @@ import {
 import { getApp } from '@react-native-firebase/app';
 import { useDispatch } from 'react-redux';
 import { updateUser } from './store/slices/userSlice';
-import { View, TouchableOpacity, Platform, ActivityIndicator, Text, StyleSheet, Image, useColorScheme, Dimensions } from 'react-native';
+import { View, TouchableOpacity, Platform, ActivityIndicator, Text, StyleSheet, Image, useColorScheme, Dimensions, Linking } from 'react-native';
 import googleAuth from './services/googleAuth';
 import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
@@ -62,65 +62,104 @@ async function platformSpecificSignUp() {
   }
 }
 
+async function appleSignUp() {
+  try {
+    const appleCredential = await signUpWithApple({
+      requestedScopes: ['fullName', 'email'],
+    });
+
+    const ans = await fetch(`${API_BASE}/api/login/apple/loginSignUp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        idToken: appleCredential.idToken,
+        displayName: appleCredential.displayName,
+        email: appleCredential.email,
+      }),
+    });
+    const data = await ans.json();
+    return data;
+  } catch (error) {
+    console.error('Apple sign-up failed:', error);
+    throw error;
+  }
+}
+
 function Login({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   const dispatch = useDispatch();
+
+  const handlePostLogin = async (credential) => {
+    // Persist user credential
+    const loggedInUser = credential?.user || {};
+    storage.set('user', JSON.stringify(loggedInUser));
+
+    // Try to register for remote messages and fetch FCM token immediately
+    try {
+      await registerDeviceForRemoteMessages(getMessaging(getApp()));
+    } catch (e) {
+      console.warn('Failed to register device for remote messages (login flow)', e);
+    }
+    try {
+      const token = await getToken(getMessaging(getApp()));
+      // Save FCM token locally with user object
+      try {
+        const storedUserStr = storage.getString('user');
+        if (storedUserStr) {
+          const storedUser = JSON.parse(storedUserStr);
+          if (storedUser) {
+            storedUser.fcmToken = token;
+            storage.set('user', JSON.stringify(storedUser));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to update stored user with FCM token (login flow)', e);
+      }
+      // Update server with FCM token (best-effort)
+      const userId = loggedInUser?.userId || loggedInUser?._id || loggedInUser?.id;
+      if (userId && token) {
+        try {
+          await dispatch(updateUser({ userId, userData: { fcmToken: token } }));
+        } catch (e) {
+          console.warn('Failed to update server with FCM token (login flow)', e);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to get FCM token (login flow)', e);
+    }
+
+    if (typeof onLogin === 'function') {
+      onLogin(loggedInUser);
+    }
+    try { storage.set('forceLogin', false); } catch {}
+  };
 
   const handleSignIn = async () => {
     try {
       setIsLoading(true);
       const credential = await platformSpecificSignUp();
-
-    
-      // Persist user credential
-      const loggedInUser = credential?.user || {};
-      storage.set('user', JSON.stringify(loggedInUser));
-
-      // Try to register for remote messages and fetch FCM token immediately
-      try {
-        await registerDeviceForRemoteMessages(getMessaging(getApp()));
-      } catch (e) {
-        console.warn('Failed to register device for remote messages (login flow)', e);
-      }
-      try {
-        const token = await getToken(getMessaging(getApp()));
-        // Save FCM token locally with user object
-        try {
-          const storedUserStr = storage.getString('user');
-          if (storedUserStr) {
-            const storedUser = JSON.parse(storedUserStr);
-            if (storedUser) {
-              storedUser.fcmToken = token;
-              storage.set('user', JSON.stringify(storedUser));
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to update stored user with FCM token (login flow)', e);
-        }
-        // Update server with FCM token (best-effort)
-        const userId = loggedInUser?.userId || loggedInUser?._id || loggedInUser?.id;
-        if (userId && token) {
-          try {
-            await dispatch(updateUser({ userId, userData: { fcmToken: token } }));
-          } catch (e) {
-            console.warn('Failed to update server with FCM token (login flow)', e);
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to get FCM token (login flow)', e);
-      }
-
-      if (typeof onLogin === 'function') {
-        onLogin(loggedInUser);
-      }
-      try { storage.set('forceLogin', false); } catch {}
-      // TODO: navigate or store auth data as needed
+      await handlePostLogin(credential);
     } catch (error) {
       console.error('Sign-in failed', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setIsAppleLoading(true);
+      const credential = await appleSignUp();
+      await handlePostLogin(credential);
+    } catch (error) {
+      console.error('Apple Sign-in failed', error);
+    } finally {
+      setIsAppleLoading(false);
     }
   };
 
@@ -147,6 +186,36 @@ function Login({ onLogin }) {
           pointerEvents="none"
         />
         <View style={styles.ctaContainer}>
+          {/* Apple Sign-In Button - iOS only */}
+          {Platform.OS === 'ios' && (
+            isAppleLoading ? (
+              <ActivityIndicator size="large" color="#000000" style={{ marginBottom: 12 }} />
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  styles.appleButton,
+                ]}
+                onPress={handleAppleSignIn}
+                activeOpacity={0.9}
+                disabled={isAppleLoading || isLoading}
+              >
+                <View style={styles.contentGroup}>
+                  <View style={styles.buttonIcon}>
+                    <Svg width="20" height="20" viewBox="0 0 24 24">
+                      <Path
+                        fill="#FFFFFF"
+                        d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+                      />
+                    </Svg>
+                  </View>
+                  <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                </View>
+              </TouchableOpacity>
+            )
+          )}
+          
+          {/* Google Sign-In Button */}
           {isLoading ? (
             <ActivityIndicator size="large" color={Colors.brand.darkPink} />
           ) : (
@@ -157,7 +226,7 @@ function Login({ onLogin }) {
               ]}
               onPress={handleSignIn}
               activeOpacity={0.9}
-              disabled={isLoading}
+              disabled={isLoading || isAppleLoading}
             >
               <View style={styles.contentGroup}>
                 <View style={styles.buttonIcon}>
@@ -172,6 +241,24 @@ function Login({ onLogin }) {
               </View>
             </TouchableOpacity>
           )}
+          
+          {/* Terms & Privacy Policy */}
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
+            >
+              Terms of Service
+            </Text>{' '}
+            &{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
         </View>
       </View>
     </View>
@@ -354,6 +441,29 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     fontFamily: 'Roboto-Medium',
     fontWeight: '900',
+  },
+  appleButton: {
+    backgroundColor: '#000000',
+    marginBottom: 12,
+    borderWidth: 0,
+  },
+  appleButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    letterSpacing: 0.3,
+    fontFamily: 'Roboto-Medium',
+    fontWeight: '900',
+  },
+  termsText: {
+    marginTop: 16,
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 12,
+    paddingHorizontal: 16,
+  },
+  termsLink: {
+    color: Colors.brand.darkPink,
+    fontWeight: '800',
   },
 });
 

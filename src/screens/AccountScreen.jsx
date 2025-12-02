@@ -1,11 +1,12 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { useColorScheme, View, Text, ScrollView, TouchableOpacity, Alert, Platform, PermissionsAndroid } from 'react-native';
+import { useColorScheme, View, Text, ScrollView, TouchableOpacity, Alert, Platform, PermissionsAndroid, Linking } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { styles } from './styles';
 import LeagueHeader from './LeagueHeader';
 import { MMKV } from 'react-native-mmkv';
 import googleAuth from '../services/googleAuth';
+import { API_BASE } from '../../constants/Api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch } from 'react-redux';
@@ -150,6 +151,64 @@ export default function AccountScreen() {
     );
   }, [storage, navigation]);
 
+  const handleDeleteAccount = useCallback(async () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including game progress, scores, and premium subscriptions.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const userId = user?.userId || user?._id || user?.id;
+              if (!userId) {
+                Alert.alert('Error', 'Unable to identify user. Please try logging out and back in.');
+                return;
+              }
+
+              // Call backend delete endpoint
+              const response = await fetch(`${API_BASE}/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              const data = await response.json();
+
+              if (!response.ok || data?.error) {
+                Alert.alert('Error', data?.error || 'Failed to delete account. Please try again.');
+                return;
+              }
+
+              // Clear all local storage
+              try {
+                storage.clearAll();
+              } catch (e) {
+                console.warn('Error clearing local storage:', e);
+              }
+
+              // Sign out from Google
+              try { await googleAuth.signOut(); } catch {}
+              try { await googleAuth.revoke?.(); } catch {}
+
+              // Reset navigation to Login screen
+              setTimeout(() => {
+                try {
+                  navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                } catch {}
+              }, 0);
+            } catch (err) {
+              Alert.alert('Error', err?.message || 'Failed to delete account. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }, [user, storage, navigation]);
+
   return (
     <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
       {/* <LeagueHeader onPressPro={() => {}} /> */}
@@ -281,7 +340,7 @@ export default function AccountScreen() {
           )}
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('PrivacyPolicy')}
+            onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
             style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}
             activeOpacity={0.85}
           >
@@ -289,7 +348,7 @@ export default function AccountScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('TermsOfService')}
+            onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
             style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}
             activeOpacity={0.85}
           >
@@ -304,6 +363,17 @@ export default function AccountScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
               <MaterialCommunityIcons name="logout" size={18} color="#ffffff" />
               <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>Log out</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleDeleteAccount}
+            activeOpacity={0.8}
+            style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: '#DC2626', marginTop: 8 }]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+              <MaterialCommunityIcons name="delete-outline" size={18} color="#ffffff" />
+              <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>Delete Account</Text>
             </View>
           </TouchableOpacity>
         </View>

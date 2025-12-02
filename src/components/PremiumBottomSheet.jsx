@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, StyleSheet, ScrollView, Linking } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch, useSelector } from 'react-redux';
@@ -190,7 +190,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
               >
                 <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
-                  Get unlimited access to all features
+                  Value for money. Monthly auto-renewal subscription
                 </Text>
               </View>
             </View>
@@ -272,7 +272,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
                   <View style={{ marginLeft: 10, flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Monthly Plan</Text>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                      {monthlyPackage?.product?.description || 'Access to all features'}
+                      {monthlyPackage?.product?.description || 'Value for money.Monthly auto-renewal subscription'}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -304,7 +304,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
                   <View style={{ marginLeft: 10, flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Weekly Plan</Text>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                      {weeklyPackage?.product?.description || 'All premium features'}
+                      {weeklyPackage?.product?.description || 'Short term plan. Weekly auto-renewal subscription'}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -363,13 +363,15 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
             <Text style={{ textAlign: 'center', color: '#6B7280', fontSize: 12 }}>
               By continuing, you agree to our{' '}
               <Text
-                style={{ color: theme.tint, fontWeight: '800' }}
+                style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
+                onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
               >
-                terms
+                terms of use
               </Text>{' '}
               &{' '}
               <Text
-                style={{ color: theme.tint, fontWeight: '800' }}
+                style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
+                onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
               >
                 privacy policy
               </Text>
