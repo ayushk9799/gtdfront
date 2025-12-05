@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Image } from 'react-native';
+import coinIcon from '../../constants/coin.png';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -51,9 +52,7 @@ export default function LeagueHeader() {
             <MaterialCommunityIcons name={'heart'} size={12} color="#FF0000" />
           </View>
           <Text style={pillText()}>{hearts}</Text>
-          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#FFD7AE", alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}>
-            <MaterialCommunityIcons name={'fire'} size={10} color="#FF6A00" />
-          </View>
+          <Image source={coinIcon} style={{ width: 18, height: 18, marginLeft: 6 }} />
           <Text style={pillText()}>{parseInt(userData?.cumulativePoints?.total || 0)}</Text>
         </View>
       </Pressable>

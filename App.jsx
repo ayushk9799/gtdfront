@@ -14,8 +14,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import Login from './src/Login';
-import PrivacyPolicy from './src/PrivacyPolicy';
-import TermsOfServiceScreen from './src/TermsOfService';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from './constants/Colors';
 import ClinicalInfo from './src/ClinicalInfo';
@@ -72,7 +70,7 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
 
     // Step 1: Get current FCM token
     const currentFCMToken = await getToken(getMessaging(getApp()));
-    
+
     // Step 2: Get locally stored user data (if available)
     const localUserDataString = storage.getString('user');
     let localUserData = null;
@@ -85,8 +83,8 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
     }
 
     const localFCMToken = localUserData?.fcmToken;
-    
-   
+
+
 
     // Step 3: Compare current token with local token and update local if different
     if (localFCMToken !== currentFCMToken && localUserData) {
@@ -96,7 +94,7 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
 
     // Step 4: Compare with server token - update server only if different
     if (userData && userData.fcmToken !== currentFCMToken) {
-      
+
       const userId = userData?.userId || userData?._id || userData?.id;
       if (userId) {
         // Update user FCM token on server (can be null if permission denied)
@@ -128,7 +126,7 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
 /* ---------- tabs ---------- */
 function RootTabs() {
   const colorScheme = useColorScheme();
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   const insets = useSafeAreaInsets();
   const bottomExtra = Platform.OS === 'android' ? (insets.bottom || 0) : 0;
   const isAndroid12Plus = Platform.OS === 'android' && Number(Platform.Version) >= 31;
@@ -158,7 +156,7 @@ function RootTabs() {
             return (
               <BlurView
                 style={StyleSheet.absoluteFill}
-                blurType={ 'light'}
+                blurType={'light'}
                 blurAmount={16}
                 overlayColor="transparent"
               />
@@ -185,7 +183,7 @@ function RootTabs() {
           if (route.name === 'Account') icon = focused ? 'account-heart' : 'account-heart-outline';
           return <MaterialCommunityIcons name={icon} size={size} color={color} />;
         },
-        sceneStyle: { backgroundColor: 'transparent',  },
+        sceneStyle: { backgroundColor: 'transparent', },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
@@ -200,9 +198,9 @@ function RootTabs() {
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   const dispatch = useDispatch();
-  const {userData} = useSelector(state => state.user);
+  const { userData } = useSelector(state => state.user);
   const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
 
   // Ensure Purchases SDK is configured exactly once per app launch
@@ -230,7 +228,7 @@ export default function App() {
         await Purchases.logIn(String(appUserId));
       } else {
         // If no ID, make sure we are anonymous
-        try { await Purchases.logOut(); } catch {}
+        try { await Purchases.logOut(); } catch { }
       }
       await getCustomerInfo();
     } catch (e) {
@@ -327,7 +325,7 @@ export default function App() {
   // Identify RevenueCat user after first-time login (or when restored from storage)
   useEffect(() => {
     if (!user) return;
-    const uid =  user?.email || null;
+    const uid = user?.email || null;
     identifyPurchasesUser(uid);
   }, [user, identifyPurchasesUser]);
   // Listen for MMKV 'user' changes to react to logout/login instantly
@@ -347,7 +345,7 @@ export default function App() {
       }
     });
     return () => {
-      try { listener?.remove?.(); } catch {}
+      try { listener?.remove?.(); } catch { }
     };
   }, []);
   // FCM Token management - fetch user, get token, compare and update if different
@@ -399,25 +397,25 @@ export default function App() {
 
     // B. For when the user taps a notification and the app is in the background
     onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
-     
+
       // e.g., navigate to a specific screen
     });
 
     // C. For when the user taps a notification and the app is closed (quit)
     getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
-        if (remoteMessage) {
+      if (remoteMessage) {
         //  console.log('remoteMessage', remoteMessage);
-        }
-      });
+      }
+    });
 
     return unsubscribe;
   }, []);
 
- 
+
 
   // Do not return a JS splash; native bootsplash covers until we hide it.
 
-  const baseTheme =  DefaultTheme;
+  const baseTheme = DefaultTheme;
   const shouldForceLogin = storage.getBoolean && storage.getBoolean('forceLogin');
   if (loading) {
     // Keep native bootsplash visible while we read local storage.
@@ -451,7 +449,7 @@ export default function App() {
             // Hide native splash once navigation tree is ready
             try {
               RNBootSplash.hide({ fade: true });
-            } catch {}
+            } catch { }
           }}
           theme={mergedTheme}
         >
@@ -518,24 +516,6 @@ export default function App() {
               <Stack.Screen
                 name="SelectTreatment"
                 component={SelectTreatment}
-                options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
-                  presentation: 'card',
-                  contentStyle: { backgroundColor: 'transparent' },
-                }}
-              />
-              <Stack.Screen
-                name="PrivacyPolicy"
-                component={PrivacyPolicy}
-                options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
-                  presentation: 'card',
-                  contentStyle: { backgroundColor: 'transparent' },
-                }}
-              />
-              <Stack.Screen
-                name="TermsOfService"
-                component={TermsOfServiceScreen}
                 options={{
                   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
                   presentation: 'card',
