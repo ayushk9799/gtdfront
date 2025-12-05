@@ -12,7 +12,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
   const dispatch = useDispatch();
   const { userData } = useSelector(state => state.user);
   const sheetRef = useRef(null);
-  const [selectedPlan, setSelectedPlan] = useState(null); // 'monthly' | 'weekly'
+  const [selectedPlan, setSelectedPlan] = useState(null); // 'monthly' | 'sixMonth'
   const [offerings, setOfferings] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -105,10 +105,11 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
       const o = await Purchases.getOfferings();
       if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
         setOfferings(o);
-        if (o.current.monthly) {
+        // pick default: prefer sixMonth (best value), else monthly
+        if (o.current.sixMonth) {
+          setSelectedPlan('sixMonth');
+        } else if (o.current.monthly) {
           setSelectedPlan('monthly');
-        } else if (o.current.weekly) {
-          setSelectedPlan('weekly');
         } else {
           setSelectedPlan(null);
         }
@@ -126,9 +127,9 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
     }
   };
 
-  const weeklyPackage = offerings?.current?.weekly || null;
+  const sixMonthPackage = offerings?.current?.sixMonth || null;
   const monthlyPackage = offerings?.current?.monthly || null;
-  const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'weekly' ? weeklyPackage : null;
+  const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'sixMonth' ? sixMonthPackage : null;
   const isPremium = !!(useSelector(state => state.user).userData?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
   const premiumPlan = useSelector(state => state.user).userData?.premiumPlan || null;
   const premiumExpiresAt = useSelector(state => state.user).userData?.premiumExpiresAt || null;
@@ -156,6 +157,50 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
     }
   };
 
+  // Round price for display:
+  // - Small prices (<100): end in .99 (e.g., $14.99)
+  // - Large prices (>=100): round up, end in .00 (e.g., ₹1499.00)
+  const roundPriceForDisplay = (price) => {
+    if (price < 100) {
+      return Math.floor(price) + 0.99;
+    } else {
+      return Math.ceil(price);
+    }
+  };
+
+  // Helper to format price with currency symbol
+  const formatCurrencyPrice = (price, currencyCode, shouldRound = false) => {
+    try {
+      if (!price || !currencyCode) return '';
+      const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(finalPrice);
+    } catch {
+      const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
+      return `${currencyCode} ${finalPrice.toFixed(2)}`;
+    }
+  };
+
+  // Calculate strikethrough price for monthly (show a higher "original" price)
+  const getMonthlyStrikethroughPrice = () => {
+    if (!monthlyPackage?.product?.price || !monthlyPackage?.product?.currencyCode) return null;
+    const monthlyPrice = monthlyPackage.product.price;
+    const originalPrice = monthlyPrice * 1.5; // 50% higher as "original" price
+    return formatCurrencyPrice(originalPrice, monthlyPackage.product.currencyCode, true);
+  };
+
+  // Calculate strikethrough price for 6-month (1.5x the actual price)
+  const getSixMonthStrikethroughPrice = () => {
+    if (!sixMonthPackage?.product?.price || !sixMonthPackage?.product?.currencyCode) return null;
+    const sixMonthPrice = sixMonthPackage.product.price;
+    const originalPrice = sixMonthPrice * 1.5; // 50% higher as "original" price
+    return formatCurrencyPrice(originalPrice, sixMonthPackage.product.currencyCode, true);
+  };
+
   return (
     <BottomSheetModal
       ref={sheetRef}
@@ -165,7 +210,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
       onChange={(index) => {
         if (index >= 0) {
           // refresh data when opened
-          getOfferingsAndEntitlements().catch(() => {});
+          getOfferingsAndEntitlements().catch(() => { });
         }
       }}
     >
@@ -246,23 +291,6 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
                   opacity: monthlyPackage ? 1 : 0.5,
                 }}
               >
-                {monthlyPackage && (
-                  <View style={{ position: 'absolute', top: -10, right: 14 }}>
-                    <View
-                      style={{
-                        backgroundColor: Colors.brand.darkPink,
-                        borderTopLeftRadius: 12,
-                        borderTopRightRadius: 12,
-                        borderBottomLeftRadius: 12,
-                        borderBottomRightRadius: 12,
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                      }}
-                    >
-                      <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 10 }}>MOST POPULAR</Text>
-                    </View>
-                  </View>
-                )}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <MaterialCommunityIcons
                     name={selectedPlan === 'monthly' ? 'check-circle' : 'circle-outline'}
@@ -272,51 +300,79 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
                   <View style={{ marginLeft: 10, flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Monthly Plan</Text>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                      {monthlyPackage?.product?.description || 'Value for money.Monthly auto-renewal subscription'}
+                      {'Short term plan. Auto-renewal subscription'}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
                       {monthlyPackage?.product?.priceString || ''}
                     </Text>
-                    <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>₹1,000.00</Text>
+                    {getMonthlyStrikethroughPrice() && (
+                      <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
+                        {getMonthlyStrikethroughPrice()}
+                      </Text>
+                    )}
                   </View>
                 </View>
               </Pressable>
 
+              {/* 6 Month */}
               <Pressable
-                onPress={() => weeklyPackage && setSelectedPlan('weekly')}
+                onPress={() => sixMonthPackage && setSelectedPlan('sixMonth')}
                 style={{
                   backgroundColor: '#FFFFFF',
                   borderRadius: 16,
                   borderWidth: 2,
-                  borderColor: selectedPlan === 'weekly' ? Colors.brand.darkPink : '#EDEDED',
+                  borderColor: selectedPlan === 'sixMonth' ? Colors.brand.darkPink : '#EDEDED',
                   padding: 14,
-                  opacity: weeklyPackage ? 1 : 0.5,
+                  opacity: sixMonthPackage ? 1 : 0.5,
                 }}
               >
+                {sixMonthPackage && (
+                  <View style={{ position: 'absolute', top: -10, right: 14 }}>
+                    <View
+                      style={{
+                        backgroundColor: '#4CAF50',
+                        borderRadius: 12,
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                      }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 10 }}>BEST VALUE</Text>
+                    </View>
+                  </View>
+                )}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <MaterialCommunityIcons
-                    name={selectedPlan === 'weekly' ? 'check-circle' : 'circle-outline'}
+                    name={selectedPlan === 'sixMonth' ? 'check-circle' : 'circle-outline'}
                     size={22}
-                    color={selectedPlan === 'weekly' ? Colors.brand.darkPink : '#B0B7BF'}
+                    color={selectedPlan === 'sixMonth' ? Colors.brand.darkPink : '#B0B7BF'}
                   />
-                  <View style={{ marginLeft: 10, flex: 1 }}>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Weekly Plan</Text>
+                  <View style={{ marginLeft: 10, flex: 1, paddingRight: 10 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>6 Month Plan</Text>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                      {weeklyPackage?.product?.description || 'Short term plan. Weekly auto-renewal subscription'}
+                      {'Value for money. Auto-renewal subscription'}
                     </Text>
+                    {sixMonthPackage?.product?.pricePerMonthString && (
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#4CAF50', marginTop: 2 }}>
+                        Only {sixMonthPackage.product.pricePerMonthString}/month
+                      </Text>
+                    )}
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
-                      {weeklyPackage?.product?.priceString || ''}
+                      {sixMonthPackage?.product?.priceString || ''}
                     </Text>
-                    <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>₹500.00</Text>
+                    {getSixMonthStrikethroughPrice() && (
+                      <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
+                        {getSixMonthStrikethroughPrice()}
+                      </Text>
+                    )}
                   </View>
                 </View>
               </Pressable>
 
-              {!monthlyPackage && !weeklyPackage && (
+              {!monthlyPackage && !sixMonthPackage && (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                   <Text style={{ color: '#6C6C6C' }}>No packages available</Text>
                 </View>

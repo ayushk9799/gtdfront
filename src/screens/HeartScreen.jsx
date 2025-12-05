@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
@@ -24,7 +24,8 @@ export default function HeartScreen() {
   const heartsToShow = Math.min(hearts, MAX_HEARTS_DISPLAY);
   const [timeUntilReset, setTimeUntilReset] = useState('');
   const scrollY = useRef(new Animated.Value(0)).current;
-  
+  const insets = useSafeAreaInsets();
+
   const heroOpacity = useMemo(
     () =>
       scrollY.interpolate({
@@ -34,7 +35,7 @@ export default function HeartScreen() {
       }),
     [scrollY],
   );
-  
+
   const heroTranslateY = useMemo(
     () =>
       scrollY.interpolate({
@@ -44,7 +45,7 @@ export default function HeartScreen() {
       }),
     [scrollY],
   );
-  
+
   const onScroll = useMemo(
     () =>
       Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
@@ -60,12 +61,12 @@ export default function HeartScreen() {
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(0, 0, 0, 0); // Set to 12:00 AM
-      
+
       const diff = tomorrow.getTime() - now.getTime();
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-      
+
       return {
         hours: hours.toString().padStart(2, '0'),
         minutes: minutes.toString().padStart(2, '0'),
@@ -79,7 +80,7 @@ export default function HeartScreen() {
       const time = calculateTimeUntilReset();
       setTimeUntilReset(time.formatted);
     };
-    
+
     updateTimer();
 
     // Update every second
@@ -95,7 +96,7 @@ export default function HeartScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <View style={{ flex: 1 }}>
         <LinearGradient
           colors={SUBTLE_PINK_GRADIENT}
@@ -103,7 +104,7 @@ export default function HeartScreen() {
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        
+
         {/* Hero Image - Positioned like PremiumScreen */}
         <Animated.View
           pointerEvents="none"
@@ -115,6 +116,7 @@ export default function HeartScreen() {
             height: HERO_HEIGHT,
             alignItems: 'center',
             justifyContent: 'center',
+            paddingTop: insets.top,
             opacity: heroOpacity,
             transform: [{ translateY: heroTranslateY }],
             zIndex: 1,
@@ -143,7 +145,7 @@ export default function HeartScreen() {
         <View
           style={{
             position: 'absolute',
-            top: 0,
+            top: insets.top + 10,
             left: 0,
             right: 0,
             flexDirection: 'row',
@@ -178,7 +180,7 @@ export default function HeartScreen() {
 
         <Animated.ScrollView
           style={{ flex: 1, zIndex: 2, backgroundColor: 'transparent' }}
-          contentContainerStyle={{ paddingBottom: 28 }}
+          contentContainerStyle={{ paddingBottom: 28, paddingTop: 10 }}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
           onScroll={onScroll}
@@ -201,63 +203,63 @@ export default function HeartScreen() {
             <View style={{ paddingHorizontal: 16 }}>
               <Text style={styles.subtitle}>
                 <Text style={styles.boldText}>1 Heart = 1 Case</Text>
-               
+
               </Text>
 
-        <View style={styles.card}>
-          <View style={styles.heartsRow}>
-            {Array.from({ length: MAX_HEARTS_DISPLAY }).map((_, idx) => {
-              const filled = idx < heartsToShow;
-              return (
-                <Ionicons
-                  key={idx}
-                  name="heart"
-                  size={44}
-                  color={filled ? '#ff4d4f' : '#c8cbd0'}
-                  style={styles.heartIcon}
-                />
-              );
-            })}
-          </View>
-          <View style={styles.cardMainTextContainer}>
-            <Text style={styles.cardMainText}>
-              Today's <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
-            </Text>
-          </View>
-          <View style={styles.timerContainer}>
-            <Ionicons name="time-outline" size={16} color="#65727E" style={{ marginRight: 6 }} />
-            <Text style={styles.timerText}>
-              Hearts reset in: <Text style={styles.timerTime}>{timeUntilReset}</Text>
-            </Text>
-          </View>
-        </View>
+              <View style={styles.card}>
+                <View style={styles.heartsRow}>
+                  {Array.from({ length: MAX_HEARTS_DISPLAY }).map((_, idx) => {
+                    const filled = idx < heartsToShow;
+                    return (
+                      <Ionicons
+                        key={idx}
+                        name="heart"
+                        size={44}
+                        color={filled ? '#ff4d4f' : '#c8cbd0'}
+                        style={styles.heartIcon}
+                      />
+                    );
+                  })}
+                </View>
+                <View style={styles.cardMainTextContainer}>
+                  <Text style={styles.cardMainText}>
+                    Today's <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
+                  </Text>
+                </View>
+                <View style={styles.timerContainer}>
+                  <Ionicons name="time-outline" size={16} color="#65727E" style={{ marginRight: 6 }} />
+                  <Text style={styles.timerText}>
+                    Hearts reset in: <Text style={styles.timerTime}>{timeUntilReset}</Text>
+                  </Text>
+                </View>
+              </View>
 
               <Text style={styles.subtitleSecondary}>You get 3 hearts every 24 hour.</Text>
 
               <View style={styles.cardAlt}>
-          <Text style={styles.cardAltTitle}>Want to play more today ?</Text>
-          <Text style={styles.cardAltSubtitle}>Get <Text style={{ fontWeight: '700' }}>Premium To :</Text></Text>
+                <Text style={styles.cardAltTitle}>Want to play more today ?</Text>
+                <Text style={styles.cardAltSubtitle}>Get <Text style={{ fontWeight: '700' }}>Premium To :</Text></Text>
 
-          <View style={styles.listRow}>
-            <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
-            <Text style={styles.listText}>
-                 Unlock <Text style={{ fontWeight: '700' }}>unlimited Hearts</Text> for nonstop play.
-              </Text>
-             
-              
-          </View>
+                <View style={styles.listRow}>
+                  <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
+                  <Text style={styles.listText}>
+                    Unlock <Text style={{ fontWeight: '700' }}>unlimited Hearts</Text> for nonstop play.
+                  </Text>
 
-          <View style={styles.listRow}>
-            <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
-            <Text style={styles.listText}>
-                 Access <Text style={{ fontWeight: '700' }}>clinical Insight</Text> for deeper learning.
-              </Text>
-          </View>
 
-              <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
-                <Text style={styles.ctaButtonText}>Get Premium →</Text>
-              </TouchableOpacity>
-            </View>
+                </View>
+
+                <View style={styles.listRow}>
+                  <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
+                  <Text style={styles.listText}>
+                    Access <Text style={{ fontWeight: '700' }}>clinical Insight</Text> for deeper learning.
+                  </Text>
+                </View>
+
+                <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
+                  <Text style={styles.ctaButtonText}>Get Premium →</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <PremiumBottomSheet ref={premiumSheetRef} />
           </View>
@@ -267,201 +269,200 @@ export default function HeartScreen() {
   );
 }
 
-const styles = StyleSheet.create({  
-    container: {
-        flex: 1,
-        backgroundColor: Colors.light.background,
-        paddingTop: 16,
-    },
-    header: {
-        height: 56,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: Colors.brand.darkPink,
-    },
-    heartImageContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        height: '100%',
-    },
-    heartImageHero: {
-        width: 200,
-        height: 200,
-    },
-    scrollInner: {
-        padding: 16,
-        paddingBottom: 32,
-        // flexGrow: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    subtitle: {
-        textAlign: 'center',
-        color: '#556070',
-        fontSize: 16,
-        marginTop: 4,
-        marginBottom: 16,
-        lineHeight: 24,
-    },
-    boldText: {
-        fontWeight: '800',
-        color: Colors.brand.darkPink,
-        fontSize: 18,
-    },
-    subtitleSecondary: {
-        textAlign: 'center',
-        color: '#65727E',
-        fontSize: 14,
-        marginBottom: 16,
-        marginTop: 6,
-        fontWeight: '600',
-    },
-    card: {
-        backgroundColor: 'white',
-        borderRadius: 16,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: '#EDEDED',
-        alignItems: 'center',
-        width: '100%',
-    },
-    heartsRow: {
-        flexDirection: 'row',
-        marginBottom: 12,
-    },
-    heartIcon: {
-        marginHorizontal: 10,
-    },
-    cardMainTextContainer: {
-        alignItems: 'center',
-        marginBottom: 6,
-    },
-    cardMainText: {
-        fontSize: 18,
-        color: '#2D3142',
-        fontWeight: '700',
-    },
-    cardMainTextNumber: {
-        fontSize: 20,
-        color: '#ff4d4f',
-        fontWeight: '800',
-    },
-    timerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 8,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: '#EDEDED',
-    },
-    timerText: {
-        fontSize: 14,
-        color: '#65727E',
-        fontWeight: '600',
-    },
-    timerTime: {
-        fontSize: 15,
-        color: Colors.brand.darkPink,
-        fontWeight: '800',
-        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    },
-    cardTimerText: {
-        fontSize: 16,
-        color: '#e74c3c',
-        marginBottom: 12,
-    },
-    primaryButton: {
-        backgroundColor: Colors.brand.darkPink,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-        marginTop: 4,
-    },
-    primaryButtonDisabled: {
-        backgroundColor: '#c2c2c2',
-    },
-    primaryButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    cardAlt: {
-        backgroundColor: 'white',
-        borderRadius: 16,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: '#EDEDED',
-        marginTop: 16,
-        width: '100%',
-    },
-    cardAltTitle: {
-        color: Colors.brand.darkPink,
-        fontSize: 20,
-        fontWeight: '800',
-        marginBottom: 6,
-    },
-    cardAltSubtitle: {
-        color: '#5B6474',
-        fontSize: 15,
-        marginBottom: 12,
-    },
-    listRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    listText: {
-        flex: 1,
-        color: '#2D3142',
-        fontSize: 15,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#EDE4DA',
-        marginVertical: 8,
-    },
-    ctaButton: {
-        marginTop: 10,
-        backgroundColor: Colors.brand.darkPink,
-        paddingVertical: 12,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    ctaButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    secondaryButton: {
-        marginTop: 10,
-        borderColor: '#CBD5E1',
-        borderWidth: 1,
-        backgroundColor: '#F8FAFC',
-        paddingVertical: 12,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    secondaryButtonText: {
-        color: '#0F172A',
-        fontSize: 16,
-        fontWeight: '700',
-    },
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+  },
+  header: {
+    height: 56,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.brand.darkPink,
+  },
+  heartImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  heartImageHero: {
+    width: 200,
+    height: 200,
+  },
+  scrollInner: {
+    padding: 16,
+    paddingBottom: 32,
+    // flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  subtitle: {
+    textAlign: 'center',
+    color: '#556070',
+    fontSize: 16,
+    marginTop: 4,
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  boldText: {
+    fontWeight: '800',
+    color: Colors.brand.darkPink,
+    fontSize: 18,
+  },
+  subtitleSecondary: {
+    textAlign: 'center',
+    color: '#65727E',
+    fontSize: 14,
+    marginBottom: 16,
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#EDEDED',
+    alignItems: 'center',
+    width: '100%',
+  },
+  heartsRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  heartIcon: {
+    marginHorizontal: 10,
+  },
+  cardMainTextContainer: {
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  cardMainText: {
+    fontSize: 18,
+    color: '#2D3142',
+    fontWeight: '700',
+  },
+  cardMainTextNumber: {
+    fontSize: 20,
+    color: '#ff4d4f',
+    fontWeight: '800',
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#EDEDED',
+  },
+  timerText: {
+    fontSize: 14,
+    color: '#65727E',
+    fontWeight: '600',
+  },
+  timerTime: {
+    fontSize: 15,
+    color: Colors.brand.darkPink,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  cardTimerText: {
+    fontSize: 16,
+    color: '#e74c3c',
+    marginBottom: 12,
+  },
+  primaryButton: {
+    backgroundColor: Colors.brand.darkPink,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#c2c2c2',
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cardAlt: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#EDEDED',
+    marginTop: 16,
+    width: '100%',
+  },
+  cardAltTitle: {
+    color: Colors.brand.darkPink,
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  cardAltSubtitle: {
+    color: '#5B6474',
+    fontSize: 15,
+    marginBottom: 12,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  listText: {
+    flex: 1,
+    color: '#2D3142',
+    fontSize: 15,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#EDE4DA',
+    marginVertical: 8,
+  },
+  ctaButton: {
+    marginTop: 10,
+    backgroundColor: Colors.brand.darkPink,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  ctaButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    marginTop: 10,
+    borderColor: '#CBD5E1',
+    borderWidth: 1,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

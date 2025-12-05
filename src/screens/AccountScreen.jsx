@@ -34,8 +34,8 @@ export default function AccountScreen() {
   const dispatch = useDispatch();
   const [refresh, setRefresh] = useState(0);
   const [osPermissionEnabled, setOsPermissionEnabled] = useState(true);
-  const { isPremium, customerInfo } = useSelector(state => state.user);
- 
+  const { isPremium, customerInfo, userData } = useSelector(state => state.user);
+
   const user = useMemo(() => {
     try {
       const raw = storage.getString('user');
@@ -133,8 +133,8 @@ export default function AccountScreen() {
           text: 'Log out',
           style: 'destructive',
           onPress: async () => {
-            try { await googleAuth.signOut(); } catch {}
-            try { await googleAuth.revoke?.(); } catch {}
+            try { await googleAuth.signOut(); } catch { }
+            try { await googleAuth.revoke?.(); } catch { }
             try {
               // Force App root to show unauthenticated stack at Login screen
               storage.set('forceLogin', true);
@@ -143,9 +143,9 @@ export default function AccountScreen() {
               setTimeout(() => {
                 try {
                   navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-                } catch {}
+                } catch { }
               }, 0);
-            } catch {}
+            } catch { }
           },
         },
       ]
@@ -192,14 +192,14 @@ export default function AccountScreen() {
               }
 
               // Sign out from Google
-              try { await googleAuth.signOut(); } catch {}
-              try { await googleAuth.revoke?.(); } catch {}
+              try { await googleAuth.signOut(); } catch { }
+              try { await googleAuth.revoke?.(); } catch { }
 
               // Reset navigation to Login screen
               setTimeout(() => {
                 try {
                   navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-                } catch {}
+                } catch { }
               }, 0);
             } catch (err) {
               Alert.alert('Error', err?.message || 'Failed to delete account. Please try again.');
@@ -211,7 +211,7 @@ export default function AccountScreen() {
   }, [user, storage, navigation]);
 
   return (
-    <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
+    <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       {/* <LeagueHeader onPressPro={() => {}} /> */}
       <ScrollView contentContainerStyle={styles.screenScroll}>
         <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 16 }}>
@@ -234,6 +234,89 @@ export default function AccountScreen() {
           {!!user?.email && (
             <Text style={styles.subtitle}>{user.email}</Text>
           )}
+
+          {/* Stats Section */}
+          <View style={{
+            flexDirection: 'row',
+            marginTop: 16,
+            paddingHorizontal: 16,
+            gap: 10,
+          }}>
+            {/* Cases Completed */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Learnings')}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                backgroundColor: '#FFFFFF',
+                borderRadius: 12,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 6,
+                elevation: 2,
+              }}>
+              <View style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: '#E8F5E9',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 10,
+              }}>
+                <MaterialCommunityIcons name="clipboard-check-outline" size={20} color="#43A047" />
+              </View>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                  {(userData?.completedCases?.length || 0) + (userData?.completedDailyChallenges?.length || 0)}
+                </Text>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: '#888888' }}>
+                  Cases Solved
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Cumulative Points */}
+            <View style={{
+              flex: 1,
+              flexDirection: 'row',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 12,
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              elevation: 2,
+            }}>
+              <View style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: '#FFF8E1',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 10,
+              }}>
+                <MaterialCommunityIcons name="star-circle" size={20} color="#FFA000" />
+              </View>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                  {parseInt(userData?.cumulativePoints?.total || 0)}
+                </Text>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: '#888888' }}>
+                  Total Points
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         {isPremium && (
@@ -274,128 +357,234 @@ export default function AccountScreen() {
           </View>
         )}
 
-        <View style={{ gap: 12 }}>
-          {!effectiveEnabled && (
-            <View style={{ alignSelf: 'stretch', padding: 12, borderRadius: 12, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="bell-alert" size={22} color="#B45309" />
-                <Text style={{ color: '#92400E', fontWeight: '900', marginLeft: 8 }}>Notifications are disabled</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={{ flex: 1, color: '#92400E', marginRight: 12 }}>
-                  Turn on notifications to receive daily reminders and updates.
-                </Text>
-                <TouchableOpacity
-                  onPress={async () => {
-                    try {
-                      let granted = true;
-                      if (Platform.OS === 'ios') {
-                        const status = await requestPermission(getMessaging(getApp()));
-                        granted = (status === AuthorizationStatus.AUTHORIZED) || (status === AuthorizationStatus.PROVISIONAL);
-                      } else if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
-                        const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-                        granted = res === PermissionsAndroid.RESULTS.GRANTED;
-                      }
-                      storage.set('notifDecided', true);
-                      storage.set('notifEnabled', !!granted);
-                      setRefresh(v => v + 1);
-                      // Recompute OS permission immediately so banner hides without leaving the screen
-                      await computeOsPermission();
-
-                      if (granted) {
-                        try {
-                          await registerDeviceForRemoteMessages(getMessaging(getApp()));
-                        } catch {}
-                        try {
-                          const token = await getToken(getMessaging(getApp()));
-                          try {
-                            const raw = storage.getString('user');
-                            if (raw) {
-                              const parsed = JSON.parse(raw);
-                              parsed.fcmToken = token;
-                              storage.set('user', JSON.stringify(parsed));
-                            }
-                          } catch {}
-                          const userId = user?.userId || user?._id || user?.id;
-                          if (userId && token) {
-                            try {
-                              await dispatch(updateUser({ userId, userData: { fcmToken: token } }));
-                            } catch {}
-                          }
-                          try {
-                            await subscribeToTopic(getMessaging(getApp()), 'all_user');
-                          } catch {}
-                        } catch {}
-                      }
-                    } catch (e) {
-                      // no-op
-                    }
-                  }}
-                  activeOpacity={0.9}
-                  style={{ backgroundColor: Colors.brand.darkPink, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, flexShrink: 0 }}
-                >
-                  <Text style={{ color: '#ffffff', fontWeight: '900' }}>Allow</Text>
-                </TouchableOpacity>
-              </View>
+        {/* Notification Banner */}
+        {!effectiveEnabled && (
+          <View style={{
+            marginHorizontal: 16,
+            marginBottom: 16,
+            padding: 16,
+            borderRadius: 16,
+            backgroundColor: '#FEF3C7',
+            shadowColor: '#F59E0B',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 3,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <MaterialCommunityIcons name="bell-alert" size={22} color="#B45309" />
+              <Text style={{ color: '#92400E', fontWeight: '900', marginLeft: 8, fontSize: 15 }}>Notifications are disabled</Text>
             </View>
-          )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+              <Text style={{ flex: 1, color: '#92400E', marginRight: 12, fontSize: 13, lineHeight: 18 }}>
+                Turn on notifications to receive daily reminders and updates.
+              </Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    let granted = true;
+                    if (Platform.OS === 'ios') {
+                      const status = await requestPermission(getMessaging(getApp()));
+                      granted = (status === AuthorizationStatus.AUTHORIZED) || (status === AuthorizationStatus.PROVISIONAL);
+                    } else if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+                      const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+                      granted = res === PermissionsAndroid.RESULTS.GRANTED;
+                    }
+                    storage.set('notifDecided', true);
+                    storage.set('notifEnabled', !!granted);
+                    setRefresh(v => v + 1);
+                    await computeOsPermission();
 
+                    if (granted) {
+                      try {
+                        await registerDeviceForRemoteMessages(getMessaging(getApp()));
+                      } catch { }
+                      try {
+                        const token = await getToken(getMessaging(getApp()));
+                        try {
+                          const raw = storage.getString('user');
+                          if (raw) {
+                            const parsed = JSON.parse(raw);
+                            parsed.fcmToken = token;
+                            storage.set('user', JSON.stringify(parsed));
+                          }
+                        } catch { }
+                        const userId = user?.userId || user?._id || user?.id;
+                        if (userId && token) {
+                          try {
+                            await dispatch(updateUser({ userId, userData: { fcmToken: token } }));
+                          } catch { }
+                        }
+                        try {
+                          await subscribeToTopic(getMessaging(getApp()), 'all_user');
+                        } catch { }
+                      } catch { }
+                    }
+                  } catch (e) {
+                    // no-op
+                  }
+                }}
+                activeOpacity={0.9}
+                style={{
+                  backgroundColor: '#B45309',
+                  paddingHorizontal: 18,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  flexShrink: 0
+                }}
+              >
+                <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>Allow</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Settings Card */}
+        <View style={{
+          marginHorizontal: 16,
+          marginBottom: 16,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 20,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 4,
+          overflow: 'hidden',
+        }}>
+          {/* Privacy Policy */}
           <TouchableOpacity
             onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
-            style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}
-            activeOpacity={0.85}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 16,
+              paddingHorizontal: 18,
+              backgroundColor: '#FFFFFF',
+            }}
+            activeOpacity={0.6}
           >
-            <Text style={[styles.primaryButtonText, { color: '#1a1a1a', textAlign: 'center' }]}>Privacy Policy</Text>
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: '#F5F5F7',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}>
+              <MaterialCommunityIcons name="shield-lock-outline" size={22} color="#4A5568" />
+            </View>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>Privacy Policy</Text>
+            <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
           </TouchableOpacity>
 
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#F0F0F2', marginLeft: 72 }} />
+
+          {/* Terms of Service */}
           <TouchableOpacity
             onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
-            style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}
-            activeOpacity={0.85}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 16,
+              paddingHorizontal: 18,
+              backgroundColor: '#FFFFFF',
+            }}
+            activeOpacity={0.6}
           >
-            <Text style={[styles.primaryButtonText, { color: '#1a1a1a', textAlign: 'center' }]}>Terms of Service</Text>
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: '#F5F5F7',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}>
+              <MaterialCommunityIcons name="file-document-outline" size={22} color="#4A5568" />
+            </View>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>Terms of Service</Text>
+            <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
           </TouchableOpacity>
 
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#F0F0F2', marginLeft: 72 }} />
+
+          {/* Rate the App */}
           <TouchableOpacity
             onPress={async () => {
               if (isReviewAvailable()) {
                 await requestInAppReview();
               } else {
-                // Fallback: open app store link if in-app review not available
                 const storeUrl = Platform.OS === 'ios'
-                  ? 'https://apps.apple.com/app/id<YOUR_APP_ID>' // Replace with your iOS App ID
-                  : 'https://play.google.com/store/apps/details?id=com.diagnoseit'; // Replace with your Android package
+                  ? 'https://apps.apple.com/app/id<YOUR_APP_ID>'
+                  : 'https://play.google.com/store/apps/details?id=com.diagnoseit';
                 Linking.openURL(storeUrl);
               }
             }}
-            style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}
-            activeOpacity={0.85}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 16,
+              paddingHorizontal: 18,
+              backgroundColor: '#FFFFFF',
+            }}
+            activeOpacity={0.6}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-              <MaterialCommunityIcons name="star" size={18} color={Colors.brand.darkPink} />
-              <Text style={[styles.primaryButtonText, { color: '#1a1a1a', marginLeft: 8 }]}>Rate the App</Text>
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: '#FFF5F8',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}>
+              <MaterialCommunityIcons name="star" size={22} color={Colors.brand.darkPink} />
             </View>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>Rate the App</Text>
+            <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
           </TouchableOpacity>
+        </View>
 
+        {/* Action Buttons */}
+        <View style={{ paddingHorizontal: 16, gap: 12, marginBottom: 24 }}>
           <TouchableOpacity
             onPress={handleLogout}
-            activeOpacity={0.8}
-            style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: Colors.brand.darkPink }]}
+            activeOpacity={0.85}
+            style={{
+              alignSelf: 'stretch',
+              backgroundColor: Colors.brand.darkPink,
+              paddingVertical: 16,
+              borderRadius: 14,
+              shadowColor: Colors.brand.darkPink,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-              <MaterialCommunityIcons name="logout" size={18} color="#ffffff" />
-              <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>Log out</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialCommunityIcons name="logout" size={20} color="#ffffff" />
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 16, marginLeft: 10 }}>Log out</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleDeleteAccount}
-            activeOpacity={0.8}
-            style={[styles.primaryButton, { alignSelf: 'stretch', backgroundColor: '#DC2626', marginTop: 8 }]}
+            activeOpacity={0.85}
+            style={{
+              alignSelf: 'stretch',
+              backgroundColor: '#FEF2F2',
+              paddingVertical: 16,
+              borderRadius: 14,
+            }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-              <MaterialCommunityIcons name="delete-outline" size={18} color="#ffffff" />
-              <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>Delete Account</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialCommunityIcons name="delete-outline" size={20} color="#DC2626" />
+              <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 16, marginLeft: 10 }}>Delete Account</Text>
             </View>
           </TouchableOpacity>
         </View>
