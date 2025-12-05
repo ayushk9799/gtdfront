@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, Animated } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
@@ -7,8 +7,11 @@ import LeagueHeader from './LeagueHeader';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTop10 } from '../store/slices/leaderboardSlice';
 import rankingImage from '../../constants/ranking.png';
+import coinIcon from '../../constants/coin.png';
 import CloudBottom from '../components/CloudBottom';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
+const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
 // Helper function to get initials from name
 const getInitials = (name) => {
@@ -51,24 +54,25 @@ export default function LeagueScreen() {
     if (!player) return null;
     const config = medalConfig[position];
     const isCenter = position === 1;
-    const size = isCenter ? 80 : 64;
-    const fontSize = isCenter ? 16 : 14;
+    const size = isCenter ? 64 : 52;
+    const fontSize = isCenter ? 12 : 11;
 
     return (
       <View style={[styles.podiumItem, isCenter && styles.podiumItemCenter]}>
+        <Text style={{ fontSize: isCenter ? 24 : 20, marginBottom: 4 }}>{config.emoji}</Text>
         <LinearGradient
           colors={config.gradient}
           style={[styles.avatarGradient, { width: size + 4, height: size + 4, borderRadius: (size + 4) / 2 }]}
         >
           <View style={[styles.avatarInner, { width: size, height: size, borderRadius: size / 2, backgroundColor: config.bgColor }]}>
-            <Text style={[styles.avatarText, { fontSize: fontSize + 4 }]}>{getInitials(player.name)}</Text>
+            <Text style={[styles.avatarText, { fontSize: fontSize + 2 }]}>{getInitials(player.name)}</Text>
           </View>
         </LinearGradient>
         <Text style={[styles.podiumName, { fontSize }]} numberOfLines={1} ellipsizeMode="tail">
           {player.name || '...'}
         </Text>
         <View style={[styles.podiumScoreBadge, { backgroundColor: config.bgColor, borderColor: config.borderColor }]}>
-          <MaterialCommunityIcons name="star" size={12} color={config.gradient[0]} />
+          <Image source={coinIcon} style={{ width: 12, height: 12 }} />
           <Text style={[styles.podiumScore, { color: config.gradient[1] }]}>
             {Math.round(player.score ?? 0)}
           </Text>
@@ -119,7 +123,7 @@ export default function LeagueScreen() {
 
           {/* Score */}
           <View style={styles.scoreContainer}>
-            <MaterialCommunityIcons name="trophy" size={16} color="#FFB800" />
+            <Image source={coinIcon} style={{ width: 18, height: 18 }} />
             <Text style={styles.scoreText}>
               {Math.round(item.score ?? 0)}
             </Text>
@@ -130,99 +134,95 @@ export default function LeagueScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFBFC' }} edges={['top', 'left', 'right']}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero Section with Image */}
-        <View style={styles.heroSection}>
-          <View style={styles.imageContainer}>
-            <Image source={rankingImage} style={styles.heroImage} resizeMode="cover" />
-            <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.3)']}
-              style={styles.imageOverlay}
-            />
-            <LinearGradient
-              colors={['rgba(250,251,252,0)', '#FAFBFC']}
-              style={styles.bottomFade}
-            />
-          </View>
-          {/* Title badge positioned outside imageContainer to avoid clipping */}
-          <View style={styles.titleContainer}>
-            <LinearGradient
-              colors={['#FF407D', '#FF6B9D']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.titleBadge}
-            >
-              <MaterialCommunityIcons name="trophy-variant" size={24} color="#FFF" />
-              <Text style={styles.heroTitle}>Leaderboard</Text>
-            </LinearGradient>
-          </View>
-        </View>
-
-        {/* Top 3 Podium */}
-        <View style={styles.podiumSection}>
-          <View style={styles.podiumContainer}>
-            {/* 2nd Place - Left */}
-            <View style={styles.podiumSide}>
-              {renderPodiumPlayer(top3[1], 2)}
-            </View>
-
-            {/* 1st Place - Center */}
-            <View style={styles.podiumCenter}>
-              {renderPodiumPlayer(top3[0], 1)}
-            </View>
-
-            {/* 3rd Place - Right */}
-            <View style={styles.podiumSide}>
-              {renderPodiumPlayer(top3[2], 3)}
+    <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+      <View style={{ flex: 1 }}>
+        <LinearGradient
+          colors={SUBTLE_PINK_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero Section with Image */}
+          <View style={styles.heroSection}>
+            <View style={styles.imageContainer}>
+              <Image source={rankingImage} style={styles.heroImage} resizeMode="cover" />
+              {/* <LinearGradient
+                colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.3)']}
+                style={styles.imageOverlay}
+              /> */}
+              <LinearGradient
+                colors={['rgba(238, 163, 190, 0)', '#f9eff2ff']}
+                style={styles.bottomFade}
+              />
             </View>
           </View>
-        </View>
 
-        {/* Divider */}
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <View style={styles.dividerBadge}>
-            <MaterialCommunityIcons name="account-group" size={16} color="#6B7280" />
-            <Text style={styles.dividerText}>All Participants</Text>
-          </View>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Rest of Leaderboard */}
-        <View style={styles.leaderboardContainer}>
-          {/* Header */}
-          <View style={styles.listHeader}>
-            <Text style={styles.listHeaderText}>RANK</Text>
-            <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>PLAYER</Text>
-            <Text style={styles.listHeaderText}>SCORE</Text>
-          </View>
-
-          {/* List Items */}
-          {restLeaderboard.map((item, idx) => {
-            const isMe = me && item?.userId && me?.userId && String(item.userId) === String(me.userId);
-            return renderLeaderboardItem(item, idx, isMe);
-          })}
-
-          {/* Show user's rank if not in top 10 */}
-          {me && me.rank > 10 && (
-            <>
-              <View style={styles.ellipsisContainer}>
-                <View style={styles.ellipsisDot} />
-                <View style={styles.ellipsisDot} />
-                <View style={styles.ellipsisDot} />
+          {/* Top 3 Podium */}
+          <View style={styles.podiumSection}>
+            <View style={styles.podiumContainer}>
+              {/* 2nd Place - Left */}
+              <View style={styles.podiumSide}>
+                {renderPodiumPlayer(top3[1], 2)}
               </View>
-              {renderLeaderboardItem(me, 0, true)}
-            </>
-          )}
-        </View>
 
-        <View style={{ height: 100 }} />
-        <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.25 }} />
-      </ScrollView>
+              {/* 1st Place - Center */}
+              <View style={styles.podiumCenter}>
+                {renderPodiumPlayer(top3[0], 1)}
+              </View>
+
+              {/* 3rd Place - Right */}
+              <View style={styles.podiumSide}>
+                {renderPodiumPlayer(top3[2], 3)}
+              </View>
+            </View>
+          </View>
+
+          {/* Divider */}
+          {/* <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <View style={styles.dividerBadge}>
+              <MaterialCommunityIcons name="account-group" size={16} color="#6B7280" />
+              <Text style={styles.dividerText}>All Participants</Text>
+            </View>
+            <View style={styles.dividerLine} />
+          </View> */}
+
+          {/* Rest of Leaderboard */}
+          <View style={styles.leaderboardContainer}>
+            {/* Header */}
+            <View style={styles.listHeader}>
+              <Text style={styles.listHeaderText}>RANK</Text>
+              <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>PLAYER</Text>
+              <Text style={styles.listHeaderText}>SCORE</Text>
+            </View>
+
+            {/* List Items */}
+            {restLeaderboard.map((item, idx) => {
+              const isMe = me && item?.userId && me?.userId && String(item.userId) === String(me.userId);
+              return renderLeaderboardItem(item, idx, isMe);
+            })}
+
+            {/* Show user's rank if not in top 10 */}
+            {me && me.rank > 10 && (
+              <>
+                <View style={styles.ellipsisContainer}>
+                  <View style={styles.ellipsisDot} />
+                  <View style={styles.ellipsisDot} />
+                  <View style={styles.ellipsisDot} />
+                </View>
+                {renderLeaderboardItem(me, 0, true)}
+              </>
+            )}
+          </View>
+
+          <View style={{ height: 100 }} />
+          <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.25 }} />
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -253,39 +253,9 @@ const styles = StyleSheet.create({
     right: 0,
     height: 120,
   },
-  titleContainer: {
-    alignItems: 'center',
-    marginTop: -90,
-    zIndex: 10,
-  },
-  titleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 50,
-    gap: 8,
-    shadowColor: '#FF407D',
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 8,
-  },
   podiumSection: {
     paddingHorizontal: 16,
-    marginTop: 24,
+    marginTop: -70,
   },
   podiumContainer: {
     flexDirection: 'row',
@@ -307,9 +277,6 @@ const styles = StyleSheet.create({
   },
   podiumItemCenter: {
     marginBottom: 12,
-  },
-  podiumMedalContainer: {
-    marginBottom: 8,
   },
   avatarGradient: {
     alignItems: 'center',
@@ -346,56 +313,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   podiumScore: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '800',
-  },
-  podiumBase: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 8,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  podiumBase1: {
-    width: 90,
-    height: 70,
-    backgroundColor: '#FFD700',
-    shadowColor: '#DAA520',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  podiumBase2: {
-    width: 80,
-    height: 50,
-    backgroundColor: '#C0C0C0',
-    shadowColor: '#A0A0A0',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  podiumBase3: {
-    width: 80,
-    height: 40,
-    backgroundColor: '#CD7F32',
-    shadowColor: '#8B4513',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  podiumBaseText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#FFFFFF',
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: 24,
+    marginTop: 0,
     marginBottom: 16,
   },
   dividerLine: {
@@ -419,6 +344,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   leaderboardContainer: {
+    marginTop: 10,
     paddingHorizontal: 16,
   },
   listHeader: {
@@ -434,80 +360,80 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   leaderboardCard: {
-    borderRadius: 16,
-    marginBottom: 10,
+    borderRadius: 12,
+    marginBottom: 8,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   leaderboardCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   rankBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rankText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '800',
     color: '#6B7280',
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
+    marginLeft: 10,
   },
   avatarSmallText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   nameContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   playerName: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
     color: '#1F2937',
     maxWidth: '70%',
   },
   youBadge: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     color: '#10B981',
     backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 4,
   },
   scoreContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFBEB',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 3,
   },
   scoreText: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '800',
     color: '#D97706',
   },
@@ -525,5 +451,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1D5DB',
   },
 });
-
-
