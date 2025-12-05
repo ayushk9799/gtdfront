@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -19,9 +19,104 @@ import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { API_BASE } from '../../constants/Api';
 import CloudBottom from '../components/CloudBottom';
 
+// Skeleton Loader Component
+const SkeletonLoader = ({ width, height, borderRadius = 8, style }) => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const shimmer = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    shimmer.start();
+    return () => shimmer.stop();
+  }, []);
+
+  const opacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: '#E0E0E0',
+          opacity,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+// Daily Challenge Skeleton
+const DailyChallengeSkeleton = () => (
+  <View style={{ marginTop: 8 }}>
+    {/* Image skeleton */}
+    <SkeletonLoader width="100%" height={200} borderRadius={16} style={{ marginBottom: 12 }} />
+    {/* Title skeleton */}
+    <SkeletonLoader width="80%" height={16} style={{ marginBottom: 8 }} />
+    {/* Description skeleton */}
+    <SkeletonLoader width="60%" height={14} style={{ marginBottom: 16 }} />
+    {/* Button skeleton */}
+    <SkeletonLoader width="100%" height={48} borderRadius={24} />
+  </View>
+);
+
+// Department Card Skeleton
+const DepartmentCardSkeleton = () => (
+  <View style={skeletonStyles.departmentCard}>
+    {/* Icon skeleton */}
+    <SkeletonLoader width={48} height={48} borderRadius={12} />
+    <View style={{ flex: 1, marginLeft: 12 }}>
+      {/* Title skeleton */}
+      <SkeletonLoader width="70%" height={16} style={{ marginBottom: 8 }} />
+      {/* Progress bar skeleton */}
+      <SkeletonLoader width="100%" height={8} borderRadius={4} style={{ marginBottom: 6 }} />
+      {/* Progress text skeleton */}
+      <SkeletonLoader width="40%" height={12} />
+    </View>
+  </View>
+);
+
+// Departments List Skeleton
+const DepartmentsListSkeleton = () => (
+  <View style={{ marginTop: 12 }}>
+    <DepartmentCardSkeleton />
+    <DepartmentCardSkeleton />
+    <DepartmentCardSkeleton />
+    <DepartmentCardSkeleton />
+  </View>
+);
+
+const skeletonStyles = StyleSheet.create({
+  departmentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+});
+
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
@@ -31,7 +126,7 @@ export default function HomeScreen() {
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
 
-  
+
 
   // Daily challenge selectors
   const currentChallenge = useSelector(selectCurrentChallenge);
@@ -52,11 +147,11 @@ export default function HomeScreen() {
           dispatch(setUserId(uid));
         }
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   useEffect(() => {
-    if(categoriesLoading === 'idle') {
+    if (categoriesLoading === 'idle') {
       dispatch(fetchCategories());
     }
   }, [dispatch]);
@@ -68,24 +163,24 @@ export default function HomeScreen() {
 
   const openCaseById = async (caseId) => {
     console.log('caseId', caseId);
-    
+
     try {
-      if(hearts <=0) {
+      if (hearts <= 0) {
         ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);
         premiumSheetRef.current?.present();
         return;
       }
       await dispatch(loadCaseById(caseId));
       navigation.navigate('ClinicalInfo');
-    } catch (_) {}
+    } catch (_) { }
   };
 
   // Handle daily challenge press - check if already completed
   const handleDailyChallengePress = async () => {
     if (!currentChallenge?._id || !currentUserId) {
       // Fallback to normal flow if no challenge or user
-      dispatch(setCaseData({ 
-        dailyChallengeId: currentChallenge?._id, 
+      dispatch(setCaseData({
+        dailyChallengeId: currentChallenge?._id,
         caseData: currentChallenge?.caseData,
         sourceType: 'dailyChallenge'
       }));
@@ -94,25 +189,25 @@ export default function HomeScreen() {
     }
 
     setIsDailyChallengeLoading(true);
-    
+
     try {
       // Check if there's an existing gameplay for this daily challenge
       const res = await fetch(
         `${API_BASE}/api/gameplays?userId=${encodeURIComponent(currentUserId)}&dailyChallengeId=${encodeURIComponent(currentChallenge._id)}&sourceType=dailyChallenge`
       );
-      
+
       if (!res.ok) {
         throw new Error('Failed to check gameplay status');
       }
-      
+
       const data = await res.json();
       const gameplays = data?.gameplays || [];
       const completedGameplay = gameplays.find(gp => gp.status === 'completed');
-      
+
       if (completedGameplay) {
         // Already completed - load selections and navigate to ClinicalInsight
         const caseData = currentChallenge?.caseData || {};
-        
+
         // Map indices -> IDs for selections
         const tests = caseData?.steps?.[1]?.data?.availableTests || [];
         const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
@@ -136,8 +231,8 @@ export default function HomeScreen() {
           .filter(Boolean);
 
         // Set case data and selections in Redux
-        dispatch(setCaseData({ 
-          dailyChallengeId: currentChallenge?._id, 
+        dispatch(setCaseData({
+          dailyChallengeId: currentChallenge?._id,
           caseData: caseData,
           sourceType: 'dailyChallenge'
         }));
@@ -147,12 +242,12 @@ export default function HomeScreen() {
 
         // Navigate to ClinicalInsight to review the completed case
         navigation.navigate('ClinicalInsight', { caseData, from: 'HomeScreen' });
-        
+
         ToastAndroid.show('You\'ve already completed today\'s challenge!', ToastAndroid.SHORT);
       } else {
         // Not completed - proceed with normal flow
-        dispatch(setCaseData({ 
-          dailyChallengeId: currentChallenge?._id, 
+        dispatch(setCaseData({
+          dailyChallengeId: currentChallenge?._id,
           caseData: currentChallenge?.caseData,
           sourceType: 'dailyChallenge'
         }));
@@ -161,8 +256,8 @@ export default function HomeScreen() {
     } catch (error) {
       // On error, fallback to normal flow
       console.warn('Error checking daily challenge status:', error);
-      dispatch(setCaseData({ 
-        dailyChallengeId: currentChallenge?._id, 
+      dispatch(setCaseData({
+        dailyChallengeId: currentChallenge?._id,
         caseData: currentChallenge?.caseData,
         sourceType: 'dailyChallenge'
       }));
@@ -173,8 +268,8 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
-      <LeagueHeader onPressPro={() => {}} />
+    <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
+      <LeagueHeader onPressPro={() => { }} />
       <ScrollView contentContainerStyle={styles.screenScroll}>
         <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
           <View style={styles.cardContent}>
@@ -187,36 +282,31 @@ export default function HomeScreen() {
                 <Text style={styles.badgeText}>New</Text>
               </View> */}
             </View>
-            
-            {isChallengeLoading && (
-              <View style={[styles.rowCenter, { marginTop: 8 }]}>
-                <ActivityIndicator color={Colors.brand.darkPink} />
-                <Text style={[styles.cardDesc, { marginLeft: 8 }]}>Loading today's challenge...</Text>
-              </View>
-            )}
-            
+
+            {isChallengeLoading && <DailyChallengeSkeleton />}
+
             {hasChallengeError && !isChallengeLoading && (
               <View style={{ marginTop: 8 }}>
                 <Text style={[styles.cardDesc, { color: '#C62828' }]}>
                   {challengeError || 'Failed to load today\'s challenge'}
                 </Text>
-               
+
               </View>
             )}
-            
+
             {currentChallenge && !isChallengeLoading && !hasChallengeError && (
               <>
-              {currentChallenge?.caseData?.mainimage && 
-              <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
-                <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
-              </View>
-              }
+                {currentChallenge?.caseData?.mainimage &&
+                  <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
+                    <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
+                  </View>
+                }
                 <Text style={[styles.cardDesc, { marginTop: 8 }]}>
-                  {currentChallenge?.caseData?.caseTitle|| 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                  {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
                 </Text>
-                <TouchableOpacity 
-                  style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]} 
-                  activeOpacity={0.9} 
+                <TouchableOpacity
+                  style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
+                  activeOpacity={0.9}
                   onPress={handleDailyChallengePress}
                   disabled={isDailyChallengeLoading}
                 >
@@ -228,15 +318,15 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </>
             )}
-            
+
             {!currentChallenge && !isChallengeLoading && !hasChallengeError && (
               <>
                 <Text style={[styles.cardDesc, { marginTop: 8 }]}>
                   No daily challenge available for today. Check back tomorrow!
                 </Text>
-                <TouchableOpacity 
-                  style={[styles.primaryButton, { opacity: 0.6 }]} 
-                  activeOpacity={0.9} 
+                <TouchableOpacity
+                  style={[styles.primaryButton, { opacity: 0.6 }]}
+                  activeOpacity={0.9}
                   disabled={true}
                 >
                   <Text style={styles.primaryButtonText}>No Challenge Today</Text>
@@ -246,34 +336,29 @@ export default function HomeScreen() {
           </View>
         </View>
 
-          <View style={{marginBottom: 120}}>
-            <View style={styles.rowCenterBetween}>
-              <View style={styles.rowCenter}>
-                <Image source={departmentIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
-                <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Departments</Text>
-              </View>
+        <View style={{ marginBottom: 120 }}>
+          <View style={styles.rowCenterBetween}>
+            <View style={styles.rowCenter}>
+              <Image source={departmentIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
+              <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Departments</Text>
             </View>
-            {categoriesLoading === 'loading' && (
-              <View style={[styles.rowCenter, { marginTop: 8 }]}> 
-                <ActivityIndicator color={Colors.brand.darkPink} />
-                <Text style={[styles.cardDesc, { marginLeft: 8 }]}>Loading departments…</Text>
-              </View>
-            )}
-            {categoriesError && categoriesLoading !== 'loading' && (
-              <Text style={[styles.cardDesc, { color: '#C62828', marginTop: 8 }]}>{categoriesError}</Text>
-            )}
-            {categoriesLoading !== 'loading' && !categoriesError && (
-              <DepartmentProgressList
-                userId={currentUserId}
-                themeColors={themeColors}
-                onStartCase={openCaseById}
-              />
-            )}
           </View>
-          <PremiumBottomSheet ref={premiumSheetRef} />
+          {categoriesLoading === 'loading' && <DepartmentsListSkeleton />}
+          {categoriesError && categoriesLoading !== 'loading' && (
+            <Text style={[styles.cardDesc, { color: '#C62828', marginTop: 8 }]}>{categoriesError}</Text>
+          )}
+          {categoriesLoading !== 'loading' && !categoriesError && (
+            <DepartmentProgressList
+              userId={currentUserId}
+              themeColors={themeColors}
+              onStartCase={openCaseById}
+            />
+          )}
+        </View>
+        <PremiumBottomSheet ref={premiumSheetRef} />
 
-        
-      <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
+
+        <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
       </ScrollView>
     </SafeAreaView>
   );
