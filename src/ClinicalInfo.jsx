@@ -1,9 +1,10 @@
 import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable,TouchableOpacity,  Image, Animated, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable,TouchableOpacity,  Image, Animated, InteractionManager, Platform } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { setAudioPaused } from './store/slices/currentGameSlice';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import DecorativeSeparator from './components/DecorativeSeparator';
 import { Colors } from '../constants/Colors';
@@ -14,6 +15,8 @@ import { API_BASE } from '../constants/Api';
 import AudioAura from './components/AudioAura';
 import ComingSoonImage from './components/ComingSoonImage';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { BlurView } from '@react-native-community/blur';
+import PremiumBottomSheet from './components/PremiumBottomSheet';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -133,6 +136,15 @@ export default function ClinicalInfo() {
   
   // Track if user manually paused audio - prevents auto-play on slide change
   const userPausedAudioRef = useRef(false);
+  
+  // Track case transitions to prevent dual audio playback
+  const caseTransitionRef = useRef(false);
+  const previousCaseIdRef = useRef(null);
+  const transitionTimerRef = useRef(null);
+  // Session ID to track which case the audio belongs to
+  const audioSessionRef = useRef(0);
+  // Track if this component instance is focused (to prevent duplicate instances from playing)
+  const isFocusedRef = useRef(true);
 
   // Layout calculations for platform-consistent nav button positioning
   const slidePaddingTop = Math.max(36, insets.top + 24);
@@ -143,6 +155,7 @@ export default function ClinicalInfo() {
   const maxTop = screenHeight - insets.bottom - (buttonSize + 8);
   const navButtonTop = Math.min(desiredTop, maxTop);
 
+  const dispatch = useDispatch();
   const caseDataFromRoute = route?.params?.caseData;
   const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
   const { isPremium } = useSelector((s) => s.user || {});
@@ -154,6 +167,7 @@ export default function ClinicalInfo() {
   const [selectedPhysImageIndex, setSelectedPhysImageIndex] = useState(0);
   const [isImageSheetOpen, setIsImageSheetOpen] = useState(false);
   const imageSheetRef = useRef(null);
+  const premiumSheetRef = useRef(null);
   const imageSnapPoints = useMemo(() => ['45%'], []);
   const renderImageBackdrop = useCallback(
     (props) => (
@@ -177,27 +191,92 @@ export default function ClinicalInfo() {
     setHeroLoadError(false);
     setHeroLoaded(false);
   }, [mainImageUrl]);
+
+  // Reset index and stop all audio when caseId changes
+  useEffect(() => {
+    console.log('🔄 caseId effect running | caseId:', caseId, '| previousCaseId:', previousCaseIdRef.current);
+    // Skip if this is the same case (prevents re-triggering on remount)
+    if (caseId && caseId !== previousCaseIdRef.current) {
+      console.log('🆕 NEW CASE DETECTED | starting transition...');
+      // Increment session ID - this invalidates any pending audio from previous case
+      audioSessionRef.current += 1;
+      const currentSession = audioSessionRef.current;
+      console.log('📊 New session ID:', currentSession);
+      
+      // Mark that we're in a case transition - this prevents dual audio
+      caseTransitionRef.current = true;
+      
+      // Clear any pending transition timer from previous case change
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current);
+        transitionTimerRef.current = null;
+      }
+      
+      // Clear any pending audio timer
+      if (audioTimerRef.current) {
+        clearTimeout(audioTimerRef.current);
+        audioTimerRef.current = null;
+      }
+      
+      // Stop any active playback
+      stopPlayback();
+      
+      // Reset index to 0 for new case
+      setIndex(0);
+      
+      // Reset PagerView to first page
+      try {
+        pagerRef.current?.setPage(0);
+      } catch (_) {}
+      
+      // Reset user pause state for new case
+      userPausedAudioRef.current = false;
+      dispatch(setAudioPaused(false));
+      
+      // Update previous caseId ref
+      previousCaseIdRef.current = caseId;
+      
+      // Capture caseId for the timeout closure
+      const targetCaseId = caseId;
+      
+      // Clear transition flag and play initial audio AFTER React has processed all state updates
+      // Use 400ms to ensure all re-renders have completed
+      console.log('⏳ Scheduling transition timer (400ms) | session:', currentSession);
+      transitionTimerRef.current = setTimeout(() => {
+        console.log('⏰ Transition timer fired | session:', currentSession, '| currentSession:', audioSessionRef.current);
+        transitionTimerRef.current = null;
+        caseTransitionRef.current = false;
+        // Play initial audio for new case (index 0) with session ID check
+        if (!userPausedAudioRef.current && audioSessionRef.current === currentSession) {
+          playForIndex(0, targetCaseId, currentSession, 'CASE_ID_EFFECT');
+        } else {
+          console.log('❌ CASE_ID_EFFECT audio blocked | paused:', userPausedAudioRef.current, '| sessionMatch:', audioSessionRef.current === currentSession);
+        }
+      }, 100);
+    }
+  }, [caseId, stopPlayback, dispatch, playForIndex]);
   
   const handleClose = useCallback(() => {
+    stopPlayback(); // Stop audio before navigating
     navigation.goBack();
-  }, [navigation]);
+  }, [navigation, stopPlayback]);
 
   const handlePrevious = useCallback(() => {
     const newIndex = Math.max(0, index - 1);
-    setIndex(newIndex);
+    // Only call setPage - let onPageSelected handle setIndex and audio
     pagerRef.current?.setPage(newIndex);
   }, [index]);
 
   const handleNext = useCallback(() => {
-    
     const newIndex = Math.min(SLIDE_COUNT - 1, index + 1);
-    setIndex(newIndex);
+    // Only call setPage - let onPageSelected handle setIndex and audio
     pagerRef.current?.setPage(newIndex);
   }, [index]);
 
   const handleSendForTests = useCallback(() => {
+    stopPlayback(); // Stop audio before navigating
     navigation.navigate('SelectTests', { caseData });
-  }, [navigation, caseData]);
+  }, [navigation, caseData, stopPlayback]);
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
 
@@ -309,10 +388,32 @@ export default function ClinicalInfo() {
     try { auraRef.current?.stop?.(); } catch (_) {}
   }, []);
 
-  const playForIndex = useCallback((i) => {
-    if (!caseId) return;
+  // Play audio for a specific index - accepts targetCaseId, sessionId, and source for debugging
+  const playForIndex = useCallback((i, targetCaseId, sessionId, source) => {
+    console.log('🎵 playForIndex called from:', source || 'UNKNOWN', '| index:', i, '| session:', sessionId, '| currentSession:', audioSessionRef.current, '| focused:', isFocusedRef.current);
+    
+    // Check if this component instance is focused
+    if (!isFocusedRef.current) {
+      console.log('❌ Audio skipped - component not focused (duplicate instance)');
+      return;
+    }
+    
+    // Use provided caseId or fall back to current (for manual plays)
+    const effectiveCaseId = targetCaseId || caseId;
+    if (!effectiveCaseId) {
+      console.log('❌ Audio skipped - no caseId');
+      return;
+    }
+    
+    // If sessionId is provided, verify it's still the current session
+    if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
+      console.log('❌ Audio skipped - stale session', sessionId, 'vs', audioSessionRef.current);
+      return;
+    }
+    
     const part = indexToPart[i];
-    const url = urlFor(caseId, part);
+    const url = urlFor(effectiveCaseId, part);
+    console.log('✅ Playing audio:', source, '| url:', url);
     // stop prior if any
     stopPlayback();
     isLoadingRef.current = true;
@@ -322,6 +423,11 @@ export default function ClinicalInfo() {
       // Race condition guard: check if this sound is still the current one
       // If user swiped away while loading, soundRef.current will be different/null
       if (soundRef.current !== s) {
+        try { s.release(); } catch (_) {}
+        return;
+      }
+      // Also check session ID hasn't changed
+      if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
         try { s.release(); } catch (_) {}
         return;
       }
@@ -337,6 +443,8 @@ export default function ClinicalInfo() {
       isPlayingRef.current = true;
       currentPartRef.current = part;
       try { auraRef.current?.start?.(); } catch (_) {}
+      // Set playback speed to 1.25x
+      try { s.setSpeed(1.25); } catch (_) {}
       s.play(() => {
         try { s.release(); } catch (_) {}
         // Only update refs if this sound is still the active one
@@ -352,56 +460,83 @@ export default function ClinicalInfo() {
   }, [caseId, stopPlayback]);
 
   const togglePlayForIndex = useCallback((i) => {
+    console.log('🔘 togglePlayForIndex called | index:', i);
     const part = indexToPart[i];
     if (isPlayingRef.current && currentPartRef.current === part) {
       // User manually paused - prevent auto-play on slide changes
+      console.log('⏸️ User paused audio');
       userPausedAudioRef.current = true;
+      dispatch(setAudioPaused(true));
       stopPlayback();
     } else {
       // User manually started - allow auto-play again
+      console.log('▶️ User started audio manually');
       userPausedAudioRef.current = false;
-      playForIndex(i);
+      dispatch(setAudioPaused(false));
+      playForIndex(i, undefined, undefined, 'MANUAL_TOGGLE');
     }
-  }, [playForIndex, stopPlayback]);
+  }, [playForIndex, stopPlayback, dispatch]);
 
   useFocusEffect(
     React.useCallback(() => {
+      // Component gained focus
+      console.log('👁️ ClinicalInfo FOCUSED');
+      isFocusedRef.current = true;
+      
       return () => {
+        // Component lost focus
+        console.log('👁️ ClinicalInfo UNFOCUSED');
+        isFocusedRef.current = false;
+        // Clear transition timer when losing focus
+        if (transitionTimerRef.current) {
+          clearTimeout(transitionTimerRef.current);
+          transitionTimerRef.current = null;
+        }
+        // Clear audio timer
+        if (audioTimerRef.current) {
+          clearTimeout(audioTimerRef.current);
+          audioTimerRef.current = null;
+        }
         stopPlayback();
+        // Increment session to invalidate any pending callbacks from this instance
+        audioSessionRef.current += 1;
       };
     }, [stopPlayback])
   );
 
-  React.useEffect(() => {
-    // Clear any pending audio timer
-    if (audioTimerRef.current) {
-      clearTimeout(audioTimerRef.current);
-      audioTimerRef.current = null;
-    }
-    
-    // Stop any active playback immediately when index changes
-    stopPlayback();
-
-    // Don't auto-play if user manually paused, or no caseId
-    if (!caseId || userPausedAudioRef.current) {
-      return undefined;
-    }
-
-    // Single 200ms delay - simple and predictable
-    audioTimerRef.current = setTimeout(() => {
-      if (!userPausedAudioRef.current) {
-        playForIndex(index);
+  // Cleanup on unmount - reset all audio state to prevent stale refs
+  useEffect(() => {
+    return () => {
+      // Clear any pending timers
+      if (audioTimerRef.current) {
+        clearTimeout(audioTimerRef.current);
+        audioTimerRef.current = null;
       }
-    }, 200);
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current);
+        transitionTimerRef.current = null;
+      }
+      // Stop and release any active sound
+      stopPlayback();
+      // Reset refs to prevent stale state on remount
+      previousCaseIdRef.current = null;
+      caseTransitionRef.current = false;
+      userPausedAudioRef.current = false;
+      // Increment session to invalidate any pending callbacks
+      audioSessionRef.current += 1;
+    };
+  }, [stopPlayback]);
 
+  // Audio playback for slide changes is now handled directly in onPageSelected
+  // This effect only handles cleanup
+  React.useEffect(() => {
     return () => {
       if (audioTimerRef.current) {
         clearTimeout(audioTimerRef.current);
         audioTimerRef.current = null;
       }
-      stopPlayback();
     };
-  }, [index, caseId, playForIndex, stopPlayback]);
+  }, []);
   // Defer mounting the heavy aura until interactions settle
   useEffect(() => {
     let task = InteractionManager.runAfterInteractions(() => {
@@ -431,7 +566,41 @@ export default function ClinicalInfo() {
         style={styles.pagerView}
         initialPage={0}
         onPageSelected={(e) => {
-          setIndex(e.nativeEvent.position);
+          const newIndex = e.nativeEvent.position;
+          console.log('📱 onPageSelected | newIndex:', newIndex, '| currentIndex:', index, '| inTransition:', caseTransitionRef.current);
+          // Ignore events during case transitions
+          if (caseTransitionRef.current) {
+            console.log('🚫 onPageSelected BLOCKED - in transition');
+            return;
+          }
+          // Only process actual slide changes
+          if (newIndex !== index) {
+            console.log('✅ onPageSelected processing slide change');
+            setIndex(newIndex);
+            // Stop current audio
+            stopPlayback();
+            // Clear any pending timer
+            if (audioTimerRef.current) {
+              clearTimeout(audioTimerRef.current);
+              audioTimerRef.current = null;
+            }
+            // Play audio for new slide (if not paused by user)
+            if (!userPausedAudioRef.current && caseId) {
+              const currentSession = audioSessionRef.current;
+              const targetCaseId = caseId;
+              console.log('📄 onPageSelected scheduling audio | newIndex:', newIndex, '| session:', currentSession);
+              audioTimerRef.current = setTimeout(() => {
+                console.log('⏰ onPageSelected timer fired | checking guards...');
+                if (!userPausedAudioRef.current && 
+                    !caseTransitionRef.current && 
+                    audioSessionRef.current === currentSession) {
+                  playForIndex(newIndex, targetCaseId, currentSession, 'ON_PAGE_SELECTED');
+                } else {
+                  console.log('❌ onPageSelected audio blocked | paused:', userPausedAudioRef.current, '| transition:', caseTransitionRef.current, '| sessionMatch:', audioSessionRef.current === currentSession);
+                }
+              }, 150);
+            }
+          }
         }}
       >
         <View key="1" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
@@ -591,12 +760,33 @@ export default function ClinicalInfo() {
                   {physicalImages.map((item, idx) => (
                     <View key={String(idx)} style={{ width: physContainerWidth, height: '100%' }}>
                       {item?.url ? (
-                        <Image
-                          source={{ uri: item.url }}
-                          style={styles.physImage}
-                          resizeMode="contain"
-                          blurRadius={!isPremium ? 30 : 0}
-                        />
+                        <>
+                          <Image
+                            source={{ uri: item.url }}
+                            style={styles.physImage}
+                            resizeMode="contain"
+                          />
+                          {!isPremium && (
+                            <>
+                              <BlurView
+                                style={styles.premiumBlur}
+                                blurType={'dark'}
+                                blurAmount={5}
+                                overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0.1)' : 'transparent'}
+                              />
+                              <View style={styles.premiumOverlay}>
+                                <Text style={styles.premiumOverlayText}>Premium Feature</Text>
+                                <TouchableOpacity
+                                  style={styles.premiumCtaButton}
+                                  onPress={() => premiumSheetRef.current?.present()}
+                                  activeOpacity={0.9}
+                                >
+                                  <Text style={styles.premiumCtaButtonText}>Subscribe Premium</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </>
+                          )}
+                        </>
                       ) : (
                         <ComingSoonImage style={{ width: '100%', height: '100%' }} />
                       )}
@@ -744,6 +934,7 @@ export default function ClinicalInfo() {
           <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
+            stopPlayback(); // Stop audio before navigating
             navigation.navigate('SelectTests', { caseData });
           }}
           style={[styles.primaryButton, styles.navRightCta]}
@@ -788,6 +979,7 @@ export default function ClinicalInfo() {
         ) : <View style={{ width: 48 }} />}
       </View>
 
+      <PremiumBottomSheet ref={premiumSheetRef} />
     </SafeAreaView>
   );
 }
@@ -1130,6 +1322,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#687076',
     fontWeight: '700',
+  },
+  premiumBlur: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  premiumOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    zIndex: 2,
+  },
+  premiumOverlayText: {
+    color: '#fff',
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontSize: 18,
+  },
+  premiumCtaButton: {
+    backgroundColor: Colors.brand.darkPink,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  premiumCtaButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 14,
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, Animated, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, Animated, StyleSheet, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -459,7 +459,7 @@ export default function PremiumScreen() {
                     <View style={{ marginLeft: 10, flex: 1 }}>
                       <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Monthly Plan</Text>
                       <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                        {monthlyPackage?.product?.description || 'Access to all features'}
+                        {monthlyPackage?.product?.description || 'Value for money.Monthly auto-renewal subscription'}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -492,7 +492,7 @@ export default function PremiumScreen() {
                     <View style={{ marginLeft: 10, flex: 1 }}>
                       <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Weekly Plan</Text>
                       <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                        {weeklyPackage?.product?.description || 'All premium features'}
+                        {weeklyPackage?.product?.description || 'Short term plan. Weekly auto-renewal subscription'}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -553,15 +553,15 @@ export default function PremiumScreen() {
               <Text style={{ textAlign: 'center', color: '#6B7280', fontSize: 12 }}>
                 By continuing, you agree to our{' '}
                 <Text
-                  style={{ color: theme.tint, fontWeight: '800' }}
-                  onPress={() => navigation.navigate('TermsOfService')}
+                  style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
+                  onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
                 >
-                  terms
+                  terms of use
                 </Text>{' '}
                 &{' '}
                 <Text
-                  style={{ color: theme.tint, fontWeight: '800' }}
-                  onPress={() => navigation.navigate('PrivacyPolicy')}
+                  style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
+                  onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
                 >
                   privacy policy
                 </Text>

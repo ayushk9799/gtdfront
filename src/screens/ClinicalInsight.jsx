@@ -932,7 +932,7 @@ const styles = StyleSheet.create({
   scoreBoardText: {
     fontSize: 28,
     color: '#FFFFFF',
-    paddingLeft: 20,
+    paddingLeft: 40,
     fontFamily: 'BrightChalk',
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },

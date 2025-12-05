@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import DecorativeSeparator from '../components/DecorativeSeparator';
 import { Colors } from '../../constants/Colors';
@@ -13,6 +13,8 @@ import Svg, { Path } from 'react-native-svg';
 import medImg from '../../constants/medicine.png';
 import surgImg from '../../constants/surgical.png';
 import { useHeart } from '../store/slices/userSlice';
+import Sound from 'react-native-sound';
+import { checkAndRequestReview } from '../services/ratingService';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
@@ -65,8 +67,14 @@ export default function SelectTreatment() {
   const themeColors =  Colors.light;
   const dispatch = useDispatch();
   const { userId, caseId, selectedTreatmentIds, sourceType } = useSelector((s) => s.currentGame);
+  const voiceId = useSelector((s) => s.currentGame.voiceId);
+  const audioPaused = useSelector((s) => s.currentGame.audioPaused);
   const { isPremium } = useSelector(state => state.user);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
+  const treatmentSoundRef = useRef(null);
+  const tapSoundRef = useRef(null);
+  // Track if this screen is focused (to prevent audio from unfocused instances)
+  const isFocusedRef = useRef(true);
 
   const caseData = route?.params?.caseData || {};
   
@@ -79,9 +87,43 @@ export default function SelectTreatment() {
 
   // Render categories separately in the UI with subheaders
 
+  // Play tap sound
+  const playTapSound = useCallback(() => {
+    try {
+      // Release previous sound if exists
+      if (tapSoundRef.current) {
+        tapSoundRef.current.release();
+      }
+      const tapSound = new Sound('tap_sound.wav', Sound.MAIN_BUNDLE, (error) => {
+        if (error) {
+          console.log('Tap sound load error:', error);
+          return;
+        }
+        tapSound.play((finished) => {
+          if (finished) {
+            try { tapSound.release(); } catch (_) {}
+            if (tapSoundRef.current === tapSound) {
+              tapSoundRef.current = null;
+            }
+          }
+        });
+      });
+      tapSoundRef.current = tapSound;
+    } catch (error) {
+      console.log('Tap sound error:', error);
+    }
+  }, []);
+
   const toggleTreatment = (id) => {
-    const next = selectedTreatmentIds.includes(id) ? selectedTreatmentIds.filter((t) => t !== id) : [...selectedTreatmentIds, id];
+    const isCurrentlySelected = selectedTreatmentIds.includes(id);
+    const next = isCurrentlySelected
+      ? selectedTreatmentIds.filter((t) => t !== id)
+      : [...selectedTreatmentIds, id];
     dispatch(setSelectedTreatmentsAction(next));
+    // Play tap sound only when selecting (not deselecting)
+    if (!isCurrentlySelected) {
+      playTapSound();
+    }
   };
 
   const getCategoryIcon = (category) => {
@@ -122,6 +164,98 @@ export default function SelectTreatment() {
     return () => { try { loop.stop?.(); } catch(_) {} shimmerAnim.setValue(0); };
   }, [shimmerAnim]);
 
+  // Stop treatment audio playback
+  const stopTreatmentAudio = useCallback(() => {
+    try {
+      treatmentSoundRef.current?.stop?.();
+      treatmentSoundRef.current?.release?.();
+    } catch (_) {}
+    treatmentSoundRef.current = null;
+  }, []);
+
+  // Play treatment audio on mount if not paused
+  useEffect(() => {
+    // Don't play if not focused (prevents unfocused instances from playing)
+    if (!isFocusedRef.current) {
+      console.log('🔇 SelectTreatment audio skipped - not focused');
+      return;
+    }
+    
+    if (!voiceId || audioPaused) {
+      return;
+    }
+    
+    console.log('🔊 SelectTreatment playing audio | voiceId:', voiceId);
+    
+    // Setup sound category
+    try { Sound.setCategory('Playback', true); } catch (_) {}
+    try { Sound.enableInSilenceMode(true); } catch (_) {}
+
+    // Add delay before playing audio
+    const delayTimeout = setTimeout(() => {
+      // Double-check focus before playing
+      if (!isFocusedRef.current) {
+        console.log('🔇 SelectTreatment audio timeout skipped - lost focus');
+        return;
+      }
+      
+      const s = new Sound(`treatment_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
+        // Race condition guard
+        if (treatmentSoundRef.current !== s) {
+          try { s.release(); } catch (_) {}
+          return;
+        }
+        // Check focus
+        if (!isFocusedRef.current) {
+          try { s.release(); } catch (_) {}
+          treatmentSoundRef.current = null;
+          return;
+        }
+        if (error) {
+          console.log('Treatment audio load error:', error);
+          try { s.release(); } catch (_) {}
+          treatmentSoundRef.current = null;
+          return;
+        }
+        // Play the audio
+        s.play((finished) => {
+          try { s.release(); } catch (_) {}
+          if (treatmentSoundRef.current === s) {
+            treatmentSoundRef.current = null;
+          }
+        });
+      });
+      treatmentSoundRef.current = s;
+    }, 500); // 500ms delay
+
+    return () => {
+      clearTimeout(delayTimeout);
+      stopTreatmentAudio();
+    };
+  }, [voiceId, audioPaused, stopTreatmentAudio]);
+
+  // Clean up audio when screen loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Screen gained focus
+      console.log('👁️ SelectTreatment FOCUSED');
+      isFocusedRef.current = true;
+      
+      return () => {
+        // Screen lost focus
+        console.log('👁️ SelectTreatment UNFOCUSED');
+        isFocusedRef.current = false;
+        stopTreatmentAudio();
+        // Clean up tap sound
+        try {
+          tapSoundRef.current?.stop?.();
+          tapSoundRef.current?.release?.();
+        } catch (_) {}
+        tapSoundRef.current = null;
+      };
+    }, [stopTreatmentAudio])
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -133,7 +267,10 @@ export default function SelectTreatment() {
       <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
+          onPress={() => {
+            stopTreatmentAudio(); // Stop audio before navigating
+            navigation.navigate('Tabs', { screen: 'Home' });
+          }}
           style={styles.closeButton}
           activeOpacity={0.8}
         >
@@ -221,13 +358,19 @@ export default function SelectTreatment() {
         accessibilityRole="button"
         onPress={async () => {
           if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
+          stopTreatmentAudio(); // Stop audio before navigating
           try {
+            navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan' });
+
             await dispatch(submitGameplay());
+            
+            // Request in-app review after first case completion
+            // This will only trigger once (after the first game)
+            checkAndRequestReview();
           } catch (e) {}
           if(!isPremium && sourceType === 'case') {
             dispatch(useHeart());
           }
-          navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan' });
         }}
         disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
         style={[

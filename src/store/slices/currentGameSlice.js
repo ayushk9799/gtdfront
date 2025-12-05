@@ -13,7 +13,7 @@ export const loadCaseById = createAsyncThunk(
     }
     const data = await res.json();
     const caseDoc = data?.case;
-    return { caseId: caseDoc?._id, caseData: caseDoc?.caseData, sourceType: 'case' };
+    return { caseId: caseDoc?._id, caseData: caseDoc?.caseData, voiceId: caseDoc?.voiceId, sourceType: 'case' };
   }
 );
 
@@ -24,6 +24,8 @@ const initialState = {
   caseId: null,
   dailyChallengeId: null,
   caseData: null,
+  voiceId: null,
+  audioPaused: false,
   selectedTestIds: [],
   selectedDiagnosisId: null,
   selectedTreatmentIds: [],
@@ -39,10 +41,10 @@ const currentGameSlice = createSlice({
       state.userId = action.payload || null;
     },
     // setCaseData now supports both case and dailyChallenge
-    // For case: { caseId, caseData, sourceType: 'case' }
+    // For case: { caseId, caseData, sourceType: 'case', voiceId?: string }
     // For dailyChallenge: { dailyChallengeId, caseData, sourceType: 'dailyChallenge' }
     setCaseData(state, action) {
-      const { caseId, dailyChallengeId, caseData, sourceType } = action.payload || {};
+      const { caseId, dailyChallengeId, caseData, sourceType, voiceId } = action.payload || {};
       
       // Determine source type
       const effectiveSourceType = sourceType || (dailyChallengeId ? 'dailyChallenge' : 'case');
@@ -51,13 +53,21 @@ const currentGameSlice = createSlice({
       if (effectiveSourceType === 'dailyChallenge') {
         state.dailyChallengeId = dailyChallengeId || null;
         state.caseId = null;
+        state.voiceId = null; // Daily challenges don't have voiceId
       } else {
         state.caseId = caseId || null;
         state.dailyChallengeId = null;
+        state.voiceId = voiceId || null; // Set voiceId if provided
       }
       
       state.caseData = caseData || null;
       state.status = 'in_progress';
+      state.audioPaused = false; // Reset audio pause state for new case
+      
+      // IMPORTANT: Clear previous selections when loading a new case
+      state.selectedTestIds = [];
+      state.selectedDiagnosisId = null;
+      state.selectedTreatmentIds = [];
     },
     setSelectedTests(state, action) {
       state.selectedTestIds = Array.isArray(action.payload) ? action.payload : [];
@@ -68,11 +78,16 @@ const currentGameSlice = createSlice({
     setSelectedTreatments(state, action) {
       state.selectedTreatmentIds = Array.isArray(action.payload) ? action.payload : [];
     },
+    setAudioPaused(state, action) {
+      state.audioPaused = action.payload !== undefined ? action.payload : false;
+    },
     clearCurrentGame(state) {
       state.sourceType = 'case';
       state.caseId = null;
       state.dailyChallengeId = null;
       state.caseData = null;
+      state.voiceId = null;
+      state.audioPaused = false;
       state.gameplayId = null;
       state.selectedTestIds = [];
       state.selectedDiagnosisId = null;
@@ -93,6 +108,13 @@ const currentGameSlice = createSlice({
         state.caseId = action.payload.caseId || null;
         state.dailyChallengeId = null;
         state.caseData = action.payload.caseData || null;
+        state.voiceId = action.payload.voiceId || null;
+        state.audioPaused = false; // Reset audio pause state for new case
+        
+        // IMPORTANT: Clear previous selections when loading a new case
+        state.selectedTestIds = [];
+        state.selectedDiagnosisId = null;
+        state.selectedTreatmentIds = [];
       })
       .addCase(loadCaseById.rejected, (state, action) => {
         state.status = 'idle';
@@ -198,5 +220,5 @@ export const submitGameplay = createAsyncThunk(
   }
 );
 
-export const { setUserId, setCaseData, clearCurrentGame, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } = currentGameSlice.actions;
+export const { setUserId, setCaseData, clearCurrentGame, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setAudioPaused } = currentGameSlice.actions;
 export default currentGameSlice.reducer;

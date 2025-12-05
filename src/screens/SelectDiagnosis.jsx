@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import DecorativeSeparator from '../components/DecorativeSeparator';
 import { Colors } from '../../constants/Colors';
@@ -9,6 +9,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { G, Path, Ellipse } from 'react-native-svg';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedDiagnosis as setSelectedDiagnosisAction } from '../store/slices/currentGameSlice';
+import Sound from 'react-native-sound';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
@@ -99,7 +100,13 @@ export default function SelectDiagnosis() {
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const dispatch = useDispatch();
   const selectedDiagnosisId = useSelector((s) => s.currentGame.selectedDiagnosisId);
+  const voiceId = useSelector((s) => s.currentGame.voiceId);
+  const audioPaused = useSelector((s) => s.currentGame.audioPaused);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
+  const diagnosisSoundRef = useRef(null);
+  const tapSoundRef = useRef(null);
+  // Track if this screen is focused (to prevent audio from unfocused instances)
+  const isFocusedRef = useRef(true);
 
   const caseData = route?.params?.caseData || {};
   
@@ -107,9 +114,41 @@ export default function SelectDiagnosis() {
   const step3Data = caseData?.steps?.[2]?.data || {};
   const diagnosisOptions = step3Data?.diagnosisOptions || [];
 
+  // Play tap sound
+  const playTapSound = useCallback(() => {
+    try {
+      // Release previous sound if exists
+      if (tapSoundRef.current) {
+        tapSoundRef.current.release();
+      }
+      const tapSound = new Sound('tap_sound.wav', Sound.MAIN_BUNDLE, (error) => {
+        if (error) {
+          console.log('Tap sound load error:', error);
+          return;
+        }
+        tapSound.play((finished) => {
+          if (finished) {
+            try { tapSound.release(); } catch (_) {}
+            if (tapSoundRef.current === tapSound) {
+              tapSoundRef.current = null;
+            }
+          }
+        });
+      });
+      tapSoundRef.current = tapSound;
+    } catch (error) {
+      console.log('Tap sound error:', error);
+    }
+  }, []);
+
   const toggleDiagnosis = (id) => {
-    const next = selectedDiagnosisId === id ? null : id;
+    const isCurrentlySelected = selectedDiagnosisId === id;
+    const next = isCurrentlySelected ? null : id;
     dispatch(setSelectedDiagnosisAction(next));
+    // Play tap sound only when selecting (not deselecting)
+    if (!isCurrentlySelected) {
+      playTapSound();
+    }
   };
 
   React.useEffect(() => {
@@ -128,6 +167,98 @@ export default function SelectDiagnosis() {
     };
   }, [shimmerAnim]);
 
+  // Stop diagnosis audio playback
+  const stopDiagnosisAudio = useCallback(() => {
+    try {
+      diagnosisSoundRef.current?.stop?.();
+      diagnosisSoundRef.current?.release?.();
+    } catch (_) {}
+    diagnosisSoundRef.current = null;
+  }, []);
+
+  // Play diagnosis audio on mount if not paused
+  useEffect(() => {
+    // Don't play if not focused (prevents unfocused instances from playing)
+    if (!isFocusedRef.current) {
+      console.log('🔇 SelectDiagnosis audio skipped - not focused');
+      return;
+    }
+    
+    if (!voiceId || audioPaused) {
+      return;
+    }
+    
+    console.log('🔊 SelectDiagnosis playing audio | voiceId:', voiceId);
+    
+    // Setup sound category
+    try { Sound.setCategory('Playback', true); } catch (_) {}
+    try { Sound.enableInSilenceMode(true); } catch (_) {}
+
+    // Add delay before playing audio
+    const delayTimeout = setTimeout(() => {
+      // Double-check focus before playing
+      if (!isFocusedRef.current) {
+        console.log('🔇 SelectDiagnosis audio timeout skipped - lost focus');
+        return;
+      }
+      
+      const s = new Sound(`diagnosis_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
+        // Race condition guard
+        if (diagnosisSoundRef.current !== s) {
+          try { s.release(); } catch (_) {}
+          return;
+        }
+        // Check focus
+        if (!isFocusedRef.current) {
+          try { s.release(); } catch (_) {}
+          diagnosisSoundRef.current = null;
+          return;
+        }
+        if (error) {
+          console.log('Diagnosis audio load error:', error);
+          try { s.release(); } catch (_) {}
+          diagnosisSoundRef.current = null;
+          return;
+        }
+        // Play the audio
+        s.play((finished) => {
+          try { s.release(); } catch (_) {}
+          if (diagnosisSoundRef.current === s) {
+            diagnosisSoundRef.current = null;
+          }
+        });
+      });
+      diagnosisSoundRef.current = s;
+    }, 500); // 500ms delay
+
+    return () => {
+      clearTimeout(delayTimeout);
+      stopDiagnosisAudio();
+    };
+  }, [voiceId, audioPaused, stopDiagnosisAudio]);
+
+  // Clean up audio when screen loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Screen gained focus
+      console.log('👁️ SelectDiagnosis FOCUSED');
+      isFocusedRef.current = true;
+      
+      return () => {
+        // Screen lost focus
+        console.log('👁️ SelectDiagnosis UNFOCUSED');
+        isFocusedRef.current = false;
+        stopDiagnosisAudio();
+        // Clean up tap sound
+        try {
+          tapSoundRef.current?.stop?.();
+          tapSoundRef.current?.release?.();
+        } catch (_) {}
+        tapSoundRef.current = null;
+      };
+    }, [stopDiagnosisAudio])
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top','left','right']}>
       <LinearGradient
@@ -139,7 +270,10 @@ export default function SelectDiagnosis() {
       <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
+          onPress={() => {
+            stopDiagnosisAudio(); // Stop audio before navigating
+            navigation.navigate('Tabs', { screen: 'Home' });
+          }}
           style={styles.closeButton}
           activeOpacity={0.8}
         >
@@ -202,6 +336,7 @@ export default function SelectDiagnosis() {
         accessibilityRole="button"
         onPress={() => {
             if (!selectedDiagnosisId) return;
+            stopDiagnosisAudio(); // Stop audio before navigating
             navigation.navigate('SelectTreatment', { caseData });
           }}
         disabled={!selectedDiagnosisId}

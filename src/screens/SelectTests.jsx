@@ -1,8 +1,8 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated, Easing } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import DecorativeSeparator from '../components/DecorativeSeparator';
 import { Colors } from '../../constants/Colors';
@@ -11,6 +11,7 @@ import Svg, { G, Polygon, Path } from "react-native-svg";
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedTests as setSelectedTestsAction } from '../store/slices/currentGameSlice';
+import Sound from 'react-native-sound';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
@@ -66,7 +67,13 @@ export default function SelectTests() {
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const dispatch = useDispatch();
   const selectedTestIds = useSelector((s) => s.currentGame.selectedTestIds);
+  const voiceId = useSelector((s) => s.currentGame.voiceId);
+  const audioPaused = useSelector((s) => s.currentGame.audioPaused);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
+  const labSoundRef = useRef(null);
+  const tapSoundRef = useRef(null);
+  // Track if this screen is focused (to prevent audio from unfocused instances)
+  const isFocusedRef = useRef(true);
 
   const caseData = route?.params?.caseData || {};
   
@@ -106,11 +113,44 @@ export default function SelectTests() {
     return 'beaker-outline';
   };
 
+  // Play tap sound
+  const playTapSound = useCallback(() => {
+    try {
+      // Release previous sound if exists
+      if (tapSoundRef.current) {
+        tapSoundRef.current.release();
+      }
+      console.log('Playing tap sound');
+      const tapSound = new Sound('tap_sound.wav', Sound.MAIN_BUNDLE, (error) => {
+        if (error) {
+          console.log('Tap sound load error:', error);
+          return;
+        }
+        tapSound.play((finished) => {
+          if (finished) {
+            try { tapSound.release(); } catch (_) {}
+            if (tapSoundRef.current === tapSound) {
+              tapSoundRef.current = null;
+            }
+          }
+        });
+      });
+      tapSoundRef.current = tapSound;
+    } catch (error) {
+      console.log('Tap sound error:', error);
+    }
+  }, []);
+
   const toggleTest = (id) => {
-    const next = selectedTestIds.includes(id)
+    const isCurrentlySelected = selectedTestIds.includes(id);
+    const next = isCurrentlySelected
       ? selectedTestIds.filter((t) => t !== id)
       : [...selectedTestIds, id];
     dispatch(setSelectedTestsAction(next));
+    // Play tap sound only when selecting (not deselecting)
+    if (!isCurrentlySelected) {
+      playTapSound();
+    }
   };
 
   React.useEffect(() => {
@@ -120,6 +160,99 @@ export default function SelectTests() {
     loop.start();
     return () => { try { loop.stop?.(); } catch(_) {} shimmerAnim.setValue(0); };
   }, [shimmerAnim]);
+
+  // Stop lab audio playback
+  const stopLabAudio = useCallback(() => {
+    try {
+      labSoundRef.current?.stop?.();
+      labSoundRef.current?.release?.();
+    } catch (_) {}
+    labSoundRef.current = null;
+  }, []);
+
+  // Play lab audio on mount if not paused
+  useEffect(() => {
+    // Don't play if not focused (prevents unfocused instances from playing)
+    if (!isFocusedRef.current) {
+      console.log('🔇 SelectTests lab audio skipped - not focused');
+      return;
+    }
+    
+    if (!voiceId || audioPaused) {
+      return;
+    }
+    
+    console.log('🔊 SelectTests playing lab audio | voiceId:', voiceId);
+    
+    // Setup sound category
+    try { Sound.setCategory('Playback', true); } catch (_) {}
+    try { Sound.enableInSilenceMode(true); } catch (_) {}
+
+    // Add delay before playing audio
+    const delayTimeout = setTimeout(() => {
+      // Double-check focus before playing
+      if (!isFocusedRef.current) {
+        console.log('🔇 SelectTests lab audio timeout skipped - lost focus');
+        return;
+      }
+      
+      const s = new Sound(`lab_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
+        // Race condition guard: if user closed/navigated away while loading,
+        // labSoundRef.current will be null or a different Sound instance
+        if (labSoundRef.current !== s) {
+          try { s.release(); } catch (_) {}
+          return;
+        }
+        // Also check focus
+        if (!isFocusedRef.current) {
+          try { s.release(); } catch (_) {}
+          labSoundRef.current = null;
+          return;
+        }
+        if (error) {
+          console.log('Lab audio load error:', error);
+          try { s.release(); } catch (_) {}
+          labSoundRef.current = null;
+          return;
+        }
+        // Play the audio
+        s.play((finished) => {
+          try { s.release(); } catch (_) {}
+          if (labSoundRef.current === s) {
+            labSoundRef.current = null;
+          }
+        });
+      });
+      labSoundRef.current = s;
+    }, 500); // 500ms delay
+
+    return () => {
+      clearTimeout(delayTimeout);
+      stopLabAudio();
+    };
+  }, [voiceId, audioPaused, stopLabAudio]);
+
+  // Clean up audio when screen loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Screen gained focus
+      console.log('👁️ SelectTests FOCUSED');
+      isFocusedRef.current = true;
+      
+      return () => {
+        // Screen lost focus
+        console.log('👁️ SelectTests UNFOCUSED');
+        isFocusedRef.current = false;
+        stopLabAudio();
+        // Clean up tap sound
+        try {
+          tapSoundRef.current?.stop?.();
+          tapSoundRef.current?.release?.();
+        } catch (_) {}
+        tapSoundRef.current = null;
+      };
+    }, [stopLabAudio])
+  );
 
   const handleEvaluate = () => {
     const results = selectedTestIds.map((id) => {
@@ -133,7 +266,7 @@ export default function SelectTests() {
   const reportsSheetRef = useRef(null);
   const reportsScrollRef = useRef(null);
   const [reportIndex, setReportIndex] = useState(0);
-  const reportSnapPoints = React.useMemo(() => ['45%', '80%'], []);
+  const reportSnapPoints = React.useMemo(() => ['70%', '80%'], []);
   const renderBackdrop = React.useCallback(
     (props) => (
       <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.4} />
@@ -159,7 +292,11 @@ export default function SelectTests() {
       <View style={[styles.headerOverlay, { top: 12 + insets.top }]} pointerEvents="box-none">
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
+          onPress={() => {
+            stopLabAudio(); // Stop audio before navigating
+            navigation.navigate('Tabs', { screen: 'Home' });
+            dispatch(setSelectedTestsAction([]));
+          }}
           style={styles.closeButton}
           activeOpacity={0.8}
         >
@@ -244,7 +381,7 @@ export default function SelectTests() {
         <MaterialCommunityIcons name="file-document" size={18} color="#fff" />
         <Text style={styles.primaryButtonText}>Get Reports</Text>
       </TouchableOpacity>
-
+   
       <BottomSheetModal
         ref={reportsSheetRef}
         snapPoints={reportSnapPoints}
@@ -304,9 +441,8 @@ export default function SelectTests() {
                   return (
                     <View key={r.id} style={{ width: width - 32, paddingRight: 16 }}>
                       <View style={styles.simpleReportCard}>
-                        <Text style={styles.reportTitle}>{testName}</Text>
                         <Text style={styles.reportValueText}>
-                          {r?.value || 'Result not available for this test.'}
+                          { r?.value || 'Result not available for this test.'}
                         </Text>
                       </View>
                     </View>
@@ -325,6 +461,7 @@ export default function SelectTests() {
                 <TouchableOpacity
                   accessibilityRole="button"
                   onPress={() => {
+                    stopLabAudio(); // Stop audio before navigating
                     reportsSheetRef.current?.dismiss();
                     navigation.navigate('SelectDiagnosis', { caseData });
                   }}
@@ -362,6 +499,7 @@ export default function SelectTests() {
           )}
         </BottomSheetView>
       </BottomSheetModal>
+     
     </SafeAreaView>
   );
 }
@@ -499,11 +637,167 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
+  sheetHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  sheetHeaderTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1E293B', // Slate 800
+    letterSpacing: 0.5,
+  },
+
+  // Chip Tabs Section
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+    gap: 8, // Adds spacing between chips
+  },
+  chip: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0', // Slate 200
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  chipActive: {
+    backgroundColor: '#3B82F6', // Blue 500
+    borderColor: '#3B82F6',
+    shadowOpacity: 0.2,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B', // Slate 500
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Report Card Section
+  simpleReportCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    minHeight: 140,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#334155',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  reportTitle: {
+    fontSize: 14,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+    color: '#94A3B8', // Slate 400
+    letterSpacing: 1,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  reportValueText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A', // Slate 900
+    textAlign: 'center',
+    lineHeight: 32,
+  },
+
+  // Action Buttons Section
+  sheetActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  secondaryButton: {
+    flex: 1,
+    height: 52,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  
+  // Primary Button (Diagnosis)
+  primaryButtonInRow: {
+    flex: 2,
+    height: 52,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden', // Essential for the gradient/shimmer
+    shadowColor: '#F472B6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sheetPrimaryInRow: {
+    // Optional specific overrides if needed, currently mapped to primaryButtonInRow
+  },
+  primaryButtonGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 100, // Width of the passing shimmer light
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    zIndex: 1, // Ensure text sits above the shimmer
+  },
+
+  // Pagination Dots
+  sheetDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+    gap: 6,
+  },
+  sheetDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1', // Slate 300
+  },
+  sheetDotActive: {
+    width: 24, // Elongated active dot
+    backgroundColor: '#3B82F6', // Blue 500
+  },
   decorationOverlay: {
     position: 'absolute',
     alignItems: 'flex-end',
     zIndex: 0,
   },
 });
-
 

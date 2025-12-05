@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -10,7 +10,9 @@ import heartImage from '../../constants/heart.png';
 import LinearGradient from 'react-native-linear-gradient';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-
+const HERO_HEIGHT = 280;
+const HERO_GRADIENT_HEIGHT = 120;
+const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 10;
 
 export default function HeartScreen() {
   // Static, presentational values (no calculations)
@@ -20,6 +22,71 @@ export default function HeartScreen() {
   const premiumSheetRef = React.useRef(null);
   const MAX_HEARTS_DISPLAY = 3;
   const heartsToShow = Math.min(hearts, MAX_HEARTS_DISPLAY);
+  const [timeUntilReset, setTimeUntilReset] = useState('');
+  const scrollY = useRef(new Animated.Value(0)).current;
+  
+  const heroOpacity = useMemo(
+    () =>
+      scrollY.interpolate({
+        inputRange: [0, HERO_HEIGHT * 0.6, HERO_HEIGHT],
+        outputRange: [1, 0.5, 0],
+        extrapolate: 'clamp',
+      }),
+    [scrollY],
+  );
+  
+  const heroTranslateY = useMemo(
+    () =>
+      scrollY.interpolate({
+        inputRange: [0, HERO_HEIGHT],
+        outputRange: [0, -40],
+        extrapolate: 'clamp',
+      }),
+    [scrollY],
+  );
+  
+  const onScroll = useMemo(
+    () =>
+      Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+        useNativeDriver: true,
+      }),
+    [scrollY],
+  );
+
+  // Calculate time until next reset (midnight 12:00 AM)
+  useEffect(() => {
+    const calculateTimeUntilReset = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0); // Set to 12:00 AM
+      
+      const diff = tomorrow.getTime() - now.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      return {
+        hours: hours.toString().padStart(2, '0'),
+        minutes: minutes.toString().padStart(2, '0'),
+        seconds: seconds.toString().padStart(2, '0'),
+        formatted: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+      };
+    };
+
+    // Update immediately
+    const updateTimer = () => {
+      const time = calculateTimeUntilReset();
+      setTimeUntilReset(time.formatted);
+    };
+    
+    updateTimer();
+
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const onGoPro = () => {
     // navigation.navigate('Premium');
@@ -29,26 +96,113 @@ export default function HeartScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={{ flex: 1 }}>
         <LinearGradient
-        colors={SUBTLE_PINK_GRADIENT}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="arrow-back" size={24} color="#2D3142" />
-        </TouchableOpacity>
-        {/* <Text style={styles.headerTitle}>Hearts</Text> */}
-        <View style={{ width: 24 }} />
-      </View>
+          colors={SUBTLE_PINK_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        
+        {/* Hero Image - Positioned like PremiumScreen */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: HERO_HEIGHT,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: heroOpacity,
+            transform: [{ translateY: heroTranslateY }],
+            zIndex: 1,
+          }}
+        >
+          <View style={styles.heartImageContainer}>
+            <Image source={heartImage} style={styles.heartImageHero} resizeMode="contain" />
+          </View>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.4)']}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <LinearGradient
+            colors={['rgba(255,255,255,0)', '#FFF7FA']}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: HERO_GRADIENT_HEIGHT,
+            }}
+          />
+        </Animated.View>
 
-      <View style={styles.headerHero}>
-        <Image source={heartImage} style={{ width: 200, height: 200 }} />
-      </View>
+        {/* Header */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            zIndex: 3,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1,
+              borderColor: '#E8E8E8',
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 2,
+            }}
+          >
+            <Ionicons name="arrow-back" size={22} color="#2D3142" />
+          </TouchableOpacity>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollInner} showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>You can use 1 heart for every new case you solve.</Text>
+        <Animated.ScrollView
+          style={{ flex: 1, zIndex: 2, backgroundColor: 'transparent' }}
+          contentContainerStyle={{ paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={onScroll}
+        >
+          <View style={{ height: HERO_PLACEHOLDER_HEIGHT }} />
+          <View
+            style={{
+              backgroundColor: '#FFF7FA',
+              borderTopLeftRadius: 32,
+              borderTopRightRadius: 32,
+              marginTop: -24,
+              paddingTop: 24,
+              paddingBottom: 24,
+              shadowColor: '#000',
+              shadowOpacity: 0.05,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: -2 },
+            }}
+          >
+            <View style={{ paddingHorizontal: 16 }}>
+              <Text style={styles.subtitle}>
+                <Text style={styles.boldText}>1 Heart = 1 Case</Text>
+               
+              </Text>
 
         <View style={styles.card}>
           <View style={styles.heartsRow}>
@@ -65,30 +219,50 @@ export default function HeartScreen() {
               );
             })}
           </View>
-          <Text style={styles.cardMainText}>
-            Today {hearts} {hearts === 1 ? 'Heart' : 'Hearts'} Left
-          </Text>
+          <View style={styles.cardMainTextContainer}>
+            <Text style={styles.cardMainText}>
+              Today's <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
+            </Text>
+          </View>
+          <View style={styles.timerContainer}>
+            <Ionicons name="time-outline" size={16} color="#65727E" style={{ marginRight: 6 }} />
+            <Text style={styles.timerText}>
+              Hearts reset in: <Text style={styles.timerTime}>{timeUntilReset}</Text>
+            </Text>
+          </View>
         </View>
 
-        <Text style={styles.subtitleSecondary}>Daily you will get 3 heart</Text>
+              <Text style={styles.subtitleSecondary}>You get 3 hearts every 24 hour.</Text>
 
-        <View style={styles.cardAlt}>
-          <Text style={styles.cardAltTitle}>Need More Hearts?</Text>
-          <Text style={styles.cardAltSubtitle}>Keep playing without breaks — here’s how:</Text>
+              <View style={styles.cardAlt}>
+          <Text style={styles.cardAltTitle}>Want to play more today ?</Text>
+          <Text style={styles.cardAltSubtitle}>Get <Text style={{ fontWeight: '700' }}>Premium To :</Text></Text>
 
           <View style={styles.listRow}>
             <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
             <Text style={styles.listText}>
-              Subscribe Premium: Unlock unlimited Hearts for nonstop learning.
-            </Text>
+                 Unlock <Text style={{ fontWeight: '700' }}>unlimited Hearts</Text> for nonstop play.
+              </Text>
+             
+              
           </View>
 
-          <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
-            <Text style={styles.ctaButtonText}>Subscribe Premium →</Text>
-          </TouchableOpacity>
-        </View>
-        <PremiumBottomSheet ref={premiumSheetRef} />
-      </ScrollView>
+          <View style={styles.listRow}>
+            <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
+            <Text style={styles.listText}>
+                 Access <Text style={{ fontWeight: '700' }}>clinical Insight</Text> for deeper learning.
+              </Text>
+          </View>
+
+              <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
+                <Text style={styles.ctaButtonText}>Get Premium →</Text>
+              </TouchableOpacity>
+            </View>
+            </View>
+            <PremiumBottomSheet ref={premiumSheetRef} />
+          </View>
+        </Animated.ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -111,10 +285,15 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: Colors.brand.darkPink,
     },
-    headerHero: {
+    heartImageContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        // paddingVertical: 8,
+        width: '100%',
+        height: '100%',
+    },
+    heartImageHero: {
+        width: 200,
+        height: 200,
     },
     scrollInner: {
         padding: 16,
@@ -129,6 +308,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginTop: 4,
         marginBottom: 16,
+        lineHeight: 24,
+    },
+    boldText: {
+        fontWeight: '800',
+        color: Colors.brand.darkPink,
+        fontSize: 18,
     },
     subtitleSecondary: {
         textAlign: 'center',
@@ -159,11 +344,39 @@ const styles = StyleSheet.create({
     heartIcon: {
         marginHorizontal: 10,
     },
+    cardMainTextContainer: {
+        alignItems: 'center',
+        marginBottom: 6,
+    },
     cardMainText: {
         fontSize: 18,
-        color: Colors.brand.darkPink,
+        color: '#2D3142',
         fontWeight: '700',
-        marginBottom: 6,
+    },
+    cardMainTextNumber: {
+        fontSize: 20,
+        color: '#ff4d4f',
+        fontWeight: '800',
+    },
+    timerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#EDEDED',
+    },
+    timerText: {
+        fontSize: 14,
+        color: '#65727E',
+        fontWeight: '600',
+    },
+    timerTime: {
+        fontSize: 15,
+        color: Colors.brand.darkPink,
+        fontWeight: '800',
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     },
     cardTimerText: {
         fontSize: 16,

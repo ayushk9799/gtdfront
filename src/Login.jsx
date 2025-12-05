@@ -12,7 +12,7 @@ import {
 import { getApp } from '@react-native-firebase/app';
 import { useDispatch } from 'react-redux';
 import { updateUser } from './store/slices/userSlice';
-import { View, TouchableOpacity, Platform, ActivityIndicator, Text, StyleSheet, Image, useColorScheme, Dimensions } from 'react-native';
+import { View, TouchableOpacity, Platform, ActivityIndicator, Text, StyleSheet, Image, useColorScheme, Dimensions, Linking } from 'react-native';
 import googleAuth from './services/googleAuth';
 import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
@@ -67,7 +67,7 @@ async function appleSignUp() {
     const appleCredential = await signUpWithApple({
       requestedScopes: ['fullName', 'email'],
     });
-    
+
     const ans = await fetch(`${API_BASE}/api/login/apple/loginSignUp`, {
       method: 'POST',
       headers: {
@@ -241,6 +241,24 @@ function Login({ onLogin }) {
               </View>
             </TouchableOpacity>
           )}
+          
+          {/* Terms & Privacy Policy */}
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
+            >
+              Terms of Service
+            </Text>{' '}
+            &{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
         </View>
       </View>
     </View>
@@ -435,6 +453,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     fontFamily: 'Roboto-Medium',
     fontWeight: '900',
+  },
+  termsText: {
+    marginTop: 16,
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 12,
+    paddingHorizontal: 16,
+  },
+  termsLink: {
+    color: Colors.brand.darkPink,
+    fontWeight: '800',
   },
 });
 
