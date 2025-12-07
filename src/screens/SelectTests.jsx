@@ -14,7 +14,7 @@ import { setSelectedTests as setSelectedTestsAction } from '../store/slices/curr
 import Sound from 'react-native-sound';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-const CARD_HEIGHT_PCT = 0.70;
+const CARD_HEIGHT_PCT = 0.75;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 
 
@@ -23,14 +23,14 @@ const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_
 function MicroscopeSvg({ size = 80, color = '#F79EBD' }) {
   return (
     <Svg height={size} width={size} viewBox="0 0 512 512" fill="none">
-     <G fill={color}>
-      <Polygon points="189.725,222.712 231.636,261.866 250.511,241.652 263.675,253.948 277.897,238.714 213.912,178.926 213.912,178.934 201.739,167.556 187.503,182.791 199.676,194.161 199.676,194.168 200.66,195.088 181.785,215.287" />
-      <Path d="M330.229,182.704c7.259,9.77,18.846,16.132,31.952,16.132c21.973,0,39.798-17.811,39.798-39.798 c0-14.062-7.324-26.416-18.353-33.486l50.82-54.396L421.288,58.86l8.533-9.126L379.963,3.155l-8.525,9.134L358.288,0 L209.497,159.248l76.165,71.157L330.229,182.704z M362.181,144.506c0.797,0,1.57,0.116,2.345,0.238 c0.326,0.058,0.666,0.116,0.984,0.188c6.413,1.512,11.204,7.238,11.204,14.105c0,8.026-6.507,14.533-14.533,14.533 c-6.542,0-12.014-4.357-13.838-10.299c-0.187-0.615-0.34-1.252-0.456-1.897c-0.13-0.767-0.239-1.534-0.239-2.337 C347.649,151.02,354.155,144.506,362.181,144.506z" />
-      <Polygon points="226.468,330.076 80.341,289.671 75.289,307.938 221.417,348.336" />
-      <Path d="M334.021,444.259c-21.907,9.148-45.913,14.214-71.098,14.214c-18.035,0-35.571-2.591-52.209-7.44 c-23.949,14.127-43.17,35.412-54.627,60.967h245.625C388.236,481.943,364.041,457.785,334.021,444.259z" />
-      <Path d="M436.711,273.322c0-34.616-10.161-66.843-27.61-93.932c-5.066,11.652-14.366,21.039-25.938,26.264 c9.06,18.093,14.228,38.451,14.228,60.055c0,74.269-52.26,129.504-116.361,129.504c-41.512,0-72.386-16.125-93.823-44.278 l-89.851-24.839c22.349,70.166,87.998,121.007,165.567,121.007C358.918,447.103,436.711,369.303,436.711,273.322z" />
-    </G>
-  </Svg>
+      <G fill={color}>
+        <Polygon points="189.725,222.712 231.636,261.866 250.511,241.652 263.675,253.948 277.897,238.714 213.912,178.926 213.912,178.934 201.739,167.556 187.503,182.791 199.676,194.161 199.676,194.168 200.66,195.088 181.785,215.287" />
+        <Path d="M330.229,182.704c7.259,9.77,18.846,16.132,31.952,16.132c21.973,0,39.798-17.811,39.798-39.798 c0-14.062-7.324-26.416-18.353-33.486l50.82-54.396L421.288,58.86l8.533-9.126L379.963,3.155l-8.525,9.134L358.288,0 L209.497,159.248l76.165,71.157L330.229,182.704z M362.181,144.506c0.797,0,1.57,0.116,2.345,0.238 c0.326,0.058,0.666,0.116,0.984,0.188c6.413,1.512,11.204,7.238,11.204,14.105c0,8.026-6.507,14.533-14.533,14.533 c-6.542,0-12.014-4.357-13.838-10.299c-0.187-0.615-0.34-1.252-0.456-1.897c-0.13-0.767-0.239-1.534-0.239-2.337 C347.649,151.02,354.155,144.506,362.181,144.506z" />
+        <Polygon points="226.468,330.076 80.341,289.671 75.289,307.938 221.417,348.336" />
+        <Path d="M334.021,444.259c-21.907,9.148-45.913,14.214-71.098,14.214c-18.035,0-35.571-2.591-52.209-7.44 c-23.949,14.127-43.17,35.412-54.627,60.967h245.625C388.236,481.943,364.041,457.785,334.021,444.259z" />
+        <Path d="M436.711,273.322c0-34.616-10.161-66.843-27.61-93.932c-5.066,11.652-14.366,21.039-25.938,26.264 c9.06,18.093,14.228,38.451,14.228,60.055c0,74.269-52.26,129.504-116.361,129.504c-41.512,0-72.386-16.125-93.823-44.278 l-89.851-24.839c22.349,70.166,87.998,121.007,165.567,121.007C358.918,447.103,436.711,369.303,436.711,273.322z" />
+      </G>
+    </Svg>
   );
 }
 
@@ -47,7 +47,7 @@ function Section({ title, children }) {
         <ScrollView
           style={styles.sectionScroll}
           contentContainerStyle={styles.sectionScrollContent}
-          showsVerticalScrollIndicator
+          showsVerticalScrollIndicator={false}
           nestedScrollEnabled
           scrollEventThrottle={16}
         >
@@ -76,7 +76,7 @@ export default function SelectTests() {
   const isFocusedRef = useRef(true);
 
   const caseData = route?.params?.caseData || {};
-  
+
   // Extract data from the CASES_ARRAY structure (steps[1].data)
   const step2Data = caseData?.steps?.[1]?.data || {};
   const availableTests = step2Data?.availableTests || [];
@@ -128,7 +128,7 @@ export default function SelectTests() {
         }
         tapSound.play((finished) => {
           if (finished) {
-            try { tapSound.release(); } catch (_) {}
+            try { tapSound.release(); } catch (_) { }
             if (tapSoundRef.current === tapSound) {
               tapSoundRef.current = null;
             }
@@ -158,7 +158,7 @@ export default function SelectTests() {
       Animated.timing(shimmerAnim, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true })
     );
     loop.start();
-    return () => { try { loop.stop?.(); } catch(_) {} shimmerAnim.setValue(0); };
+    return () => { try { loop.stop?.(); } catch (_) { } shimmerAnim.setValue(0); };
   }, [shimmerAnim]);
 
   // Stop lab audio playback
@@ -166,7 +166,7 @@ export default function SelectTests() {
     try {
       labSoundRef.current?.stop?.();
       labSoundRef.current?.release?.();
-    } catch (_) {}
+    } catch (_) { }
     labSoundRef.current = null;
   }, []);
 
@@ -177,16 +177,16 @@ export default function SelectTests() {
       console.log('🔇 SelectTests lab audio skipped - not focused');
       return;
     }
-    
+
     if (!voiceId || audioPaused) {
       return;
     }
-    
+
     console.log('🔊 SelectTests playing lab audio | voiceId:', voiceId);
-    
+
     // Setup sound category
-    try { Sound.setCategory('Playback', true); } catch (_) {}
-    try { Sound.enableInSilenceMode(true); } catch (_) {}
+    try { Sound.setCategory('Playback', true); } catch (_) { }
+    try { Sound.enableInSilenceMode(true); } catch (_) { }
 
     // Add delay before playing audio
     const delayTimeout = setTimeout(() => {
@@ -195,29 +195,29 @@ export default function SelectTests() {
         console.log('🔇 SelectTests lab audio timeout skipped - lost focus');
         return;
       }
-      
+
       const s = new Sound(`lab_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
         // Race condition guard: if user closed/navigated away while loading,
         // labSoundRef.current will be null or a different Sound instance
         if (labSoundRef.current !== s) {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           return;
         }
         // Also check focus
         if (!isFocusedRef.current) {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           labSoundRef.current = null;
           return;
         }
         if (error) {
           console.log('Lab audio load error:', error);
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           labSoundRef.current = null;
           return;
         }
         // Play the audio
         s.play((finished) => {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           if (labSoundRef.current === s) {
             labSoundRef.current = null;
           }
@@ -238,7 +238,7 @@ export default function SelectTests() {
       // Screen gained focus
       console.log('👁️ SelectTests FOCUSED');
       isFocusedRef.current = true;
-      
+
       return () => {
         // Screen lost focus
         console.log('👁️ SelectTests UNFOCUSED');
@@ -248,7 +248,7 @@ export default function SelectTests() {
         try {
           tapSoundRef.current?.stop?.();
           tapSoundRef.current?.release?.();
-        } catch (_) {}
+        } catch (_) { }
         tapSoundRef.current = null;
       };
     }, [stopLabAudio])
@@ -282,7 +282,7 @@ export default function SelectTests() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top','left','right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={SUBTLE_PINK_GRADIENT}
         start={{ x: 0, y: 0 }}
@@ -304,7 +304,7 @@ export default function SelectTests() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: Math.max(36, insets.top +24), paddingBottom: 120 }}>
+      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 50, paddingBottom: 120 }}>
         <View
           pointerEvents="none"
           style={[
@@ -348,7 +348,7 @@ export default function SelectTests() {
       <TouchableOpacity
         accessibilityRole="button"
         onPress={() => navigation.goBack()}
-        style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
+        style={[styles.navButton, styles.navLeft, { bottom: 80 }]}
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
@@ -358,7 +358,7 @@ export default function SelectTests() {
         accessibilityRole="button"
         onPress={presentReportsSheet}
         disabled={!selectedTestIds || selectedTestIds.length === 0}
-        style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, (!selectedTestIds || selectedTestIds.length === 0) && { opacity: 0.5 }]}
+        style={[styles.primaryButton, styles.navRightCta, { bottom: 80 }, (!selectedTestIds || selectedTestIds.length === 0) && { opacity: 0.5 }]}
         activeOpacity={0.9}
       >
         <LinearGradient
@@ -369,7 +369,7 @@ export default function SelectTests() {
         />
         <Animated.View
           pointerEvents="none"
-          style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0,1], outputRange: [-100, 220] }) }] }]}
+          style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
         >
           <LinearGradient
             colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
@@ -381,7 +381,7 @@ export default function SelectTests() {
         <MaterialCommunityIcons name="file-document" size={18} color="#fff" />
         <Text style={styles.primaryButtonText}>Get Reports</Text>
       </TouchableOpacity>
-   
+
       <BottomSheetModal
         ref={reportsSheetRef}
         snapPoints={reportSnapPoints}
@@ -442,7 +442,7 @@ export default function SelectTests() {
                     <View key={r.id} style={{ width: width - 32, paddingRight: 16 }}>
                       <View style={styles.simpleReportCard}>
                         <Text style={styles.reportValueText}>
-                          { r?.value || 'Result not available for this test.'}
+                          {r?.value || 'Result not available for this test.'}
                         </Text>
                       </View>
                     </View>
@@ -476,7 +476,7 @@ export default function SelectTests() {
                   />
                   <Animated.View
                     pointerEvents="none"
-                    style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0,1], outputRange: [-100, 220] }) }] }]}
+                    style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
                   >
                     <LinearGradient
                       colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
@@ -499,15 +499,15 @@ export default function SelectTests() {
           )}
         </BottomSheetView>
       </BottomSheetModal>
-     
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerButtons: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+  headerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
     paddingHorizontal: 16
   },
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#475569',
   },
-  
+
   // Primary Button (Diagnosis)
   primaryButtonInRow: {
     flex: 2,

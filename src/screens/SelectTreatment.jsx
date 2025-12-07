@@ -17,7 +17,7 @@ import Sound from 'react-native-sound';
 import { checkAndRequestReview } from '../services/ratingService';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-const CARD_HEIGHT_PCT = 0.70;
+const CARD_HEIGHT_PCT = 0.80;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 
 function ECGUnderline({ color = Colors.brand.darkPink }) {
@@ -37,7 +37,7 @@ function ECGUnderline({ color = Colors.brand.darkPink }) {
 
 function Section({ title, children }) {
   const colorScheme = useColorScheme();
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   return (
     <View style={styles.sectionBlock}>
       <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
@@ -48,7 +48,7 @@ function Section({ title, children }) {
         <ScrollView
           style={styles.sectionScroll}
           contentContainerStyle={styles.sectionScrollContent}
-          showsVerticalScrollIndicator
+          showsVerticalScrollIndicator={false}
           nestedScrollEnabled
           scrollEventThrottle={16}
         >
@@ -64,7 +64,7 @@ export default function SelectTreatment() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   const dispatch = useDispatch();
   const { userId, caseId, selectedTreatmentIds, sourceType } = useSelector((s) => s.currentGame);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
@@ -77,7 +77,7 @@ export default function SelectTreatment() {
   const isFocusedRef = useRef(true);
 
   const caseData = route?.params?.caseData || {};
-  
+
   const step4Data = caseData?.steps?.[3]?.data || {};
   const treatmentOptions = step4Data?.treatmentOptions || {};
   const medications = treatmentOptions?.medications || [];
@@ -101,7 +101,7 @@ export default function SelectTreatment() {
         }
         tapSound.play((finished) => {
           if (finished) {
-            try { tapSound.release(); } catch (_) {}
+            try { tapSound.release(); } catch (_) { }
             if (tapSoundRef.current === tapSound) {
               tapSoundRef.current = null;
             }
@@ -161,7 +161,7 @@ export default function SelectTreatment() {
       Animated.timing(shimmerAnim, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true })
     );
     loop.start();
-    return () => { try { loop.stop?.(); } catch(_) {} shimmerAnim.setValue(0); };
+    return () => { try { loop.stop?.(); } catch (_) { } shimmerAnim.setValue(0); };
   }, [shimmerAnim]);
 
   // Stop treatment audio playback
@@ -169,7 +169,7 @@ export default function SelectTreatment() {
     try {
       treatmentSoundRef.current?.stop?.();
       treatmentSoundRef.current?.release?.();
-    } catch (_) {}
+    } catch (_) { }
     treatmentSoundRef.current = null;
   }, []);
 
@@ -180,16 +180,16 @@ export default function SelectTreatment() {
       console.log('🔇 SelectTreatment audio skipped - not focused');
       return;
     }
-    
+
     if (!voiceId || audioPaused) {
       return;
     }
-    
+
     console.log('🔊 SelectTreatment playing audio | voiceId:', voiceId);
-    
+
     // Setup sound category
-    try { Sound.setCategory('Playback', true); } catch (_) {}
-    try { Sound.enableInSilenceMode(true); } catch (_) {}
+    try { Sound.setCategory('Playback', true); } catch (_) { }
+    try { Sound.enableInSilenceMode(true); } catch (_) { }
 
     // Add delay before playing audio
     const delayTimeout = setTimeout(() => {
@@ -198,28 +198,28 @@ export default function SelectTreatment() {
         console.log('🔇 SelectTreatment audio timeout skipped - lost focus');
         return;
       }
-      
+
       const s = new Sound(`treatment_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
         // Race condition guard
         if (treatmentSoundRef.current !== s) {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           return;
         }
         // Check focus
         if (!isFocusedRef.current) {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           treatmentSoundRef.current = null;
           return;
         }
         if (error) {
           console.log('Treatment audio load error:', error);
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           treatmentSoundRef.current = null;
           return;
         }
         // Play the audio
         s.play((finished) => {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           if (treatmentSoundRef.current === s) {
             treatmentSoundRef.current = null;
           }
@@ -240,7 +240,7 @@ export default function SelectTreatment() {
       // Screen gained focus
       console.log('👁️ SelectTreatment FOCUSED');
       isFocusedRef.current = true;
-      
+
       return () => {
         // Screen lost focus
         console.log('👁️ SelectTreatment UNFOCUSED');
@@ -250,14 +250,14 @@ export default function SelectTreatment() {
         try {
           tapSoundRef.current?.stop?.();
           tapSoundRef.current?.release?.();
-        } catch (_) {}
+        } catch (_) { }
         tapSoundRef.current = null;
       };
     }, [stopTreatmentAudio])
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top','left','right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={SUBTLE_PINK_GRADIENT}
         start={{ x: 0, y: 0 }}
@@ -278,7 +278,7 @@ export default function SelectTreatment() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: Math.max(36, insets.top + 24), paddingBottom: 120 }}>
+      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 50, paddingBottom: 120 }}>
         <Section title="Select Treatment Plan">
           {[
             { key: 'Medication', items: medications },
@@ -295,10 +295,10 @@ export default function SelectTreatment() {
                     ) : key === 'Surgical/Interventional' ? (
                       <Image source={surgImg} style={styles.categoryHeaderImage} />
                     ) : (
-                      <MaterialCommunityIcons 
-                        name={getCategoryIcon(key)} 
-                        size={18} 
-                        color={getCategoryColor(key)} 
+                      <MaterialCommunityIcons
+                        name={getCategoryIcon(key)}
+                        size={18}
+                        color={getCategoryColor(key)}
                       />
                     )}
                   </View>
@@ -319,7 +319,7 @@ export default function SelectTreatment() {
                       >
                         <View style={styles.treatmentContent}>
                           <View style={styles.treatmentHeader}>
-                           
+
                             <View style={styles.treatmentTextContainer}>
                               <Text style={[styles.treatmentName, selected && styles.treatmentNameSelected]}>
                                 {treatment.treatmentName}
@@ -328,11 +328,11 @@ export default function SelectTreatment() {
                           </View>
                         </View>
                         {selected ? (
-                          <MaterialCommunityIcons 
-                            name="check-circle" 
-                            size={20} 
-                            color={Colors.brand.darkPink} 
-                            style={styles.selectedCheck} 
+                          <MaterialCommunityIcons
+                            name="check-circle"
+                            size={20}
+                            color={Colors.brand.darkPink}
+                            style={styles.selectedCheck}
                           />
                         ) : null}
                       </TouchableOpacity>
@@ -348,7 +348,7 @@ export default function SelectTreatment() {
       <TouchableOpacity
         accessibilityRole="button"
         onPress={() => navigation.goBack()}
-        style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
+        style={[styles.navButton, styles.navLeft, { bottom: 80 }]}
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
@@ -360,23 +360,23 @@ export default function SelectTreatment() {
           if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
           stopTreatmentAudio(); // Stop audio before navigating
           try {
-            navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan' });
+            navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan', from: 'SelectTreatment' });
 
             await dispatch(submitGameplay());
-            
+
             // Request in-app review after first case completion
             // This will only trigger once (after the first game)
             checkAndRequestReview();
-          } catch (e) {}
-          if(!isPremium && sourceType === 'case') {
+          } catch (e) { }
+          if (!isPremium && sourceType === 'case') {
             dispatch(useHeart());
           }
         }}
         disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
         style={[
-          styles.primaryButton, 
-          styles.navRightCta, 
-          { bottom: Math.max(22, insets.bottom + 25) }, 
+          styles.primaryButton,
+          styles.navRightCta,
+          { bottom: 80 },
           (!selectedTreatmentIds || selectedTreatmentIds.length === 0) && { opacity: 0.5 }
         ]}
         activeOpacity={0.9}
@@ -389,7 +389,7 @@ export default function SelectTreatment() {
         />
         <Animated.View
           pointerEvents="none"
-          style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0,1], outputRange: [-100, 220] }) }] }]}
+          style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
         >
           <LinearGradient
             colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.12)',
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,9 +473,9 @@ const styles = StyleSheet.create({
     minHeight: 56,
     backgroundColor: '#fff',
   },
-  treatmentCardSelected: { 
-    borderColor: Colors.brand.darkPink, 
-    backgroundColor: 'rgba(255, 0, 102, 0.08)' 
+  treatmentCardSelected: {
+    borderColor: Colors.brand.darkPink,
+    backgroundColor: 'rgba(255, 0, 102, 0.08)'
   },
   treatmentContent: {
     flex: 1,
@@ -488,19 +488,20 @@ const styles = StyleSheet.create({
   },
   treatmentTextContainer: {
     flex: 1,
+    paddingVertical: 0,
     gap: 6,
   },
-  treatmentName: { 
-    fontSize: 15,
+  treatmentName: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#11181C',
     lineHeight: 20,
   },
-  treatmentNameSelected: { 
-    color: Colors.brand.darkPink 
+  treatmentNameSelected: {
+    color: Colors.brand.darkPink
   },
   categoryHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  categoryHeaderIconWrap: { width: 26, height: 26, borderRadius: 13,  alignItems: 'center', justifyContent: 'center' },
+  categoryHeaderIconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   categoryHeaderImage: { width: 40, height: 40, resizeMode: 'contain' },
   categoryHeaderText: { fontSize: 16, fontWeight: '900' },
   categoryBadge: {
@@ -513,7 +514,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  selectedCheck: { 
+  selectedCheck: {
     marginTop: 2,
   },
   primaryButton: {
@@ -535,10 +536,10 @@ const styles = StyleSheet.create({
   primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
   shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
   primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 16 },
-  navRightCta: { 
-    position: 'absolute', 
-    right: 16, 
-    paddingHorizontal: 16 
+  navRightCta: {
+    position: 'absolute',
+    right: 16,
+    paddingHorizontal: 16
   },
 });
 

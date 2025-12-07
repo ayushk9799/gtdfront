@@ -61,7 +61,7 @@ function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, a
         <ScrollView
           style={styles.sectionScroll}
           contentContainerStyle={styles.sectionScrollContent}
-          showsVerticalScrollIndicator
+          showsVerticalScrollIndicator={false}
           nestedScrollEnabled
           scrollEventThrottle={16}
         >

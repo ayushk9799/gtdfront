@@ -232,7 +232,7 @@ export default function HomeScreen() {
     console.log('caseId', caseId);
 
     try {
-      if (hearts <= 0) {
+      if (hearts <= -7) {
         ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);
         premiumSheetRef.current?.present();
         return;

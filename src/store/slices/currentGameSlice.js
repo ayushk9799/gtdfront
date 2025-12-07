@@ -45,11 +45,11 @@ const currentGameSlice = createSlice({
     // For dailyChallenge: { dailyChallengeId, caseData, sourceType: 'dailyChallenge' }
     setCaseData(state, action) {
       const { caseId, dailyChallengeId, caseData, sourceType, voiceId } = action.payload || {};
-      
+
       // Determine source type
       const effectiveSourceType = sourceType || (dailyChallengeId ? 'dailyChallenge' : 'case');
       state.sourceType = effectiveSourceType;
-      
+
       if (effectiveSourceType === 'dailyChallenge') {
         state.dailyChallengeId = dailyChallengeId || null;
         state.caseId = null;
@@ -59,11 +59,11 @@ const currentGameSlice = createSlice({
         state.dailyChallengeId = null;
         state.voiceId = voiceId || null; // Set voiceId if provided
       }
-      
+
       state.caseData = caseData || null;
       state.status = 'in_progress';
       state.audioPaused = false; // Reset audio pause state for new case
-      
+
       // IMPORTANT: Clear previous selections when loading a new case
       state.selectedTestIds = [];
       state.selectedDiagnosisId = null;
@@ -110,7 +110,7 @@ const currentGameSlice = createSlice({
         state.caseData = action.payload.caseData || null;
         state.voiceId = action.payload.voiceId || null;
         state.audioPaused = false; // Reset audio pause state for new case
-        
+
         // IMPORTANT: Clear previous selections when loading a new case
         state.selectedTestIds = [];
         state.selectedDiagnosisId = null;
@@ -129,17 +129,17 @@ export const submitGameplay = createAsyncThunk(
   'currentGame/submitGameplay',
   async (_, { getState }) => {
     const state = getState();
-    const { 
-      userId, 
-      sourceType, 
-      caseId, 
-      dailyChallengeId, 
-      caseData, 
-      selectedTestIds, 
-      selectedDiagnosisId, 
-      selectedTreatmentIds 
+    const {
+      userId,
+      sourceType,
+      caseId,
+      dailyChallengeId,
+      caseData,
+      selectedTestIds,
+      selectedDiagnosisId,
+      selectedTreatmentIds
     } = state.currentGame;
-    
+
     // Validate based on source type
     if (!userId) throw new Error('Missing userId');
     if (sourceType === 'case' && !caseId) throw new Error('Missing caseId');
@@ -181,7 +181,7 @@ export const submitGameplay = createAsyncThunk(
       selectedDiagnosisId,
       selectedTreatmentIds,
     });
-    
+
     // Build request body based on source type
     const requestBody = {
       userId,
@@ -210,13 +210,13 @@ export const submitGameplay = createAsyncThunk(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
     });
-    
+
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Failed to submit gameplay (${res.status})`);
     }
     const data = await res.json();
-    return data?.gameplay?._id;
+    return { gameplayId: data?.gameplay?._id, updatedUser: data?.updatedUser || null };
   }
 );
 

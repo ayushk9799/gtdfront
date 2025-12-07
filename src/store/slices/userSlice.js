@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { MMKV } from 'react-native-mmkv';
 import { API_BASE } from '../../../constants/Api';
+import { submitGameplay } from './currentGameSlice';
 
 const storage = new MMKV();
 
@@ -14,7 +15,7 @@ export const getUser = createAsyncThunk(
       const res = await fetch(`${API_BASE}/api/users/${userId}`);
       const data = await res.json();
       // console.log("data", data);
-      
+
       if (!res.ok || data?.error) {
         const message = data?.error || 'User not found';
         return rejectWithValue(message);
@@ -38,7 +39,7 @@ export const updateUser = createAsyncThunk(
         body: JSON.stringify({ user: userData }),
       });
       const data = await res.json();
-      
+
       if (!res.ok || data?.error) {
         const message = data?.error || 'Failed to update user';
         return rejectWithValue(message);
@@ -53,9 +54,9 @@ export const updateUser = createAsyncThunk(
 
 const initialState = {
   userData: null,
-  isPremium : false,
-  customerInfo : null,
-  hearts : 0,
+  isPremium: false,
+  customerInfo: null,
+  hearts: 0,
   status: 'idle',
   error: null,
 };
@@ -66,7 +67,7 @@ const userSlice = createSlice({
   reducers: {
     setCustomerInfo: (state, action) => {
       state.isPremium = action.payload?.activeSubscriptions?.length > 0;
-      if(state.isPremium) state.hearts = 100;
+      if (state.isPremium) state.hearts = 100;
       state.customerInfo = action.payload || null;
     },
     setHearts: (state, action) => {
@@ -74,8 +75,8 @@ const userSlice = createSlice({
       state.hearts = Number.isFinite(next) ? next : 0;
     },
     useHeart: (state) => {
-        state.hearts = state.hearts - 1;
-        storage.set(HEART_LEFT_KEY, state.hearts);
+      state.hearts = state.hearts - 1;
+      storage.set(HEART_LEFT_KEY, state.hearts);
     },
   },
   extraReducers: (builder) => {
@@ -102,6 +103,37 @@ const userSlice = createSlice({
       .addCase(updateUser.rejected, (state) => {
         state.status = 'idle';
       })
+      // Update user data when gameplay is submitted successfully
+      .addCase(submitGameplay.fulfilled, (state, action) => {
+        const updatedUser = action.payload?.updatedUser;
+        if (updatedUser && state.userData) {
+          // Update cumulative points
+          if (updatedUser.cumulativePoints) {
+            state.userData.cumulativePoints = updatedUser.cumulativePoints;
+          }
+          // Update completedCases array length by creating placeholder entries
+          if (typeof updatedUser.completedCasesCount === 'number') {
+            const currentCount = (state.userData.completedCases || []).length;
+            if (updatedUser.completedCasesCount > currentCount) {
+              // Add placeholder entries to match the count
+              state.userData.completedCases = state.userData.completedCases || [];
+              while (state.userData.completedCases.length < updatedUser.completedCasesCount) {
+                state.userData.completedCases.push({});
+              }
+            }
+          }
+          // Update completedDailyChallenges array length
+          if (typeof updatedUser.completedDailyChallengesCount === 'number') {
+            const currentCount = (state.userData.completedDailyChallenges || []).length;
+            if (updatedUser.completedDailyChallengesCount > currentCount) {
+              state.userData.completedDailyChallenges = state.userData.completedDailyChallenges || [];
+              while (state.userData.completedDailyChallenges.length < updatedUser.completedDailyChallengesCount) {
+                state.userData.completedDailyChallenges.push({});
+              }
+            }
+          }
+        }
+      });
   },
 });
 
@@ -141,7 +173,7 @@ export const refreshHearts = createAsyncThunk(
       try {
         storage.set(HEART_LEFT_KEY, fallback);
         storage.set(HEART_UPDATED_AT_KEY, new Date().toISOString());
-      } catch {}
+      } catch { }
       dispatch(userSlice.actions.setHearts(fallback));
       return fallback;
     }

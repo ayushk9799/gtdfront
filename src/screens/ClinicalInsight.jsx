@@ -1,8 +1,8 @@
 import React from 'react';
-import {  useWindowDimensions, View, Text, Image, ImageBackground, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing } from 'react-native';
+import { useWindowDimensions, View, Text, Image, ImageBackground, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useNavigation, CommonActions } from '@react-navigation/native';
+import { useRoute, useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
 import { TabView, TabBar } from 'react-native-tab-view';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Line } from 'react-native-svg';
@@ -70,7 +70,7 @@ function AnimatedNumber({ value, duration = 800, easing = Easing.out(Easing.cubi
 }
 
 export default function ClinicalInsight() {
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   const route = useRoute();
   const navigation = useNavigation();
   const initialTabParam = route?.params?.initialTab;
@@ -90,7 +90,7 @@ export default function ClinicalInsight() {
       const routes = state?.routes || [];
       const idx = typeof state?.index === 'number' ? state.index : routes.length - 1;
       if (idx > 0 && routes[idx - 1]?.name) prevRouteName = routes[idx - 1].name;
-    } catch {}
+    } catch { }
     const fromStr = typeof fromParam === 'string' ? fromParam.toLowerCase() : '';
     const openedFromSelectTreatment =
       (fromStr.includes('treatment') || fromStr.includes('selecttreatment')) ||
@@ -120,6 +120,20 @@ export default function ClinicalInsight() {
     }
     navigation.goBack();
   }, [navigation, route]);
+
+  // Handle Android hardware back button
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        handleBackPress();
+        return true; // Prevent default back behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [handleBackPress])
+  );
 
   const {
     caseData: caseDataFromStore,
@@ -291,7 +305,7 @@ export default function ClinicalInsight() {
   }, [caseData, selectedDiagnosisId]);
 
   return (
-    <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
+    <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={SUBTLE_PINK_GRADIENT}
         start={{ x: 0, y: 0 }}
@@ -361,7 +375,7 @@ export default function ClinicalInsight() {
           </View>
 
           <TabView
-            style={{ flex: 1, margin : 8 }}
+            style={{ flex: 1, margin: 8 }}
             navigationState={{ index, routes }}
             onIndexChange={setIndex}
             initialLayout={{ width: layout.width }}
@@ -384,7 +398,7 @@ export default function ClinicalInsight() {
               const categoryMax = key === 'diagnosis' ? 40 : 30;
               const categoryScore = key === 'tests' ? scores.tests : key === 'diagnosis' ? scores.diagnosis : scores.treatment;
               return (
-                <ScrollView 
+                <ScrollView
                   style={{ flex: 1 }}
                   showsVerticalScrollIndicator={true}
                   contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12 }}
@@ -556,7 +570,7 @@ export default function ClinicalInsight() {
                   </>
                 )}
               </View>
-            )} 
+            )}
           </View>
         ) : null}
 
@@ -829,7 +843,7 @@ function Section({ kind, title, items, showDivider }) {
   return (
     <View style={{ paddingTop: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <View style={[styles.sectionIconWrap, { backgroundColor: bg }]}> 
+        <View style={[styles.sectionIconWrap, { backgroundColor: bg }]}>
           <MaterialCommunityIcons name={icon} size={16} color={color} />
         </View>
         <Text style={[styles.sectionTitle, { color }]}>{title}</Text>
@@ -897,8 +911,8 @@ const styles = StyleSheet.create({
   // removed flex growth on the card to keep it compact
   caseHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8, justifyContent: 'center' },
   caseIconWrap: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#E9EEF6', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  caseHeaderText: { fontSize: 16, fontWeight: '800', color: '#5C6C83'},
-  tabText: { fontSize: 20, fontWeight: '800', color : Colors.brand.darkPink },
+  caseHeaderText: { fontSize: 16, fontWeight: '800', color: '#5C6C83' },
+  tabText: { fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink },
   tabTextActive: { color: Colors.brand.darkPink },
   sectionIconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '800' },
@@ -919,7 +933,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
-  scoreBoardWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 0,  alignSelf: 'stretch', width: '100%',  },
+  scoreBoardWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 0, alignSelf: 'stretch', width: '100%', },
   scoreBoardBg: { width: '100%', height: 400, paddingTop: 80 },
   scoreBoardBgImage: { borderRadius: 0 },
   scoreBoardOverlay: {
@@ -986,7 +1000,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   insightHeaderText: { color: '#1F9E90', fontWeight: '800', fontSize: 18 },
-  
+
   insightTitle: { fontSize: 18, fontWeight: '900', color: '#163D3A', marginBottom: 6 },
   insightBullet: { fontSize: 15.5, color: '#163D3A', lineHeight: 22, marginLeft: 6 },
   // Themed variants for additional cards
@@ -1092,7 +1106,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 10,
-    fontSize:20,
+    fontSize: 20,
   },
   premiumBenefits: {
     width: '100%',

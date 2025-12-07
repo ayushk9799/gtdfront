@@ -12,7 +12,7 @@ import { setSelectedDiagnosis as setSelectedDiagnosisAction } from '../store/sli
 import Sound from 'react-native-sound';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-const CARD_HEIGHT_PCT = 0.70;
+const CARD_HEIGHT_PCT = 0.75;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 
 // function ECGUnderline({ color = Colors.brand.darkPink }) {
@@ -81,7 +81,7 @@ function Section({ title, children }) {
         <ScrollView
           style={styles.sectionScroll}
           contentContainerStyle={styles.sectionScrollContent}
-          showsVerticalScrollIndicator
+          showsVerticalScrollIndicator={false}
           nestedScrollEnabled
           scrollEventThrottle={16}
         >
@@ -109,7 +109,7 @@ export default function SelectDiagnosis() {
   const isFocusedRef = useRef(true);
 
   const caseData = route?.params?.caseData || {};
-  
+
   // Extract data from the CASES_ARRAY structure (steps[2].data)
   const step3Data = caseData?.steps?.[2]?.data || {};
   const diagnosisOptions = step3Data?.diagnosisOptions || [];
@@ -128,7 +128,7 @@ export default function SelectDiagnosis() {
         }
         tapSound.play((finished) => {
           if (finished) {
-            try { tapSound.release(); } catch (_) {}
+            try { tapSound.release(); } catch (_) { }
             if (tapSoundRef.current === tapSound) {
               tapSoundRef.current = null;
             }
@@ -162,7 +162,7 @@ export default function SelectDiagnosis() {
     );
     loop.start();
     return () => {
-      try { loop.stop?.(); } catch (_) {}
+      try { loop.stop?.(); } catch (_) { }
       shimmerAnim.setValue(0);
     };
   }, [shimmerAnim]);
@@ -172,7 +172,7 @@ export default function SelectDiagnosis() {
     try {
       diagnosisSoundRef.current?.stop?.();
       diagnosisSoundRef.current?.release?.();
-    } catch (_) {}
+    } catch (_) { }
     diagnosisSoundRef.current = null;
   }, []);
 
@@ -183,16 +183,16 @@ export default function SelectDiagnosis() {
       console.log('🔇 SelectDiagnosis audio skipped - not focused');
       return;
     }
-    
+
     if (!voiceId || audioPaused) {
       return;
     }
-    
+
     console.log('🔊 SelectDiagnosis playing audio | voiceId:', voiceId);
-    
+
     // Setup sound category
-    try { Sound.setCategory('Playback', true); } catch (_) {}
-    try { Sound.enableInSilenceMode(true); } catch (_) {}
+    try { Sound.setCategory('Playback', true); } catch (_) { }
+    try { Sound.enableInSilenceMode(true); } catch (_) { }
 
     // Add delay before playing audio
     const delayTimeout = setTimeout(() => {
@@ -201,28 +201,28 @@ export default function SelectDiagnosis() {
         console.log('🔇 SelectDiagnosis audio timeout skipped - lost focus');
         return;
       }
-      
+
       const s = new Sound(`diagnosis_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
         // Race condition guard
         if (diagnosisSoundRef.current !== s) {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           return;
         }
         // Check focus
         if (!isFocusedRef.current) {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           diagnosisSoundRef.current = null;
           return;
         }
         if (error) {
           console.log('Diagnosis audio load error:', error);
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           diagnosisSoundRef.current = null;
           return;
         }
         // Play the audio
         s.play((finished) => {
-          try { s.release(); } catch (_) {}
+          try { s.release(); } catch (_) { }
           if (diagnosisSoundRef.current === s) {
             diagnosisSoundRef.current = null;
           }
@@ -243,7 +243,7 @@ export default function SelectDiagnosis() {
       // Screen gained focus
       console.log('👁️ SelectDiagnosis FOCUSED');
       isFocusedRef.current = true;
-      
+
       return () => {
         // Screen lost focus
         console.log('👁️ SelectDiagnosis UNFOCUSED');
@@ -253,14 +253,14 @@ export default function SelectDiagnosis() {
         try {
           tapSoundRef.current?.stop?.();
           tapSoundRef.current?.release?.();
-        } catch (_) {}
+        } catch (_) { }
         tapSoundRef.current = null;
       };
     }, [stopDiagnosisAudio])
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top','left','right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={SUBTLE_PINK_GRADIENT}
         start={{ x: 0, y: 0 }}
@@ -280,9 +280,9 @@ export default function SelectDiagnosis() {
           <MaterialCommunityIcons name="close" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
-     
-      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: Math.max(36, insets.top + 24), paddingBottom: 120 }}>
-      <View
+
+      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 50, paddingBottom: 120 }}>
+        <View
           pointerEvents="none"
           style={[
             styles.decorationOverlay,
@@ -326,7 +326,7 @@ export default function SelectDiagnosis() {
       <TouchableOpacity
         accessibilityRole="button"
         onPress={() => navigation.goBack()}
-        style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
+        style={[styles.navButton, styles.navLeft, { bottom: 80 }]}
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
@@ -335,12 +335,12 @@ export default function SelectDiagnosis() {
       <TouchableOpacity
         accessibilityRole="button"
         onPress={() => {
-            if (!selectedDiagnosisId) return;
-            stopDiagnosisAudio(); // Stop audio before navigating
-            navigation.navigate('SelectTreatment', { caseData });
-          }}
+          if (!selectedDiagnosisId) return;
+          stopDiagnosisAudio(); // Stop audio before navigating
+          navigation.navigate('SelectTreatment', { caseData });
+        }}
         disabled={!selectedDiagnosisId}
-        style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, !selectedDiagnosisId && { opacity: 0.5 }]}
+        style={[styles.primaryButton, styles.navRightCta, { bottom: 80 }, !selectedDiagnosisId && { opacity: 0.5 }]}
         activeOpacity={0.9}
       >
         <LinearGradient
@@ -393,9 +393,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  headerButtons: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+  headerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
     paddingHorizontal: 16
   },
