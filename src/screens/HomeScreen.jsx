@@ -123,10 +123,13 @@ export default function HomeScreen() {
   const { hearts } = useSelector(state => state.user);
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
+  const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
+  const [suggestedNextCase, setSuggestedNextCase] = useState(null);
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
 
-
+  // Progress selector for getting next case from departments
+  const { status: progressStatus, items: departmentProgress } = useSelector(state => state.progress);
 
   // Daily challenge selectors
   const currentChallenge = useSelector(selectCurrentChallenge);
@@ -160,6 +163,71 @@ export default function HomeScreen() {
   useEffect(() => {
     dispatch(loadTodaysChallenge());
   }, [dispatch]);
+
+  // Check if daily challenge is completed and get suggested next case
+  useEffect(() => {
+    const checkDailyChallengeCompletion = async () => {
+      if (!currentChallenge?._id || !currentUserId) return;
+
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/gameplays?userId=${encodeURIComponent(currentUserId)}&dailyChallengeId=${encodeURIComponent(currentChallenge._id)}&sourceType=dailyChallenge`
+        );
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const gameplays = data?.gameplays || [];
+        const completedGameplay = gameplays.find(gp => gp.status === 'completed');
+
+        setIsDailyChallengeCompleted(!!completedGameplay);
+      } catch (error) {
+        console.warn('Error checking daily challenge completion:', error);
+      }
+    };
+
+    checkDailyChallengeCompletion();
+  }, [currentChallenge, currentUserId]);
+
+  // Get a random next case from departments when:
+  // 1. Daily challenge is completed, OR
+  // 2. No challenge available (API succeeded with null challenge), OR
+  // 3. Challenge loading failed (meaning no challenge for today)
+  const challengeStatus = useSelector(state => state.dailyChallenge.status);
+  const noDailyChallengeAvailable = (challengeStatus === 'succeeded' && !currentChallenge) || challengeStatus === 'failed';
+  // Only show suggested case when daily challenge is completed (not when no challenge available)
+  const shouldShowSuggestedCase = isDailyChallengeCompleted;
+
+  useEffect(() => {
+    console.log('shouldShowSuggestedCase:', shouldShowSuggestedCase, 'progressStatus:', progressStatus, 'departmentProgress:', departmentProgress?.length);
+
+    if (shouldShowSuggestedCase && progressStatus === 'succeeded' && Array.isArray(departmentProgress)) {
+      // Filter departments that have unsolved cases
+      console.log(departmentProgress)
+      const deptsWithCases = departmentProgress.filter(
+        dept => Array.isArray(dept.unsolvedCases) && dept.unsolvedCases.length > 0
+      );
+
+      console.log('deptsWithCases:', deptsWithCases.length);
+
+      if (deptsWithCases.length > 0) {
+        // Pick a random department
+        const randomDept = deptsWithCases[Math.floor(Math.random() * deptsWithCases.length)];
+        const nextCase = randomDept.unsolvedCases[0];
+
+        console.log('nextCase:', nextCase);
+
+        if (nextCase) {
+          setSuggestedNextCase({
+            caseId: nextCase.caseId,
+            caseTitle: nextCase.caseTitle || 'Medical Case',
+            mainimage: nextCase.mainimage || null,
+            departmentName: randomDept.name || 'Department',
+          });
+        }
+      }
+    }
+  }, [shouldShowSuggestedCase, progressStatus, departmentProgress]);
 
   const openCaseById = async (caseId) => {
     console.log('caseId', caseId);
@@ -278,9 +346,18 @@ export default function HomeScreen() {
                 <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
               </View>
-              {/* <View style={styles.badge}>
-                <Text style={styles.badgeText}>New</Text>
-              </View> */}
+              {isDailyChallengeCompleted && (
+                <View style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  backgroundColor: '#E8F5E9',
+                  borderWidth: 1,
+                  borderColor: '#A5D6A7'
+                }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#2E7D32' }}>Already Played ✓</Text>
+                </View>
+              )}
             </View>
 
             {isChallengeLoading && <DailyChallengeSkeleton />}
@@ -296,26 +373,48 @@ export default function HomeScreen() {
 
             {currentChallenge && !isChallengeLoading && !hasChallengeError && (
               <>
-                {currentChallenge?.caseData?.mainimage &&
-                  <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
-                    <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
-                  </View>
-                }
-                <Text style={[styles.cardDesc, { marginTop: 8 }]}>
-                  {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
-                  activeOpacity={0.9}
-                  onPress={handleDailyChallengePress}
-                  disabled={isDailyChallengeLoading}
-                >
-                  {isDailyChallengeLoading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Solve the case</Text>
-                  )}
-                </TouchableOpacity>
+                {isDailyChallengeCompleted ? (
+                  <>
+                    <Text style={[styles.cardDesc, { marginTop: 8, fontSize: 15, color: '#2E7D32' }]}>
+                      Your daily challenge is completed! 🎉
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
+                      activeOpacity={0.9}
+                      onPress={handleDailyChallengePress}
+                      disabled={isDailyChallengeLoading}
+                    >
+                      {isDailyChallengeLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.primaryButtonText}>Review Challenge</Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    {currentChallenge?.caseData?.mainimage &&
+                      <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
+                        <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
+                      </View>
+                    }
+                    <Text style={[styles.cardDesc, { marginTop: 8 }]}>
+                      {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
+                      activeOpacity={0.9}
+                      onPress={handleDailyChallengePress}
+                      disabled={isDailyChallengeLoading}
+                    >
+                      {isDailyChallengeLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                )}
               </>
             )}
 
@@ -335,6 +434,54 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
+
+        {/* Continue Solving Card - Shows when daily challenge is completed OR no challenge available */}
+        {shouldShowSuggestedCase && suggestedNextCase && (
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, marginTop: 16 }]}>
+            <View style={styles.cardContent}>
+              <View style={styles.rowCenterBetween}>
+                <View style={styles.rowCenter}>
+                  <MaterialCommunityIcons name="medical-bag" size={28} color={Colors.brand.darkPink} />
+                  <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Solve the Case</Text>
+                </View>
+                <View style={{
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  backgroundColor: '#C24467',
+                  borderWidth: 1,
+                  borderColor: '#D3D9E3'
+                }}>
+                  <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }} numberOfLines={1} ellipsizeMode="tail">
+                    {suggestedNextCase.departmentName.charAt(0).toUpperCase() + suggestedNextCase.departmentName.slice(1)}
+                  </Text>
+                </View>
+              </View>
+
+              {suggestedNextCase.mainimage && (
+                <View style={{ width: '100%', height: 200, backgroundColor: '#F5F5F5', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
+                  <Image
+                    source={{ uri: suggestedNextCase.mainimage }}
+                    style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+                  />
+                </View>
+              )}
+
+              <Text style={[styles.cardDesc, { marginTop: 12, fontSize: 15 }]} numberOfLines={2}>
+                {suggestedNextCase.caseTitle}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.primaryButton}
+                activeOpacity={0.9}
+                onPress={() => openCaseById(suggestedNextCase.caseId)}
+              >
+                <Text style={styles.primaryButtonText}>Start Case</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         <View style={{ marginBottom: 120 }}>
           <View style={styles.rowCenterBetween}>

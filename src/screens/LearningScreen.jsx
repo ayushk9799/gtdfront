@@ -1,5 +1,5 @@
-import React from 'react';
-import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
@@ -11,6 +11,91 @@ import { MMKV } from 'react-native-mmkv';
 import { useDispatch } from 'react-redux';
 import { setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setUserId } from '../store/slices/currentGameSlice';
 import CloudBottom from '../components/CloudBottom';
+
+// Skeleton Loader Component
+const SkeletonLoader = ({ width, height, borderRadius = 8, style }) => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const shimmer = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    shimmer.start();
+    return () => shimmer.stop();
+  }, []);
+
+  const opacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: '#E0E0E0',
+          opacity,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+// Learning Card Skeleton
+const LearningCardSkeleton = () => (
+  <View style={skeletonStyles.card}>
+    <View style={{ flex: 1, paddingRight: 12 }}>
+      {/* Title skeleton */}
+      <SkeletonLoader width="85%" height={20} style={{ marginBottom: 10 }} />
+      {/* Summary skeleton */}
+      <SkeletonLoader width="70%" height={14} style={{ marginBottom: 12 }} />
+      {/* Category badge skeleton */}
+      <SkeletonLoader width={70} height={20} borderRadius={6} />
+    </View>
+    {/* Thumbnail skeleton */}
+    <SkeletonLoader width={84} height={64} borderRadius={12} />
+  </View>
+);
+
+// Learning List Skeleton
+const LearningListSkeleton = () => (
+  <View style={{ marginTop: 8 }}>
+    {/* Date skeleton */}
+    <SkeletonLoader width={140} height={18} style={{ marginBottom: 12 }} />
+    <LearningCardSkeleton />
+    <LearningCardSkeleton />
+    <LearningCardSkeleton />
+    <LearningCardSkeleton />
+  </View>
+);
+
+const skeletonStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    padding: 12,
+    marginBottom: 14,
+  },
+});
 
 // Will fetch brief gameplay list for user (supports both Case and DailyChallenge)
 
@@ -126,11 +211,11 @@ export default function LearningScreen() {
       }
       const data = await res.json();
       const gp = data?.gameplay;
-      
+
       // Handle both case and dailyChallenge gameplays
       const sourceType = gp?.sourceType || 'case';
       let caseData;
-      
+
       if (sourceType === 'dailyChallenge') {
         // For daily challenges, caseData is embedded in the dailyChallengeId document
         const challengeDoc = gp?.dailyChallengeId || {};
@@ -140,7 +225,7 @@ export default function LearningScreen() {
         const caseDoc = gp?.caseId || {};
         caseData = caseDoc?.caseData || {};
       }
-      
+
       // Map indices -> IDs
       const tests = caseData?.steps?.[1]?.data?.availableTests || [];
       const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
@@ -168,19 +253,14 @@ export default function LearningScreen() {
       dispatch(setSelectedTreatments(selectedTreatmentIds));
 
       navigation.navigate('ClinicalInsight', { caseData });
-    } catch (_) {}
+    } catch (_) { }
   };
 
   return (
-    <SafeAreaView style={styles.flex1} edges={['top','left','right']}>
+    <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       {/* <LeagueHeader onPressPro={() => {}} /> */}
       <ScrollView contentContainerStyle={styles.learnScroll}>
-        {loading && (
-          <View style={{ alignItems: 'center', marginTop: 12 }}>
-            <ActivityIndicator color={Colors.brand.darkPink} />
-            <Text style={[styles.learnSummary, { marginTop: 6 }]}>Loading…</Text>
-          </View>
-        )}
+        {loading && <LearningListSkeleton />}
         {!loading && error && (
           <Text style={[styles.learnSummary, { color: '#C62828' }]}>{error}</Text>
         )}
@@ -194,7 +274,7 @@ export default function LearningScreen() {
           </View>
         )}
         {!loading && !error && groupedByDate.length > 0 && groupedByDate.map((group, idx) => (
-          <View key={idx} style={{...styles.learnSection}}>
+          <View key={idx} style={{ ...styles.learnSection }}>
             <Text style={[styles.learnDate, { color: themeColors.text }]}>{group.label}</Text>
             {group.items.map((it) => {
               const isDailyChallenge = it.sourceType === 'dailyChallenge';
@@ -203,9 +283,9 @@ export default function LearningScreen() {
                   key={String(it.gameplayId)}
                   onPress={() => openGameplay(it.gameplayId)}
                   style={[
-                    styles.learnCard, 
-                    { 
-                      backgroundColor: themeColors.card, 
+                    styles.learnCard,
+                    {
+                      backgroundColor: themeColors.card,
                       borderColor: isDailyChallenge ? '#FFA726' : themeColors.border,
                       borderWidth: isDailyChallenge ? 2 : 1,
                     }
@@ -227,14 +307,14 @@ export default function LearningScreen() {
                         {getItemDiagnosis(it)}
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                        <View style={{ 
-                          alignSelf: 'flex-start', 
-                          paddingHorizontal: 8, 
-                          paddingVertical: 3, 
-                          borderRadius: 6, 
-                          backgroundColor: isDailyChallenge ? '#FF9800' : '#C24467', 
-                          borderWidth: 1, 
-                          borderColor: isDailyChallenge ? '#F57C00' : '#D3D9E3' 
+                        <View style={{
+                          alignSelf: 'flex-start',
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 6,
+                          backgroundColor: isDailyChallenge ? '#FF9800' : '#C24467',
+                          borderWidth: 1,
+                          borderColor: isDailyChallenge ? '#F57C00' : '#D3D9E3'
                         }}>
                           <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }} numberOfLines={1} ellipsizeMode="tail">
                             {getItemCategory(it)}
@@ -248,14 +328,14 @@ export default function LearningScreen() {
                       </View>
                     </View>
                     {getItemMainImage(it) ? (
-                      <Image 
-                        source={{ uri: getItemMainImage(it) }} 
-                        style={styles.learnThumb} 
+                      <Image
+                        source={{ uri: getItemMainImage(it) }}
+                        style={styles.learnThumb}
                       />
                     ) : (
-                      <Image 
-                        source={inappicon} 
-                        style={styles.learnThumb} 
+                      <Image
+                        source={inappicon}
+                        style={styles.learnThumb}
                       />
                     )}
                   </View>
@@ -267,7 +347,7 @@ export default function LearningScreen() {
         <View style={{ height: 100 }} />
         <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
       </ScrollView>
-      <LearningDetailSheet ref={detailSheetRef} themeColors={themeColors} snapPoints={['45%','90%']} />
+      <LearningDetailSheet ref={detailSheetRef} themeColors={themeColors} snapPoints={['45%', '90%']} />
     </SafeAreaView>
   );
 }

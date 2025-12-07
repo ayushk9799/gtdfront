@@ -46,6 +46,7 @@ import PremiumScreen from './src/screens/PremiumScreen';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { setCustomerInfo } from './src/store/slices/userSlice';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
+import { loadCaseById } from './src/store/slices/currentGameSlice';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -58,6 +59,62 @@ const storage = new MMKV();
 
 // Global navigation ref to allow programmatic navigation
 export const navigationRef = createNavigationContainerRef();
+
+/**
+ * Handle notification deep-link navigation
+ * When user taps a notification with { caseID, screen: "ClinicalInfo" },
+ * navigate to Home first, wait for content to load, then open ClinicalInfo with the case data
+ */
+export const handleNotificationNavigation = async (remoteMessage, dispatch) => {
+  try {
+    const data = remoteMessage?.data;
+    if (!data) return;
+
+    const { caseID, screen } = data;
+
+    // Only handle ClinicalInfo screen navigation for now
+    if (screen === 'ClinicalInfo' && caseID) {
+      // Wait for navigation to be ready
+      const waitForNavigation = () => {
+        return new Promise((resolve) => {
+          const checkNavigation = () => {
+            if (navigationRef.isReady()) {
+              resolve(true);
+            } else {
+              setTimeout(checkNavigation, 100);
+            }
+          };
+          checkNavigation();
+        });
+      };
+
+      await waitForNavigation();
+
+      // Step 1: First navigate to Home screen
+      navigationRef.navigate('Tabs', { screen: 'Home' });
+
+      // Step 2: Wait for Home screen to fully load and display content
+      // This gives the user a moment to see the Home screen
+      setTimeout(async () => {
+        try {
+          // Step 3: Load the case data using the caseID
+          await dispatch(loadCaseById(caseID));
+
+          // Step 4: Navigate to ClinicalInfo after case data is loaded
+          setTimeout(() => {
+            if (navigationRef.isReady()) {
+              navigationRef.navigate('ClinicalInfo');
+            }
+          }, 300);
+        } catch (error) {
+          console.warn('Error loading case data:', error);
+        }
+      }, 1000); // Wait 1 second for Home content to load
+    }
+  } catch (error) {
+    console.warn('Error handling notification navigation:', error);
+  }
+};
 
 export const handleFCMTokenUpdate = async (dispatch, userData) => {
   try {
@@ -392,24 +449,29 @@ export default function App() {
   useEffect(() => {
     // A. For foreground messages (when the app is open)
     const unsubscribe = onMessage(getMessaging(getApp()), async remoteMessage => {
-      // Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
+      // Foreground messages are typically shown as in-app notifications
+      // The user would need to tap them to navigate, which is handled by onNotificationOpenedApp
     });
 
     // B. For when the user taps a notification and the app is in the background
-    onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
-
-      // e.g., navigate to a specific screen
+    const unsubscribeOpenedApp = onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
+      // Navigate to the appropriate screen based on notification data
+      handleNotificationNavigation(remoteMessage, dispatch);
     });
 
     // C. For when the user taps a notification and the app is closed (quit)
     getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
       if (remoteMessage) {
-        //  console.log('remoteMessage', remoteMessage);
+        // Navigate to the appropriate screen based on notification data
+        handleNotificationNavigation(remoteMessage, dispatch);
       }
     });
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      unsubscribe();
+      unsubscribeOpenedApp();
+    };
+  }, [dispatch]);
 
 
 
