@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -10,10 +10,9 @@ import Svg, { G, Path, Ellipse } from 'react-native-svg';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedDiagnosis as setSelectedDiagnosisAction } from '../store/slices/currentGameSlice';
 import Sound from 'react-native-sound';
+import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-const CARD_HEIGHT_PCT = 0.75;
-const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 
 // function ECGUnderline({ color = Colors.brand.darkPink }) {
 //   return (
@@ -96,6 +95,8 @@ export default function SelectDiagnosis() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const isTablet = screenWidth >= 768;
   const colorScheme = useColorScheme();
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const dispatch = useDispatch();
@@ -107,6 +108,7 @@ export default function SelectDiagnosis() {
   const tapSoundRef = useRef(null);
   // Track if this screen is focused (to prevent audio from unfocused instances)
   const isFocusedRef = useRef(true);
+  const quitSheetRef = useRef(null);
 
   const caseData = route?.params?.caseData || {};
 
@@ -271,8 +273,7 @@ export default function SelectDiagnosis() {
         <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
-            stopDiagnosisAudio(); // Stop audio before navigating
-            navigation.navigate('Tabs', { screen: 'Home' });
+            quitSheetRef.current?.present();
           }}
           style={styles.closeButton}
           activeOpacity={0.8}
@@ -281,7 +282,7 @@ export default function SelectDiagnosis() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 50, paddingBottom: 120 }}>
+      <View style={{ flex: 1, paddingHorizontal: isTablet ? 24 : 10, paddingTop: 50, paddingBottom: 120 }}>
         <View
           pointerEvents="none"
           style={[
@@ -322,56 +323,63 @@ export default function SelectDiagnosis() {
             })}
           </View>
         </Section>
-      </View>
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() => navigation.goBack()}
-        style={[styles.navButton, styles.navLeft, { bottom: 80 }]}
-        activeOpacity={0.8}
-      >
-        <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => navigation.goBack()}
+          style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() => {
-          if (!selectedDiagnosisId) return;
-          stopDiagnosisAudio(); // Stop audio before navigating
-          navigation.navigate('SelectTreatment', { caseData });
-        }}
-        disabled={!selectedDiagnosisId}
-        style={[styles.primaryButton, styles.navRightCta, { bottom: 80 }, !selectedDiagnosisId && { opacity: 0.5 }]}
-        activeOpacity={0.9}
-      >
-        <LinearGradient
-          colors={["#F472B6", "#FB7185"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.primaryButtonGradient}
-        />
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.shimmer,
-            {
-              transform: [
-                {
-                  translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }),
-                },
-              ],
-            },
-          ]}
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => {
+            if (!selectedDiagnosisId) return;
+            stopDiagnosisAudio();
+            navigation.navigate('SelectTreatment', { caseData });
+          }}
+          disabled={!selectedDiagnosisId}
+          style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, !selectedDiagnosisId && { opacity: 0.5 }]}
+          activeOpacity={0.9}
         >
           <LinearGradient
-            colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
+            colors={["#F472B6", "#FB7185"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButtonGradient}
           />
-        </Animated.View>
-        <Text style={styles.primaryButtonText}>Give Medication</Text>
-        <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
-      </TouchableOpacity>
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.shimmer,
+              {
+                transform: [
+                  {
+                    translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+          <Text style={styles.primaryButtonText}>Give Medication</Text>
+          <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+        </TouchableOpacity>
+        <QuitConfirmationSheet
+          ref={quitSheetRef}
+          onConfirmQuit={() => {
+            stopDiagnosisAudio();
+            navigation.navigate('Tabs', { screen: 'Home' });
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -393,6 +401,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
+  primaryButton: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    minHeight: 50,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+  },
   headerButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -400,7 +424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16
   },
   container: { flex: 1, backgroundColor: 'transparent' },
-  sectionBlock: { marginBottom: 20, alignItems: 'center' },
+  sectionBlock: { flex: 1, marginBottom: 20, alignItems: 'center' },
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -412,7 +436,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     width: '100%',
     maxWidth: 700,
-    height: CARD_HEIGHT_PX,
+    flex: 1,
   },
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
@@ -485,6 +509,44 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'flex-end',
     zIndex: 0,
+  },
+  // Margin-based button positioning
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 6,
+    paddingBottom: 16,
+  },
+  navButtonInFlow: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  primaryButtonInFlow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minHeight: 50,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
 });
 

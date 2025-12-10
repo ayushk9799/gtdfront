@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated, Easing, useWindowDimensions } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -12,10 +12,9 @@ import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedTests as setSelectedTestsAction } from '../store/slices/currentGameSlice';
 import Sound from 'react-native-sound';
+import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-const CARD_HEIGHT_PCT = 0.75;
-const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 
 
 
@@ -60,6 +59,8 @@ function Section({ title, children }) {
 
 export default function SelectTests() {
   const { width } = Dimensions.get('window');
+  const { width: screenWidth } = useWindowDimensions();
+  const isTablet = screenWidth >= 768;
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
@@ -74,6 +75,7 @@ export default function SelectTests() {
   const tapSoundRef = useRef(null);
   // Track if this screen is focused (to prevent audio from unfocused instances)
   const isFocusedRef = useRef(true);
+  const quitSheetRef = useRef(null);
 
   const caseData = route?.params?.caseData || {};
 
@@ -293,9 +295,7 @@ export default function SelectTests() {
         <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
-            stopLabAudio(); // Stop audio before navigating
-            navigation.navigate('Tabs', { screen: 'Home' });
-            dispatch(setSelectedTestsAction([]));
+            quitSheetRef.current?.present();
           }}
           style={styles.closeButton}
           activeOpacity={0.8}
@@ -304,7 +304,7 @@ export default function SelectTests() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 50, paddingBottom: 120 }}>
+      <View style={{ flex: 1, paddingHorizontal: isTablet ? 24 : 10, paddingTop: 50, paddingBottom: 120 }}>
         <View
           pointerEvents="none"
           style={[
@@ -344,162 +344,170 @@ export default function SelectTests() {
             })}
           </View>
         </Section>
-      </View>
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() => navigation.goBack()}
-        style={[styles.navButton, styles.navLeft, { bottom: 80 }]}
-        activeOpacity={0.8}
-      >
-        <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => navigation.goBack()}
+          style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={presentReportsSheet}
-        disabled={!selectedTestIds || selectedTestIds.length === 0}
-        style={[styles.primaryButton, styles.navRightCta, { bottom: 80 }, (!selectedTestIds || selectedTestIds.length === 0) && { opacity: 0.5 }]}
-        activeOpacity={0.9}
-      >
-        <LinearGradient
-          colors={["#F472B6", "#FB7185"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.primaryButtonGradient}
-        />
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={presentReportsSheet}
+          disabled={!selectedTestIds || selectedTestIds.length === 0}
+          style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, (!selectedTestIds || selectedTestIds.length === 0) && { opacity: 0.5 }]}
+          activeOpacity={0.9}
         >
           <LinearGradient
-            colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
+            colors={["#F472B6", "#FB7185"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButtonGradient}
           />
-        </Animated.View>
-        <MaterialCommunityIcons name="file-document" size={18} color="#fff" />
-        <Text style={styles.primaryButtonText}>Get Reports</Text>
-      </TouchableOpacity>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
+          >
+            <LinearGradient
+              colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+          <MaterialCommunityIcons name="file-document" size={18} color="#fff" />
+          <Text style={styles.primaryButtonText}>Get Reports</Text>
+        </TouchableOpacity>
 
-      <BottomSheetModal
-        ref={reportsSheetRef}
-        snapPoints={reportSnapPoints}
-        backdropComponent={renderBackdrop}
-        enablePanDownToClose
-        enableContentPanningGesture={false}
-        handleIndicatorStyle={{ backgroundColor: '#C8D1DA' }}
-        backgroundStyle={{ backgroundColor: '#E8F2FF', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
-      >
-        <BottomSheetView style={{ padding: 16 }}>
-          {evaluatedResults && evaluatedResults.length > 0 ? (
-            <>
-              <View style={styles.sheetHeaderRow}>
-                <Text style={styles.sheetHeaderTitle}>Reports ({evaluatedResults.length})</Text>
-              </View>
-              <View style={styles.chipsRow}>
-                {evaluatedResults.map((r, i) => {
-                  const testMeta = testsById.get(r.id);
-                  const label = testMeta?.testName || r.id;
-                  const shortLabel = (label && label.split('(')[0]) || label;
-                  const active = i === reportIndex;
-                  return (
-                    <TouchableOpacity
-                      key={r.id}
-                      onPress={() => {
-                        const pageWidth = width - 32;
-                        reportsScrollRef.current?.scrollTo({ x: pageWidth * i, animated: true });
-                        setReportIndex(i);
-                      }}
-                      style={[styles.chip, active && styles.chipActive]}
-                      accessibilityRole="button"
-                    >
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>{shortLabel}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <GestureScrollView
-                ref={reportsScrollRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) => {
-                  const x = e?.nativeEvent?.contentOffset?.x || 0;
-                  const pageWidth = width - 32;
-                  const i = Math.round(x / pageWidth);
-                  if (i !== reportIndex) setReportIndex(i);
-                }}
-                contentContainerStyle={{ alignItems: 'stretch' }}
-                style={{ marginTop: 8 }}
-                nestedScrollEnabled
-                directionalLockEnabled
-              >
-                {evaluatedResults.map((r) => {
-                  const meta = testsById.get(r.id);
-                  const testName = meta?.testName || r.id;
-                  return (
-                    <View key={r.id} style={{ width: width - 32, paddingRight: 16 }}>
-                      <View style={styles.simpleReportCard}>
-                        <Text style={styles.reportValueText}>
-                          {r?.value || 'Result not available for this test.'}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </GestureScrollView>
-              <View style={styles.sheetActionsRow}>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  onPress={() => reportsSheetRef.current?.dismiss()}
-                  style={styles.secondaryButton}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.secondaryButtonText}>Close</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  onPress={() => {
-                    stopLabAudio(); // Stop audio before navigating
-                    reportsSheetRef.current?.dismiss();
-                    navigation.navigate('SelectDiagnosis', { caseData });
+        <BottomSheetModal
+          ref={reportsSheetRef}
+          snapPoints={reportSnapPoints}
+          backdropComponent={renderBackdrop}
+          enablePanDownToClose
+          enableContentPanningGesture={false}
+          handleIndicatorStyle={{ backgroundColor: '#C8D1DA' }}
+          backgroundStyle={{ backgroundColor: '#E8F2FF', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+        >
+          <BottomSheetView style={{ padding: 16 }}>
+            {evaluatedResults && evaluatedResults.length > 0 ? (
+              <>
+                <View style={styles.sheetHeaderRow}>
+                  <Text style={styles.sheetHeaderTitle}>Reports ({evaluatedResults.length})</Text>
+                </View>
+                <View style={styles.chipsRow}>
+                  {evaluatedResults.map((r, i) => {
+                    const testMeta = testsById.get(r.id);
+                    const label = testMeta?.testName || r.id;
+                    const shortLabel = (label && label.split('(')[0]) || label;
+                    const active = i === reportIndex;
+                    return (
+                      <TouchableOpacity
+                        key={r.id}
+                        onPress={() => {
+                          const pageWidth = width - 32;
+                          reportsScrollRef.current?.scrollTo({ x: pageWidth * i, animated: true });
+                          setReportIndex(i);
+                        }}
+                        style={[styles.chip, active && styles.chipActive]}
+                        accessibilityRole="button"
+                      >
+                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{shortLabel}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <GestureScrollView
+                  ref={reportsScrollRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={(e) => {
+                    const x = e?.nativeEvent?.contentOffset?.x || 0;
+                    const pageWidth = width - 32;
+                    const i = Math.round(x / pageWidth);
+                    if (i !== reportIndex) setReportIndex(i);
                   }}
-                  style={[styles.primaryButtonInRow, styles.sheetPrimaryInRow]}
-                  activeOpacity={0.9}
+                  contentContainerStyle={{ alignItems: 'stretch' }}
+                  style={{ marginTop: 8 }}
+                  nestedScrollEnabled
+                  directionalLockEnabled
                 >
-                  <LinearGradient
-                    colors={["#F472B6", "#FB7185"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.primaryButtonGradient}
-                  />
-                  <Animated.View
-                    pointerEvents="none"
-                    style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
+                  {evaluatedResults.map((r) => {
+                    const meta = testsById.get(r.id);
+                    const testName = meta?.testName || r.id;
+                    return (
+                      <View key={r.id} style={{ width: width - 32, paddingRight: 16 }}>
+                        <View style={styles.simpleReportCard}>
+                          <Text style={styles.reportValueText}>
+                            {r?.value || 'Result not available for this test.'}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </GestureScrollView>
+                <View style={styles.sheetActionsRow}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => reportsSheetRef.current?.dismiss()}
+                    style={styles.secondaryButton}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={styles.secondaryButtonText}>Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => {
+                      stopLabAudio(); // Stop audio before navigating
+                      reportsSheetRef.current?.dismiss();
+                      navigation.navigate('SelectDiagnosis', { caseData });
+                    }}
+                    style={[styles.primaryButtonInRow, styles.sheetPrimaryInRow]}
+                    activeOpacity={0.9}
                   >
                     <LinearGradient
-                      colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
-                      start={{ x: 0, y: 0.5 }}
-                      end={{ x: 1, y: 0.5 }}
-                      style={StyleSheet.absoluteFill}
+                      colors={["#F472B6", "#FB7185"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryButtonGradient}
                     />
-                  </Animated.View>
-                  <Text style={styles.primaryButtonText}>Give Diagnosis</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.sheetDotsContainer} pointerEvents="none">
-                {evaluatedResults.map((_, d) => (
-                  <View key={String(d)} style={[styles.sheetDot, d === reportIndex && styles.sheetDotActive]} />
-                ))}
-              </View>
-            </>
-          ) : (
-            <Text style={{ fontWeight: '800' }}>No tests selected.</Text>
-          )}
-        </BottomSheetView>
-      </BottomSheetModal>
+                    <Animated.View
+                      pointerEvents="none"
+                      style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
+                    >
+                      <LinearGradient
+                        colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+                        start={{ x: 0, y: 0.5 }}
+                        end={{ x: 1, y: 0.5 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    </Animated.View>
+                    <Text style={styles.primaryButtonText}>Give Diagnosis</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.sheetDotsContainer} pointerEvents="none">
+                  {evaluatedResults.map((_, d) => (
+                    <View key={String(d)} style={[styles.sheetDot, d === reportIndex && styles.sheetDotActive]} />
+                  ))}
+                </View>
+              </>
+            ) : (
+              <Text style={{ fontWeight: '800' }}>No tests selected.</Text>
+            )}
+          </BottomSheetView>
+        </BottomSheetModal>
 
+        <QuitConfirmationSheet
+          ref={quitSheetRef}
+          onConfirmQuit={() => {
+            stopLabAudio();
+            navigation.navigate('Tabs', { screen: 'Home' });
+            dispatch(setSelectedTestsAction([]));
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -529,7 +537,7 @@ const styles = StyleSheet.create({
   },
 
   container: { flex: 1, backgroundColor: 'transparent' },
-  sectionBlock: { marginBottom: 20, alignItems: 'center' },
+  sectionBlock: { flex: 1, marginBottom: 20, alignItems: 'center' },
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -541,8 +549,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     width: '100%',
     maxWidth: 700,
-    height: CARD_HEIGHT_PX,
-    // marginTop: 10,
+    flex: 1,
   },
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
@@ -605,6 +612,43 @@ const styles = StyleSheet.create({
   shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
   primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   navRightCta: { position: 'absolute', right: 16, paddingHorizontal: 16 },
+  // Margin-based button positioning
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingBottom: 16,
+  },
+  navButtonInFlow: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  primaryButtonInFlow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minHeight: 50,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+  },
   // bottom sheet styles
   sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#11181C' },

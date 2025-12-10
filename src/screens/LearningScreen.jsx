@@ -259,7 +259,7 @@ export default function LearningScreen() {
   return (
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       {/* <LeagueHeader onPressPro={() => {}} /> */}
-      <ScrollView contentContainerStyle={styles.learnScroll}>
+      <ScrollView contentContainerStyle={styles.learnScroll} showsVerticalScrollIndicator={false}>
         {loading && <LearningListSkeleton />}
         {!loading && error && (
           <Text style={[styles.learnSummary, { color: '#C62828' }]}>{error}</Text>

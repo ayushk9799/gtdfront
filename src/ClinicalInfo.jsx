@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable,TouchableOpacity,  Image, Animated, InteractionManager, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, TouchableOpacity, Image, Animated, InteractionManager, Platform, useWindowDimensions } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -17,11 +17,12 @@ import ComingSoonImage from './components/ComingSoonImage';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { BlurView } from '@react-native-community/blur';
 import PremiumBottomSheet from './components/PremiumBottomSheet';
+import QuitConfirmationSheet from './components/QuitConfirmationSheet';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
-// Card height as a percentage of the screen height
+// Card height percentage (calculated as initial fallback)
 const CARD_HEIGHT_PCT = 0.70;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 const AURA_SIZE = 70;
@@ -30,7 +31,7 @@ const AURA_SIZE = 70;
 // DecorativeSeparator is now a shared component
 
 function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, audioLoading, footer }) {
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   return (
     <View style={styles.sectionBlock}>
       <View style={[
@@ -79,7 +80,7 @@ function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, a
 
 
 function BulletItem({ children }) {
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   return (
     <View style={styles.bulletRow}>
       <View style={styles.bulletDot} />
@@ -89,14 +90,14 @@ function BulletItem({ children }) {
 }
 
 function StatTile({ label, value, icon }) {
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   return (
-    <View style={[styles.statTile, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
+    <View style={[styles.statTile, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
       <View style={styles.statHeaderRow}>
         {icon ? (
           <MaterialCommunityIcons name={icon} size={18} color={Colors.brand.darkPink} style={styles.statIcon} />
         ) : null}
-              <Text style={styles.statLabel}>{label}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
 
       </View>
       <Text style={styles.statValue}>{value}</Text>
@@ -110,7 +111,7 @@ function InfoColumn({ icon, label, value }) {
     <View style={styles.infoCol}>
       <MaterialCommunityIcons name={icon} size={20} color={Colors.brand.darkPink} />
       <Text style={[styles.infoLabel, { color: '#687076' }]}>{label}</Text>
-      <Text style={[styles.infoValue, { color:"black"}]}>{value}</Text>
+      <Text style={[styles.infoValue, { color: "black" }]}>{value}</Text>
     </View>
   );
 }
@@ -130,13 +131,13 @@ export default function ClinicalInfo() {
   const currentPartRef = useRef(null);
   const auraRef = useRef(null);
   const [showAura, setShowAura] = useState(false);
-  
+
   const pagerRef = useRef(null);
   const SLIDE_COUNT = 4; // Basic, Vitals, Hx, PE
-  
+
   // Track if user manually paused audio - prevents auto-play on slide change
   const userPausedAudioRef = useRef(false);
-  
+
   // Track case transitions to prevent dual audio playback
   const caseTransitionRef = useRef(false);
   const previousCaseIdRef = useRef(null);
@@ -146,12 +147,16 @@ export default function ClinicalInfo() {
   // Track if this component instance is focused (to prevent duplicate instances from playing)
   const isFocusedRef = useRef(true);
 
+  // Use useWindowDimensions for responsive layout
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const isTablet = screenWidth >= 768;
+  const cardHeightPx = Math.round(screenHeight * CARD_HEIGHT_PCT);
+
   // Layout calculations for platform-consistent nav button positioning
   const slidePaddingTop = Math.max(36, insets.top + 24);
-  const screenHeight = Dimensions.get('window').height;
   const buttonSize = 48;
   const gapBelowCard = 12;
-  const desiredTop = slidePaddingTop + CARD_HEIGHT_PX + gapBelowCard;
+  const desiredTop = slidePaddingTop + cardHeightPx + gapBelowCard;
   const maxTop = screenHeight - insets.bottom - (buttonSize + 8);
   const navButtonTop = Math.min(desiredTop, maxTop);
 
@@ -168,6 +173,7 @@ export default function ClinicalInfo() {
   const [isImageSheetOpen, setIsImageSheetOpen] = useState(false);
   const imageSheetRef = useRef(null);
   const premiumSheetRef = useRef(null);
+  const quitSheetRef = useRef(null);
   const imageSnapPoints = useMemo(() => ['45%'], []);
   const renderImageBackdrop = useCallback(
     (props) => (
@@ -184,7 +190,7 @@ export default function ClinicalInfo() {
   const physPagerRef = useRef(null);
   const physScrollRef = useRef(null);
   const [physContainerWidth, setPhysContainerWidth] = useState(0);
-  
+
 
 
   useEffect(() => {
@@ -202,43 +208,43 @@ export default function ClinicalInfo() {
       audioSessionRef.current += 1;
       const currentSession = audioSessionRef.current;
       console.log('📊 New session ID:', currentSession);
-      
+
       // Mark that we're in a case transition - this prevents dual audio
       caseTransitionRef.current = true;
-      
+
       // Clear any pending transition timer from previous case change
       if (transitionTimerRef.current) {
         clearTimeout(transitionTimerRef.current);
         transitionTimerRef.current = null;
       }
-      
+
       // Clear any pending audio timer
       if (audioTimerRef.current) {
         clearTimeout(audioTimerRef.current);
         audioTimerRef.current = null;
       }
-      
+
       // Stop any active playback
       stopPlayback();
-      
+
       // Reset index to 0 for new case
       setIndex(0);
-      
+
       // Reset PagerView to first page
       try {
         pagerRef.current?.setPage(0);
-      } catch (_) {}
-      
+      } catch (_) { }
+
       // Reset user pause state for new case
       userPausedAudioRef.current = false;
       dispatch(setAudioPaused(false));
-      
+
       // Update previous caseId ref
       previousCaseIdRef.current = caseId;
-      
+
       // Capture caseId for the timeout closure
       const targetCaseId = caseId;
-      
+
       // Clear transition flag and play initial audio AFTER React has processed all state updates
       // Use 400ms to ensure all re-renders have completed
       console.log('⏳ Scheduling transition timer (400ms) | session:', currentSession);
@@ -255,8 +261,12 @@ export default function ClinicalInfo() {
       }, 100);
     }
   }, [caseId, stopPlayback, dispatch, playForIndex]);
-  
+
   const handleClose = useCallback(() => {
+    quitSheetRef.current?.present();
+  }, []);
+
+  const confirmQuit = useCallback(() => {
     stopPlayback(); // Stop audio before navigating
     navigation.goBack();
   }, [navigation, stopPlayback]);
@@ -302,7 +312,7 @@ export default function ClinicalInfo() {
     );
     loop.start();
     return () => {
-      try { loop.stop?.(); } catch (_) {}
+      try { loop.stop?.(); } catch (_) { }
       shimmerAnim.setValue(0);
     };
   }, [shimmerAnim]);
@@ -310,12 +320,12 @@ export default function ClinicalInfo() {
 
   // Extract data from the CASES_ARRAY structure (steps[0].data)
   const step1Data = caseData?.steps?.[0]?.data || {};
-  
+
   const p = step1Data?.basicInfo || {};
   const chief = step1Data?.chiefComplaint || '';
   const historyItems = step1Data?.history || [];
   const examItems = step1Data?.physicalExamination || [];
-  const physicalImages = caseData?.physicalimage|| [];
+  const physicalImages = caseData?.physicalimage || [];
 
   const vitalsData = step1Data?.vitals || {};
   const totalPhysImages = Array.isArray(physicalImages) ? physicalImages.length : 0;
@@ -323,32 +333,32 @@ export default function ClinicalInfo() {
     if (totalPhysImages < 1) return;
     const i = Math.max(0, selectedPhysImageIndex - 1);
     setSelectedPhysImageIndex(i);
-    try { physPagerRef.current?.setPage?.(i); } catch (_) {}
+    try { physPagerRef.current?.setPage?.(i); } catch (_) { }
     try {
       if (physContainerWidth > 0) {
         physScrollRef.current?.scrollTo?.({ x: i * physContainerWidth, animated: true });
       }
-    } catch (_) {}
+    } catch (_) { }
   }, [selectedPhysImageIndex, totalPhysImages, physContainerWidth]);
   const goNextPhysImage = useCallback(() => {
     if (totalPhysImages < 1) return;
     const i = Math.min(totalPhysImages - 1, selectedPhysImageIndex + 1);
     setSelectedPhysImageIndex(i);
-    try { physPagerRef.current?.setPage?.(i); } catch (_) {}
+    try { physPagerRef.current?.setPage?.(i); } catch (_) { }
     try {
       if (physContainerWidth > 0) {
         physScrollRef.current?.scrollTo?.({ x: i * physContainerWidth, animated: true });
       }
-    } catch (_) {}
+    } catch (_) { }
   }, [selectedPhysImageIndex, totalPhysImages, physContainerWidth]);
   useEffect(() => {
     try {
       if (physContainerWidth > 0) {
         physScrollRef.current?.scrollTo?.({ x: selectedPhysImageIndex * physContainerWidth, animated: false });
       }
-    } catch (_) {}
+    } catch (_) { }
   }, [physContainerWidth]);
-  
+
   // Convert vitals object to array format for display
   const displayVitals = useMemo(() => {
     const vitalsArray = [
@@ -359,7 +369,7 @@ export default function ClinicalInfo() {
       { name: 'O2 Saturation', value: vitalsData.oxygenSaturation },
       { name: 'Weight', value: vitalsData.weight }
     ].filter(v => v.value);
-  
+
     // Normalize vitals ordering to a friendly display
     const vitalsOrder = ['Temperature', 'Heart Rate', 'Blood Pressure', 'Respiratory Rate', 'O2 Saturation', 'Weight'];
     return vitalsOrder
@@ -380,55 +390,55 @@ export default function ClinicalInfo() {
     try {
       soundRef.current?.stop?.();
       soundRef.current?.release?.();
-    } catch (_) {}
+    } catch (_) { }
     soundRef.current = null;
     isPlayingRef.current = false;
     isLoadingRef.current = false;
     currentPartRef.current = null;
-    try { auraRef.current?.stop?.(); } catch (_) {}
+    try { auraRef.current?.stop?.(); } catch (_) { }
   }, []);
 
   // Play audio for a specific index - accepts targetCaseId, sessionId, and source for debugging
   const playForIndex = useCallback((i, targetCaseId, sessionId, source) => {
     console.log('🎵 playForIndex called from:', source || 'UNKNOWN', '| index:', i, '| session:', sessionId, '| currentSession:', audioSessionRef.current, '| focused:', isFocusedRef.current);
-    
+
     // Check if this component instance is focused
     if (!isFocusedRef.current) {
       console.log('❌ Audio skipped - component not focused (duplicate instance)');
       return;
     }
-    
+
     // Use provided caseId or fall back to current (for manual plays)
     const effectiveCaseId = targetCaseId || caseId;
     if (!effectiveCaseId) {
       console.log('❌ Audio skipped - no caseId');
       return;
     }
-    
+
     // If sessionId is provided, verify it's still the current session
     if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
       console.log('❌ Audio skipped - stale session', sessionId, 'vs', audioSessionRef.current);
       return;
     }
-    
+
     const part = indexToPart[i];
     const url = urlFor(effectiveCaseId, part);
     console.log('✅ Playing audio:', source, '| url:', url);
     // stop prior if any
     stopPlayback();
     isLoadingRef.current = true;
-    try { Sound.setCategory('Playback', true); } catch (_) {}
-    try { Sound.enableInSilenceMode(true); } catch (_) {}
+    try { Sound.setCategory('Playback', true); } catch (_) { }
+    try { Sound.enableInSilenceMode(true); } catch (_) { }
     const s = new Sound(url, undefined, (error) => {
       // Race condition guard: check if this sound is still the current one
       // If user swiped away while loading, soundRef.current will be different/null
       if (soundRef.current !== s) {
-        try { s.release(); } catch (_) {}
+        try { s.release(); } catch (_) { }
         return;
       }
       // Also check session ID hasn't changed
       if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
-        try { s.release(); } catch (_) {}
+        try { s.release(); } catch (_) { }
         return;
       }
       if (error) {
@@ -436,23 +446,23 @@ export default function ClinicalInfo() {
         isLoadingRef.current = false;
         isPlayingRef.current = false;
         currentPartRef.current = null;
-        try { auraRef.current?.stop?.(); } catch (_) {}
+        try { auraRef.current?.stop?.(); } catch (_) { }
         return;
       }
       isLoadingRef.current = false;
       isPlayingRef.current = true;
       currentPartRef.current = part;
-      try { auraRef.current?.start?.(); } catch (_) {}
+      try { auraRef.current?.start?.(); } catch (_) { }
       // Set playback speed to 1.25x
-      try { s.setSpeed(1.25); } catch (_) {}
+      try { s.setSpeed(1.25); } catch (_) { }
       s.play(() => {
-        try { s.release(); } catch (_) {}
+        try { s.release(); } catch (_) { }
         // Only update refs if this sound is still the active one
         if (soundRef.current === s) {
           soundRef.current = null;
           isPlayingRef.current = false;
           currentPartRef.current = null;
-          try { auraRef.current?.stop?.(); } catch (_) {}
+          try { auraRef.current?.stop?.(); } catch (_) { }
         }
       });
     });
@@ -482,7 +492,7 @@ export default function ClinicalInfo() {
       // Component gained focus
       console.log('👁️ ClinicalInfo FOCUSED');
       isFocusedRef.current = true;
-      
+
       return () => {
         // Component lost focus
         console.log('👁️ ClinicalInfo UNFOCUSED');
@@ -552,9 +562,9 @@ export default function ClinicalInfo() {
     togglePlayForIndexRef.current = togglePlayForIndex;
   }, [togglePlayForIndex]);
   const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-  
+
   return (
-    <SafeAreaView style={styles.container} edges={['top','left','right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={SUBTLE_PINK_GRADIENT}
         start={{ x: 0, y: 0 }}
@@ -591,9 +601,9 @@ export default function ClinicalInfo() {
               console.log('📄 onPageSelected scheduling audio | newIndex:', newIndex, '| session:', currentSession);
               audioTimerRef.current = setTimeout(() => {
                 console.log('⏰ onPageSelected timer fired | checking guards...');
-                if (!userPausedAudioRef.current && 
-                    !caseTransitionRef.current && 
-                    audioSessionRef.current === currentSession) {
+                if (!userPausedAudioRef.current &&
+                  !caseTransitionRef.current &&
+                  audioSessionRef.current === currentSession) {
                   playForIndex(newIndex, targetCaseId, currentSession, 'ON_PAGE_SELECTED');
                 } else {
                   console.log('❌ onPageSelected audio blocked | paused:', userPausedAudioRef.current, '| transition:', caseTransitionRef.current, '| sessionMatch:', audioSessionRef.current === currentSession);
@@ -612,13 +622,13 @@ export default function ClinicalInfo() {
                 source={{ uri: mainImageUrl }}
                 onLoad={() => {
                   setHeroLoaded(true);
-                  try { 
-                    
-                   } catch (_) {}
+                  try {
+
+                  } catch (_) { }
                 }}
                 onError={(e) => {
                   setHeroLoadError(true);
-                  try { console.warn('Main image failed:', mainImageUrl, e?.nativeEvent); } catch (_) {}
+                  try { console.warn('Main image failed:', mainImageUrl, e?.nativeEvent); } catch (_) { }
                 }}
                 style={styles.heroImage}
               />
@@ -649,11 +659,11 @@ export default function ClinicalInfo() {
                   key={v.name}
                   icon={
                     v.name === 'Temperature' ? 'thermometer' :
-                    v.name === 'Heart Rate' ? 'heart' :
-                    v.name === 'Blood Pressure' ? 'blood-bag' :
-                    v.name === 'Respiratory Rate' ? 'lungs' :
-                    v.name?.includes('O2') ? 'diving-scuba-tank' :
-                    v.name === 'Weight' ? 'weight-kilogram' : 'dots-horizontal'
+                      v.name === 'Heart Rate' ? 'heart' :
+                        v.name === 'Blood Pressure' ? 'blood-bag' :
+                          v.name === 'Respiratory Rate' ? 'lungs' :
+                            v.name?.includes('O2') ? 'diving-scuba-tank' :
+                              v.name === 'Weight' ? 'weight-kilogram' : 'dots-horizontal'
                   }
                   label={v.name}
                   value={v.value}
@@ -682,7 +692,7 @@ export default function ClinicalInfo() {
                 <TouchableOpacity
                   accessibilityRole="button"
                   onPress={() => {
-                    try { setSelectedPhysImageIndex(0); } catch (_) {}
+                    try { setSelectedPhysImageIndex(0); } catch (_) { }
                     imageSheetRef.current?.expand?.();
                   }}
                   style={styles.sectionFloatingButton}
@@ -701,9 +711,9 @@ export default function ClinicalInfo() {
             }
           >
             {
-  examItems.map((e, i) => (
-    <BulletItem key={i}>{`${e.system}: ${e.findings}`}</BulletItem>
-  ))}
+              examItems.map((e, i) => (
+                <BulletItem key={i}>{`${e.system}: ${e.findings}`}</BulletItem>
+              ))}
           </Section>
         </View>
       </PagerView>
@@ -717,7 +727,7 @@ export default function ClinicalInfo() {
         backgroundStyle={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 18, borderTopRightRadius: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: -2 } }}
         handleIndicatorStyle={{ backgroundColor: Colors.brand.darkPink }}
         onChange={(idx) => {
-          try { setIsImageSheetOpen(typeof idx === 'number' && idx >= 0); } catch (_) {}
+          try { setIsImageSheetOpen(typeof idx === 'number' && idx >= 0); } catch (_) { }
         }}
       >
         <BottomSheetView style={{ paddingTop: 30, paddingHorizontal: 16, paddingBottom: 16 }}>
@@ -744,7 +754,7 @@ export default function ClinicalInfo() {
           </View>
           {totalPhysImages > 0 ? (
             <>
-              <View style={styles.physImageContainer} onLayout={(e) => { try { setPhysContainerWidth(e.nativeEvent.layout.width); } catch (_) {} }}>
+              <View style={styles.physImageContainer} onLayout={(e) => { try { setPhysContainerWidth(e.nativeEvent.layout.width); } catch (_) { } }}>
                 <ScrollView
                   ref={physScrollRef}
                   horizontal
@@ -825,7 +835,7 @@ export default function ClinicalInfo() {
               </Text>
             </>
           ) : (
-            <ComingSoonImage style={{ width: '100%', aspectRatio: 16/9 }} />
+            <ComingSoonImage style={{ width: '100%', aspectRatio: 16 / 9 }} />
           )}
         </BottomSheetView>
       </BottomSheet>
@@ -891,7 +901,7 @@ export default function ClinicalInfo() {
         ]}
         pointerEvents="box-none"
       >
-       
+
         {index > 0 && !isImageSheetOpen ? (
           <Pressable
             accessibilityRole="button"
@@ -932,34 +942,34 @@ export default function ClinicalInfo() {
           //   <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
           // </Pressable>
           <TouchableOpacity
-          accessibilityRole="button"
-          onPress={() => {
-            stopPlayback(); // Stop audio before navigating
-            navigation.navigate('SelectTests', { caseData });
-          }}
-          style={[styles.primaryButton, styles.navRightCta]}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={["#F472B6", "#FB7185"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.primaryButtonGradient}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0,1], outputRange: [-100, 220] }) }] }]}
+            accessibilityRole="button"
+            onPress={() => {
+              stopPlayback(); // Stop audio before navigating
+              navigation.navigate('SelectTests', { caseData });
+            }}
+            style={[styles.primaryButton, styles.navRightCta]}
+            activeOpacity={0.9}
           >
             <LinearGradient
-              colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={StyleSheet.absoluteFill}
+              colors={["#F472B6", "#FB7185"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButtonGradient}
             />
-          </Animated.View>
-          <Text style={styles.primaryButtonText}>Send for Tests</Text>
-          <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
-        </TouchableOpacity>
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
+            >
+              <LinearGradient
+                colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </Animated.View>
+            <Text style={styles.primaryButtonText}>Send for Tests</Text>
+            <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+          </TouchableOpacity>
         ) : !isImageSheetOpen ? (
           <Pressable
             accessibilityRole="button"
@@ -980,6 +990,7 @@ export default function ClinicalInfo() {
       </View>
 
       <PremiumBottomSheet ref={premiumSheetRef} />
+      <QuitConfirmationSheet ref={quitSheetRef} onConfirmQuit={confirmQuit} />
     </SafeAreaView>
   );
 }
@@ -987,7 +998,7 @@ export default function ClinicalInfo() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
   pagerView: { flex: 1 },
-  carousel: { },
+  carousel: {},
   slide: { paddingHorizontal: 10, paddingTop: 36, paddingBottom: 120, height: '100%', justifyContent: 'center', alignItems: 'stretch' },
   sectionBlock: { marginBottom: 20, alignItems: 'center' },
   card: {
@@ -1100,7 +1111,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   subHeaderText: { fontSize: 16, fontWeight: '700', color: '#11181C' },
-  chiefText: { marginTop: 6, fontSize: 16, fontWeight: '400', fontFamily : 'Roboto-Medium' },
+  chiefText: { marginTop: 6, fontSize: 16, fontWeight: '400', fontFamily: 'Roboto-Medium' },
   tipCard: { borderWidth: 1, borderRadius: 14, marginTop: 16, padding: 12 },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   tipImage: { width: 44, height: 44, borderRadius: 8, resizeMode: 'contain' },
@@ -1125,7 +1136,7 @@ const styles = StyleSheet.create({
   primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
   shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },
 
-  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 16},
+  primaryButtonText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   testGrid: { flexDirection: 'column', gap: 12 },
   testCard: {
     width: '100%',
@@ -1194,7 +1205,7 @@ const styles = StyleSheet.create({
   },
   // Bottom sheet styles
   sheetHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  sheetHeaderTitle: { fontSize: 18, fontWeight: '800', color: '#11181C', marginRight : 10 },
+  sheetHeaderTitle: { fontSize: 18, fontWeight: '800', color: '#11181C', marginRight: 10 },
   sheetHeaderMeta: { fontSize: 12, fontWeight: '800', color: '#687076' },
   sheetTabsContainer: {
     borderWidth: 1,
@@ -1222,7 +1233,7 @@ const styles = StyleSheet.create({
   reportHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   reportIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(30, 136, 229, 0.10)', borderWidth: 1, borderColor: 'rgba(30, 136, 229, 0.25)', alignItems: 'center', justifyContent: 'center' },
   simpleReportCard: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', backgroundColor: '#fff', padding: 16, minHeight: 120, justifyContent: 'flex-start' },
-  reportTitle: { fontSize: 16, fontWeight: '800', color: '#11181C', flex: 1, flexWrap: 'wrap' , color: Colors.brand.darkPink},
+  reportTitle: { fontSize: 16, fontWeight: '800', color: '#11181C', flex: 1, flexWrap: 'wrap', color: Colors.brand.darkPink },
   reportValueText: { marginTop: 6, fontSize: 14, lineHeight: 20, color: '#333', fontWeight: '800' },
   sheetDotsContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
   sheetDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
@@ -1271,7 +1282,7 @@ const styles = StyleSheet.create({
   physImageContainer: {
     marginTop: 6,
     width: '100%',
-    aspectRatio: 16/9,
+    aspectRatio: 16 / 9,
     backgroundColor: '#0A0A0A',
     borderRadius: 14,
     overflow: 'hidden',

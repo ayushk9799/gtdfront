@@ -239,7 +239,7 @@ export default function AccountScreen() {
           <View style={{
             flexDirection: 'row',
             marginTop: 16,
-            paddingHorizontal: 16,
+            paddingHorizontal: 0,
             gap: 10,
           }}>
             {/* Cases Completed */}
@@ -320,7 +320,7 @@ export default function AccountScreen() {
         </View>
 
         {isPremium && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+          <View style={{ paddingHorizontal: 0, marginBottom: 8 }}>
             <View
               style={{
                 backgroundColor: '#FFFFFF',
@@ -441,7 +441,7 @@ export default function AccountScreen() {
 
         {/* Settings Card */}
         <View style={{
-          marginHorizontal: 16,
+          marginHorizontal: 0,
           marginBottom: 16,
           backgroundColor: '#FFFFFF',
           borderRadius: 20,
@@ -550,7 +550,7 @@ export default function AccountScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View style={{ paddingHorizontal: 16, gap: 12, marginBottom: 24 }}>
+        <View style={{ paddingHorizontal: 0, gap: 12, marginBottom: 24 }}>
           <TouchableOpacity
             onPress={handleLogout}
             activeOpacity={0.85}

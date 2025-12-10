@@ -195,7 +195,8 @@ export default function HomeScreen() {
   // 3. Challenge loading failed (meaning no challenge for today)
   const challengeStatus = useSelector(state => state.dailyChallenge.status);
   const noDailyChallengeAvailable = (challengeStatus === 'succeeded' && !currentChallenge) || challengeStatus === 'failed';
-  const shouldShowSuggestedCase = isDailyChallengeCompleted || noDailyChallengeAvailable;
+  // Only show suggested case when daily challenge is completed or no challenge available
+  const shouldShowSuggestedCase = isDailyChallengeCompleted || (noDailyChallengeAvailable||hasChallengeError);
 
   useEffect(() => {
     console.log('shouldShowSuggestedCase:', shouldShowSuggestedCase, 'progressStatus:', progressStatus, 'departmentProgress:', departmentProgress?.length);
@@ -333,11 +334,13 @@ export default function HomeScreen() {
       setIsDailyChallengeLoading(false);
     }
   };
+  console.log("shouldShowSuggestedCase", shouldShowSuggestedCase);
+  console.log("suggestedNextCase", suggestedNextCase);
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       <LeagueHeader onPressPro={() => { }} />
-      <ScrollView contentContainerStyle={styles.screenScroll}>
+      <ScrollView contentContainerStyle={styles.screenScroll} showsVerticalScrollIndicator={false}>
         <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
           <View style={styles.cardContent}>
             <View style={styles.rowCenterBetween}>
@@ -345,9 +348,18 @@ export default function HomeScreen() {
                 <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
               </View>
-              {/* <View style={styles.badge}>
-                <Text style={styles.badgeText}>New</Text>
-              </View> */}
+              {isDailyChallengeCompleted && (
+                <View style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  backgroundColor: '#E8F5E9',
+                  borderWidth: 1,
+                  borderColor: '#A5D6A7'
+                }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#2E7D32' }}>Already Played ✓</Text>
+                </View>
+              )}
             </View>
 
             {isChallengeLoading && <DailyChallengeSkeleton />}
@@ -363,26 +375,48 @@ export default function HomeScreen() {
 
             {currentChallenge && !isChallengeLoading && !hasChallengeError && (
               <>
-                {currentChallenge?.caseData?.mainimage &&
-                  <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
-                    <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
-                  </View>
-                }
-                <Text style={[styles.cardDesc, { marginTop: 8 }]}>
-                  {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
-                  activeOpacity={0.9}
-                  onPress={handleDailyChallengePress}
-                  disabled={isDailyChallengeLoading}
-                >
-                  {isDailyChallengeLoading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
-                  )}
-                </TouchableOpacity>
+                {isDailyChallengeCompleted ? (
+                  <>
+                    <Text style={[styles.cardDesc, { marginTop: 8, fontSize: 15, color: '#2E7D32' }]}>
+                      Your daily challenge is completed! 🎉
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
+                      activeOpacity={0.9}
+                      onPress={handleDailyChallengePress}
+                      disabled={isDailyChallengeLoading}
+                    >
+                      {isDailyChallengeLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.primaryButtonText}>Review Challenge</Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    {currentChallenge?.caseData?.mainimage &&
+                      <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
+                        <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
+                      </View>
+                    }
+                    <Text style={[styles.cardDesc, { marginTop: 8 }]}>
+                      {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
+                      activeOpacity={0.9}
+                      onPress={handleDailyChallengePress}
+                      disabled={isDailyChallengeLoading}
+                    >
+                      {isDailyChallengeLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                )}
               </>
             )}
 

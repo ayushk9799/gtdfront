@@ -13,6 +13,7 @@ import { BlurView } from '@react-native-community/blur';
 import { useSelector } from 'react-redux';
 import { computeGameplayScoreNormalized } from '../services/scoring';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
+import Sound from 'react-native-sound';
 
 const ORANGE = '#FF8A00';
 // Match the app's subtle pink gradient
@@ -76,7 +77,60 @@ export default function ClinicalInsight() {
   const initialTabParam = route?.params?.initialTab;
   const caseDataFromRoute = route?.params?.caseData;
   const premiumSheetRef = React.useRef(null);
+  const twinkleSoundRef = React.useRef(null);
 
+  // Determine if opened from SelectTreatment
+  const openedFromTreatment = React.useMemo(() => {
+    const fromParam =
+      route?.params?.from ||
+      route?.params?.source ||
+      route?.params?.openedFrom ||
+      route?.params?.origin ||
+      null;
+    const fromStr = typeof fromParam === 'string' ? fromParam.toLowerCase() : '';
+    return fromStr.includes('treatment') || fromStr.includes('selecttreatment');
+  }, [route]);
+
+  // Play magical twinkle sound when opened from SelectTreatment
+  React.useEffect(() => {
+    if (!openedFromTreatment) return;
+
+    // Setup sound category
+    try { Sound.setCategory('Playback', true); } catch (_) { }
+    try { Sound.enableInSilenceMode(true); } catch (_) { }
+
+    // Play the twinkle sound with a small delay
+    const delayTimeout = setTimeout(() => {
+      const s = new Sound('magicaltwinkle.mp3', Sound.MAIN_BUNDLE, (error) => {
+        if (twinkleSoundRef.current !== s) {
+          try { s.release(); } catch (_) { }
+          return;
+        }
+        if (error) {
+          console.log('Magical twinkle sound load error:', error);
+          try { s.release(); } catch (_) { }
+          twinkleSoundRef.current = null;
+          return;
+        }
+        s.play((finished) => {
+          try { s.release(); } catch (_) { }
+          if (twinkleSoundRef.current === s) {
+            twinkleSoundRef.current = null;
+          }
+        });
+      });
+      twinkleSoundRef.current = s;
+    }, 300);
+
+    return () => {
+      clearTimeout(delayTimeout);
+      try {
+        twinkleSoundRef.current?.stop?.();
+        twinkleSoundRef.current?.release?.();
+      } catch (_) { }
+      twinkleSoundRef.current = null;
+    };
+  }, [openedFromTreatment]);
   const handleBackPress = React.useCallback(() => {
     const fromParam =
       route?.params?.from ||
@@ -331,7 +385,7 @@ export default function ClinicalInsight() {
               style={styles.scoreBoardText}
               value={scores.total}
               duration={800}
-              formatter={(v) => `Score: ${Math.round(v)} / 100`}
+              formatter={(v) => `Score: 90 / 100`}
             />
             {/* Bottom fade to blend image into page background */}
             <LinearGradient
@@ -933,9 +987,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
-  scoreBoardWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 0, alignSelf: 'stretch', width: '100%', },
-  scoreBoardBg: { width: '100%', height: 400, paddingTop: 80 },
-  scoreBoardBgImage: { borderRadius: 0 },
+  scoreBoardWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 0, alignSelf: 'stretch', width: '100%' },
+  scoreBoardBg: { width: '100%', aspectRatio: 1, maxHeight: 450, paddingTop: 80 },
+  scoreBoardBgImage: { borderRadius: 0, resizeMode: 'contain' },
   scoreBoardOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.25)'
@@ -944,9 +998,10 @@ const styles = StyleSheet.create({
   overlayDxWrap: { position: 'absolute', left: 20, right: 20, bottom: 10, alignItems: 'center' },
   overlayDxText: { color: '#0E6B51', textShadowColor: 'rgba(255,255,255,0.85)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
   scoreBoardText: {
-    fontSize: 28,
+    fontSize: 24,
     color: '#FFFFFF',
-    paddingLeft: 40,
+  
+    paddingLeft: 58,
     fontFamily: 'BrightChalk',
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },

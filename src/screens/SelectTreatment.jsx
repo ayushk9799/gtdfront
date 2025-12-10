@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing, Image, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -15,10 +15,9 @@ import surgImg from '../../constants/surgical.png';
 import { useHeart } from '../store/slices/userSlice';
 import Sound from 'react-native-sound';
 import { checkAndRequestReview } from '../services/ratingService';
+import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-const CARD_HEIGHT_PCT = 0.80;
-const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 
 function ECGUnderline({ color = Colors.brand.darkPink }) {
   return (
@@ -63,6 +62,8 @@ export default function SelectTreatment() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const isTablet = screenWidth >= 768;
   const colorScheme = useColorScheme();
   const themeColors = Colors.light;
   const dispatch = useDispatch();
@@ -75,6 +76,7 @@ export default function SelectTreatment() {
   const tapSoundRef = useRef(null);
   // Track if this screen is focused (to prevent audio from unfocused instances)
   const isFocusedRef = useRef(true);
+  const quitSheetRef = useRef(null);
 
   const caseData = route?.params?.caseData || {};
 
@@ -268,8 +270,7 @@ export default function SelectTreatment() {
         <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
-            stopTreatmentAudio(); // Stop audio before navigating
-            navigation.navigate('Tabs', { screen: 'Home' });
+            quitSheetRef.current?.present();
           }}
           style={styles.closeButton}
           activeOpacity={0.8}
@@ -278,7 +279,7 @@ export default function SelectTreatment() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 50, paddingBottom: 120 }}>
+      <View style={{ flex: 1, paddingHorizontal: isTablet ? 24 : 10, paddingTop: 50, paddingBottom: 120 }}>
         <Section title="Select Treatment Plan">
           {[
             { key: 'Medication', items: medications },
@@ -343,64 +344,61 @@ export default function SelectTreatment() {
             ) : null
           ))}
         </Section>
-      </View>
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => navigation.goBack()}
+          style={[styles.navButton, styles.navLeft, { bottom: Math.max(22, insets.bottom + 25) }]}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() => navigation.goBack()}
-        style={[styles.navButton, styles.navLeft, { bottom: 80 }]}
-        activeOpacity={0.8}
-      >
-        <MaterialCommunityIcons name="chevron-left" size={28} color={Colors.brand.darkPink} />
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={async () => {
-          if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
-          stopTreatmentAudio(); // Stop audio before navigating
-          try {
-            navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan', from: 'SelectTreatment' });
-
-            await dispatch(submitGameplay());
-
-            // Request in-app review after first case completion
-            // This will only trigger once (after the first game)
-            checkAndRequestReview();
-          } catch (e) { }
-          if (!isPremium && sourceType === 'case') {
-            dispatch(useHeart());
-          }
-        }}
-        disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
-        style={[
-          styles.primaryButton,
-          styles.navRightCta,
-          { bottom: 80 },
-          (!selectedTreatmentIds || selectedTreatmentIds.length === 0) && { opacity: 0.5 }
-        ]}
-        activeOpacity={0.9}
-      >
-        <LinearGradient
-          colors={["#F472B6", "#FB7185"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.primaryButtonGradient}
-        />
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={async () => {
+            if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
+            stopTreatmentAudio();
+            try {
+              navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan', from: 'SelectTreatment' });
+              await dispatch(submitGameplay());
+              checkAndRequestReview();
+            } catch (e) { }
+            if (!isPremium && sourceType === 'case') {
+              dispatch(useHeart());
+            }
+          }}
+          disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
+          style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, (!selectedTreatmentIds || selectedTreatmentIds.length === 0) && { opacity: 0.5 }]}
+          activeOpacity={0.9}
         >
           <LinearGradient
-            colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
+            colors={["#F472B6", "#FB7185"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButtonGradient}
           />
-        </Animated.View>
-        <Text style={styles.primaryButtonText}>Confirm Treatment</Text>
-        <MaterialCommunityIcons name="check" size={18} color="#fff" />
-      </TouchableOpacity>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.shimmer, { transform: [{ translateX: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-100, 220] }) }] }]}
+          >
+            <LinearGradient
+              colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+          <Text style={styles.primaryButtonText}>Confirm Treatment</Text>
+          <MaterialCommunityIcons name="check" size={18} color="#fff" />
+        </TouchableOpacity>
+        <QuitConfirmationSheet
+          ref={quitSheetRef}
+          onConfirmQuit={() => {
+            stopTreatmentAudio();
+            navigation.navigate('Tabs', { screen: 'Home' });
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -422,8 +420,24 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
+  primaryButton: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    minHeight: 50,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+  },
   container: { flex: 1, backgroundColor: 'transparent' },
-  sectionBlock: { marginBottom: 20, alignItems: 'center' },
+  sectionBlock: { flex: 1, marginBottom: 20, alignItems: 'center' },
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -435,7 +449,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     width: '100%',
     maxWidth: 700,
-    height: CARD_HEIGHT_PX,
+    flex: 1,
   },
   sectionHeader: { alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 20, fontWeight: '800' },
@@ -540,6 +554,44 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     paddingHorizontal: 16
+  },
+  // Margin-based button positioning
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 6,
+    paddingBottom: 16,
+  },
+  navButtonInFlow: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  primaryButtonInFlow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minHeight: 50,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
 });
 
