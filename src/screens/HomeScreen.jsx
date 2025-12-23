@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
@@ -124,7 +124,40 @@ export default function HomeScreen() {
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
-  const [suggestedNextCase, setSuggestedNextCase] = useState(null);
+
+  // MMKV storage instance for persisting suggested case
+  const storage = React.useMemo(() => new MMKV(), []);
+
+  // 1 hour expiration in milliseconds
+  const SUGGESTED_CASE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+
+  // Load persisted suggested case SYNCHRONOUSLY to prevent race condition
+  // Also check if the case has expired (1 hour)
+  const [suggestedNextCase, setSuggestedNextCase] = useState(() => {
+    try {
+      const mmkv = new MMKV();
+      const persistedCase = mmkv.getString('suggestedNextCase');
+      if (persistedCase) {
+        const parsed = JSON.parse(persistedCase);
+
+        // Check if the case has expired (1 hour)
+        const savedAt = parsed.savedAt || 0;
+        const now = Date.now();
+        const elapsed = now - savedAt;
+
+        if (elapsed > SUGGESTED_CASE_EXPIRY_MS) {
+          mmkv.delete('suggestedNextCase');
+          return null;
+        }
+
+        return parsed;
+      }
+    } catch (error) {
+      console.warn('Error loading persisted suggested case:', error);
+    }
+    return null;
+  });
+
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
 
@@ -139,9 +172,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     try {
-      const storage = new MMKV();
       const stored = storage.getString('user');
-      // console.log("stored", stored);
       if (stored) {
         const u = JSON.parse(stored);
         const uid = u?.userId || u?._id || u?.id;
@@ -196,42 +227,90 @@ export default function HomeScreen() {
   const challengeStatus = useSelector(state => state.dailyChallenge.status);
   const noDailyChallengeAvailable = (challengeStatus === 'succeeded' && !currentChallenge) || challengeStatus === 'failed';
   // Only show suggested case when daily challenge is completed or no challenge available
-  const shouldShowSuggestedCase = isDailyChallengeCompleted || (noDailyChallengeAvailable||hasChallengeError);
+  const shouldShowSuggestedCase = isDailyChallengeCompleted || (noDailyChallengeAvailable || hasChallengeError);
 
+  // Pick a random suggested case only if we don't have one persisted
   useEffect(() => {
-    console.log('shouldShowSuggestedCase:', shouldShowSuggestedCase, 'progressStatus:', progressStatus, 'departmentProgress:', departmentProgress?.length);
+
+    // Skip if we already have a suggested case (from persistence or previous pick)
+    if (suggestedNextCase) {
+      return;
+    }
 
     if (shouldShowSuggestedCase && progressStatus === 'succeeded' && Array.isArray(departmentProgress)) {
       // Filter departments that have unsolved cases
-      console.log(departmentProgress)
       const deptsWithCases = departmentProgress.filter(
         dept => Array.isArray(dept.unsolvedCases) && dept.unsolvedCases.length > 0
       );
-
-      console.log('deptsWithCases:', deptsWithCases.length);
 
       if (deptsWithCases.length > 0) {
         // Pick a random department
         const randomDept = deptsWithCases[Math.floor(Math.random() * deptsWithCases.length)];
         const nextCase = randomDept.unsolvedCases[0];
 
-        console.log('nextCase:', nextCase);
-
         if (nextCase) {
-          setSuggestedNextCase({
+          const newSuggestedCase = {
             caseId: nextCase.caseId,
             caseTitle: nextCase.caseTitle || 'Medical Case',
             mainimage: nextCase.mainimage || null,
             departmentName: randomDept.name || 'Department',
-          });
+            savedAt: Date.now(), // Timestamp for 1-hour expiration
+          };
+
+          setSuggestedNextCase(newSuggestedCase);
+
+          // Persist the suggested case to MMKV (with timestamp)
+          try {
+            storage.set('suggestedNextCase', JSON.stringify(newSuggestedCase));
+          } catch (error) {
+            console.warn('Error persisting suggested case:', error);
+          }
         }
       }
     }
-  }, [shouldShowSuggestedCase, progressStatus, departmentProgress]);
+  }, [shouldShowSuggestedCase, progressStatus, departmentProgress, suggestedNextCase]);
+
+  // Function to clear suggested case (call this when user completes the case)
+  const clearSuggestedCase = useCallback(() => {
+    setSuggestedNextCase(null);
+    try {
+      storage.delete('suggestedNextCase');
+    } catch (error) {
+      console.warn('Error clearing suggested case:', error);
+    }
+  }, [storage]);
+
+  // Check if the suggested case was completed when screen regains focus
+  useFocusEffect(
+    useCallback(() => {
+      const checkIfSuggestedCaseCompleted = async () => {
+        if (!suggestedNextCase?.caseId || !currentUserId) return;
+
+        try {
+          // Check if there's a completed gameplay for this specific case
+          const res = await fetch(
+            `${API_BASE}/api/gameplays?userId=${encodeURIComponent(currentUserId)}&caseId=${encodeURIComponent(suggestedNextCase.caseId)}&sourceType=case`
+          );
+
+          if (!res.ok) return;
+
+          const data = await res.json();
+          const gameplays = data?.gameplays || [];
+          const completedGameplay = gameplays.find(gp => gp.status === 'completed');
+
+          if (completedGameplay) {
+            clearSuggestedCase();
+          }
+        } catch (error) {
+          console.warn('Error checking suggested case completion:', error);
+        }
+      };
+
+      checkIfSuggestedCaseCompleted();
+    }, [suggestedNextCase?.caseId, currentUserId, clearSuggestedCase])
+  );
 
   const openCaseById = async (caseId) => {
-    console.log('caseId', caseId);
-
     try {
       if (hearts <= -7) {
         ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);
@@ -334,8 +413,6 @@ export default function HomeScreen() {
       setIsDailyChallengeLoading(false);
     }
   };
-  console.log("shouldShowSuggestedCase", shouldShowSuggestedCase);
-  console.log("suggestedNextCase", suggestedNextCase);
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>

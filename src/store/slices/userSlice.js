@@ -14,7 +14,6 @@ export const getUser = createAsyncThunk(
     try {
       const res = await fetch(`${API_BASE}/api/users/${userId}`);
       const data = await res.json();
-      // console.log("data", data);
 
       if (!res.ok || data?.error) {
         const message = data?.error || 'User not found';
@@ -155,12 +154,12 @@ export const refreshHearts = createAsyncThunk(
 
       let heartsLeft;
       if (isNewDay) {
-        heartsLeft = 3;
+        heartsLeft = 2;
         storage.set(HEART_LEFT_KEY, heartsLeft);
         storage.set(HEART_UPDATED_AT_KEY, now.toISOString());
       } else {
         const validStored = typeof storedLeft === 'number' && Number.isFinite(storedLeft);
-        heartsLeft = validStored ? storedLeft : 3;
+        heartsLeft = validStored ? storedLeft : 2;
         // ensure keys exist if missing
         if (!validStored) storage.set(HEART_LEFT_KEY, heartsLeft);
         if (!storedUpdatedAt) storage.set(HEART_UPDATED_AT_KEY, now.toISOString());
@@ -169,7 +168,7 @@ export const refreshHearts = createAsyncThunk(
       dispatch(userSlice.actions.setHearts(heartsLeft));
       return heartsLeft;
     } catch (e) {
-      const fallback = 3;
+      const fallback = 2;
       try {
         storage.set(HEART_LEFT_KEY, fallback);
         storage.set(HEART_UPDATED_AT_KEY, new Date().toISOString());

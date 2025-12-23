@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, TouchableOpacity, Image, Animated, InteractionManager, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, TouchableOpacity, Image, Animated, InteractionManager, Platform, useWindowDimensions, BackHandler } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -200,14 +200,11 @@ export default function ClinicalInfo() {
 
   // Reset index and stop all audio when caseId changes
   useEffect(() => {
-    console.log('🔄 caseId effect running | caseId:', caseId, '| previousCaseId:', previousCaseIdRef.current);
     // Skip if this is the same case (prevents re-triggering on remount)
     if (caseId && caseId !== previousCaseIdRef.current) {
-      console.log('🆕 NEW CASE DETECTED | starting transition...');
       // Increment session ID - this invalidates any pending audio from previous case
       audioSessionRef.current += 1;
       const currentSession = audioSessionRef.current;
-      console.log('📊 New session ID:', currentSession);
 
       // Mark that we're in a case transition - this prevents dual audio
       caseTransitionRef.current = true;
@@ -247,16 +244,13 @@ export default function ClinicalInfo() {
 
       // Clear transition flag and play initial audio AFTER React has processed all state updates
       // Use 400ms to ensure all re-renders have completed
-      console.log('⏳ Scheduling transition timer (400ms) | session:', currentSession);
       transitionTimerRef.current = setTimeout(() => {
-        console.log('⏰ Transition timer fired | session:', currentSession, '| currentSession:', audioSessionRef.current);
         transitionTimerRef.current = null;
         caseTransitionRef.current = false;
         // Play initial audio for new case (index 0) with session ID check
         if (!userPausedAudioRef.current && audioSessionRef.current === currentSession) {
           playForIndex(0, targetCaseId, currentSession, 'CASE_ID_EFFECT');
         } else {
-          console.log('❌ CASE_ID_EFFECT audio blocked | paused:', userPausedAudioRef.current, '| sessionMatch:', audioSessionRef.current === currentSession);
         }
       }, 100);
     }
@@ -400,30 +394,25 @@ export default function ClinicalInfo() {
 
   // Play audio for a specific index - accepts targetCaseId, sessionId, and source for debugging
   const playForIndex = useCallback((i, targetCaseId, sessionId, source) => {
-    console.log('🎵 playForIndex called from:', source || 'UNKNOWN', '| index:', i, '| session:', sessionId, '| currentSession:', audioSessionRef.current, '| focused:', isFocusedRef.current);
 
     // Check if this component instance is focused
     if (!isFocusedRef.current) {
-      console.log('❌ Audio skipped - component not focused (duplicate instance)');
       return;
     }
 
     // Use provided caseId or fall back to current (for manual plays)
     const effectiveCaseId = targetCaseId || caseId;
     if (!effectiveCaseId) {
-      console.log('❌ Audio skipped - no caseId');
       return;
     }
 
     // If sessionId is provided, verify it's still the current session
     if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
-      console.log('❌ Audio skipped - stale session', sessionId, 'vs', audioSessionRef.current);
       return;
     }
 
     const part = indexToPart[i];
     const url = urlFor(effectiveCaseId, part);
-    console.log('✅ Playing audio:', source, '| url:', url);
     // stop prior if any
     stopPlayback();
     isLoadingRef.current = true;
@@ -470,17 +459,14 @@ export default function ClinicalInfo() {
   }, [caseId, stopPlayback]);
 
   const togglePlayForIndex = useCallback((i) => {
-    console.log('🔘 togglePlayForIndex called | index:', i);
     const part = indexToPart[i];
     if (isPlayingRef.current && currentPartRef.current === part) {
       // User manually paused - prevent auto-play on slide changes
-      console.log('⏸️ User paused audio');
       userPausedAudioRef.current = true;
       dispatch(setAudioPaused(true));
       stopPlayback();
     } else {
       // User manually started - allow auto-play again
-      console.log('▶️ User started audio manually');
       userPausedAudioRef.current = false;
       dispatch(setAudioPaused(false));
       playForIndex(i, undefined, undefined, 'MANUAL_TOGGLE');
@@ -490,12 +476,10 @@ export default function ClinicalInfo() {
   useFocusEffect(
     React.useCallback(() => {
       // Component gained focus
-      console.log('👁️ ClinicalInfo FOCUSED');
       isFocusedRef.current = true;
 
       return () => {
         // Component lost focus
-        console.log('👁️ ClinicalInfo UNFOCUSED');
         isFocusedRef.current = false;
         // Clear transition timer when losing focus
         if (transitionTimerRef.current) {
@@ -512,6 +496,23 @@ export default function ClinicalInfo() {
         audioSessionRef.current += 1;
       };
     }, [stopPlayback])
+  );
+
+  // Handle Android physical back button press - show quit confirmation
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Show the quit confirmation sheet instead of navigating back
+        quitSheetRef.current?.present();
+        return true; // Prevent default back behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => {
+        subscription.remove();
+      };
+    }, [])
   );
 
   // Cleanup on unmount - reset all audio state to prevent stale refs
@@ -577,15 +578,12 @@ export default function ClinicalInfo() {
         initialPage={0}
         onPageSelected={(e) => {
           const newIndex = e.nativeEvent.position;
-          console.log('📱 onPageSelected | newIndex:', newIndex, '| currentIndex:', index, '| inTransition:', caseTransitionRef.current);
           // Ignore events during case transitions
           if (caseTransitionRef.current) {
-            console.log('🚫 onPageSelected BLOCKED - in transition');
             return;
           }
           // Only process actual slide changes
           if (newIndex !== index) {
-            console.log('✅ onPageSelected processing slide change');
             setIndex(newIndex);
             // Stop current audio
             stopPlayback();
@@ -598,15 +596,12 @@ export default function ClinicalInfo() {
             if (!userPausedAudioRef.current && caseId) {
               const currentSession = audioSessionRef.current;
               const targetCaseId = caseId;
-              console.log('📄 onPageSelected scheduling audio | newIndex:', newIndex, '| session:', currentSession);
               audioTimerRef.current = setTimeout(() => {
-                console.log('⏰ onPageSelected timer fired | checking guards...');
                 if (!userPausedAudioRef.current &&
                   !caseTransitionRef.current &&
                   audioSessionRef.current === currentSession) {
                   playForIndex(newIndex, targetCaseId, currentSession, 'ON_PAGE_SELECTED');
                 } else {
-                  console.log('❌ onPageSelected audio blocked | paused:', userPausedAudioRef.current, '| transition:', caseTransitionRef.current, '| sessionMatch:', audioSessionRef.current === currentSession);
                 }
               }, 150);
             }

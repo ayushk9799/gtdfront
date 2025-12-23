@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated, Easing, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated, Easing, useWindowDimensions, BackHandler } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -122,10 +122,8 @@ export default function SelectTests() {
       if (tapSoundRef.current) {
         tapSoundRef.current.release();
       }
-      console.log('Playing tap sound');
       const tapSound = new Sound('tap_sound.wav', Sound.MAIN_BUNDLE, (error) => {
         if (error) {
-          console.log('Tap sound load error:', error);
           return;
         }
         tapSound.play((finished) => {
@@ -139,7 +137,6 @@ export default function SelectTests() {
       });
       tapSoundRef.current = tapSound;
     } catch (error) {
-      console.log('Tap sound error:', error);
     }
   }, []);
 
@@ -176,15 +173,12 @@ export default function SelectTests() {
   useEffect(() => {
     // Don't play if not focused (prevents unfocused instances from playing)
     if (!isFocusedRef.current) {
-      console.log('🔇 SelectTests lab audio skipped - not focused');
       return;
     }
 
     if (!voiceId || audioPaused) {
       return;
     }
-
-    console.log('🔊 SelectTests playing lab audio | voiceId:', voiceId);
 
     // Setup sound category
     try { Sound.setCategory('Playback', true); } catch (_) { }
@@ -194,7 +188,6 @@ export default function SelectTests() {
     const delayTimeout = setTimeout(() => {
       // Double-check focus before playing
       if (!isFocusedRef.current) {
-        console.log('🔇 SelectTests lab audio timeout skipped - lost focus');
         return;
       }
 
@@ -212,7 +205,6 @@ export default function SelectTests() {
           return;
         }
         if (error) {
-          console.log('Lab audio load error:', error);
           try { s.release(); } catch (_) { }
           labSoundRef.current = null;
           return;
@@ -238,12 +230,10 @@ export default function SelectTests() {
   useFocusEffect(
     React.useCallback(() => {
       // Screen gained focus
-      console.log('👁️ SelectTests FOCUSED');
       isFocusedRef.current = true;
 
       return () => {
         // Screen lost focus
-        console.log('👁️ SelectTests UNFOCUSED');
         isFocusedRef.current = false;
         stopLabAudio();
         // Clean up tap sound
@@ -254,6 +244,23 @@ export default function SelectTests() {
         tapSoundRef.current = null;
       };
     }, [stopLabAudio])
+  );
+
+  // Handle Android physical back button press - show quit confirmation
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Show the quit confirmation sheet instead of navigating back
+        quitSheetRef.current?.present();
+        return true; // Prevent default back behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => {
+        subscription.remove();
+      };
+    }, [])
   );
 
   const handleEvaluate = () => {

@@ -155,7 +155,7 @@ export default function LeagueScreen() {
                 style={styles.imageOverlay}
               /> */}
               <LinearGradient
-                colors={['rgba(238, 163, 190, 0)', '#f9eff2ff']}
+                colors={['rgba(238, 163, 190, 0)', '#f7eaeeff']}
                 style={styles.bottomFade}
               />
             </View>
@@ -247,6 +247,7 @@ const styles = StyleSheet.create({
   heroImage: {
     width: '100%',
     height: '100%',
+    marginTop: -30,
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
   },
   podiumSection: {
     paddingHorizontal: 16,
-    marginTop: -70,
+    marginTop: -120,
   },
   podiumContainer: {
     flexDirection: 'row',

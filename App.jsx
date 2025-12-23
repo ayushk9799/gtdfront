@@ -161,7 +161,6 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
         }));
       }
     } else {
-      // console.log('Server FCM token matches, no update needed');
     }
 
     // Step 5: Subscribe to topic if notifications are enabled by user
@@ -174,7 +173,6 @@ export const handleFCMTokenUpdate = async (dispatch, userData) => {
       // console.warn('Failed to subscribe to topic all_user (token update flow)', e);
     }
   } catch (error) {
-    // console.log('Error handling FCM token:', error);
   }
 };
 

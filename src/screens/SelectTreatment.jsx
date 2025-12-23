@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing, Image, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Animated, Easing, Image, useWindowDimensions, BackHandler } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -256,6 +256,23 @@ export default function SelectTreatment() {
         tapSoundRef.current = null;
       };
     }, [stopTreatmentAudio])
+  );
+
+  // Handle Android physical back button press - show quit confirmation
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Show the quit confirmation sheet instead of navigating back
+        quitSheetRef.current?.present();
+        return true; // Prevent default back behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => {
+        subscription.remove();
+      };
+    }, [])
   );
 
   return (

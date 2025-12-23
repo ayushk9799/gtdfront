@@ -20,7 +20,7 @@ export default function HeartScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
-  const MAX_HEARTS_DISPLAY = 3;
+  const MAX_HEARTS_DISPLAY = 2;
   const heartsToShow = Math.min(hearts, MAX_HEARTS_DISPLAY);
   const [timeUntilReset, setTimeUntilReset] = useState('');
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -234,7 +234,7 @@ export default function HeartScreen() {
                 </View>
               </View>
 
-              <Text style={styles.subtitleSecondary}>You get 3 hearts every 24 hour.</Text>
+              <Text style={styles.subtitleSecondary}>You get 2 hearts every 24 hour.</Text>
 
               <View style={styles.cardAlt}>
                 <Text style={styles.cardAltTitle}>Want to play more today ?</Text>

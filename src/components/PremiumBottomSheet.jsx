@@ -73,7 +73,6 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
       setEntitlements(customerInfo.entitlements.active);
       await syncServerPremium(customerInfo);
     } catch (e) {
-      // console.log('Error checking entitlements:', e);
     }
   };
 
@@ -91,7 +90,6 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
           Alert.alert('Purchase cancelled');
         }
       } else {
-        // console.log('Purchase failed:', e);
       }
       return;
     } finally {
@@ -119,7 +117,6 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
       }
       await checkEntitlements();
     } catch (e) {
-      // console.log('Failed to load offerings', e);
       setOfferings(null);
       setSelectedPlan(null);
     } finally {
@@ -235,7 +232,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
               >
                 <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
-                  Value for money. Monthly auto-renewal subscription
+                 Get unlimited access to all features
                 </Text>
               </View>
             </View>

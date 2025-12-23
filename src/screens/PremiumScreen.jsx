@@ -21,7 +21,6 @@ export default function PremiumScreen() {
   const [selectedPlan, setSelectedPlan] = useState(null); // 'monthly' | 'sixMonth'
   const [offerings, setOfferings] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
-  console.log('offerings', offerings);
 
   const [loading, setLoading] = useState(false);
   const theme = Colors.light;
@@ -137,7 +136,6 @@ export default function PremiumScreen() {
   };
 
   const getOfferingsAndEntitlements = async () => {
-    // console.log('getOfferingsAndEntitlements');
 
     try {
       setLoading(true);

@@ -107,7 +107,6 @@ export default function ClinicalInsight() {
           return;
         }
         if (error) {
-          console.log('Magical twinkle sound load error:', error);
           try { s.release(); } catch (_) { }
           twinkleSoundRef.current = null;
           return;
@@ -385,7 +384,7 @@ export default function ClinicalInsight() {
               style={styles.scoreBoardText}
               value={scores.total}
               duration={800}
-              formatter={(v) => `Score: 90 / 100`}
+              formatter={(v) => `Score: ${Math.round(v)} / 100`}
             />
             {/* Bottom fade to blend image into page background */}
             <LinearGradient
@@ -1000,7 +999,7 @@ const styles = StyleSheet.create({
   scoreBoardText: {
     fontSize: 24,
     color: '#FFFFFF',
-  
+
     paddingLeft: 58,
     fontFamily: 'BrightChalk',
     textShadowColor: 'rgba(0,0,0,0.35)',
