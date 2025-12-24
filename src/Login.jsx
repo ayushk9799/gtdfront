@@ -91,13 +91,15 @@ function Login({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const colorScheme = useColorScheme();
-  const themeColors =  Colors.light;
+  const themeColors = Colors.light;
   const dispatch = useDispatch();
 
   const handlePostLogin = async (credential) => {
     // Persist user credential
     const loggedInUser = credential?.user || {};
+    const isNewUser = credential?.isNewUser || false;
     storage.set('user', JSON.stringify(loggedInUser));
+    storage.set('isNewUser', isNewUser);
 
     // Try to register for remote messages and fetch FCM token immediately
     try {
@@ -136,7 +138,7 @@ function Login({ onLogin }) {
     if (typeof onLogin === 'function') {
       onLogin(loggedInUser);
     }
-    try { storage.set('forceLogin', false); } catch {}
+    try { storage.set('forceLogin', false); } catch { }
   };
 
   const handleSignIn = async () => {
@@ -179,7 +181,7 @@ function Login({ onLogin }) {
           </View>
         </View>
         <LinearGradient
-          colors={[ 'rgba(255,255,255,0)', '#ffffff' ]}
+          colors={['rgba(255,255,255,0)', '#ffffff']}
           start={{ x: 0, y: 0.4 }}
           end={{ x: 0, y: 1 }}
           style={[styles.heroFade, { height: HERO_FADE_HEIGHT }]}
@@ -214,7 +216,7 @@ function Login({ onLogin }) {
               </TouchableOpacity>
             )
           )}
-          
+
           {/* Google Sign-In Button */}
           {isLoading ? (
             <ActivityIndicator size="large" color={Colors.brand.darkPink} />
@@ -241,7 +243,7 @@ function Login({ onLogin }) {
               </View>
             </TouchableOpacity>
           )}
-          
+
           {/* Terms & Privacy Policy */}
           <Text style={styles.termsText}>
             By continuing, you agree to our{' '}

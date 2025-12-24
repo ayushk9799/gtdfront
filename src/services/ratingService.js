@@ -63,20 +63,17 @@ export const requestInAppReview = async () => {
   try {
     // Check if in-app review is available on this device
     if (!InAppReview.isAvailable()) {
-      console.log('📱 In-app review not available on this device');
       return false;
     }
 
     // Request the review
     const hasFlowFinished = await InAppReview.RequestInAppReview();
-    console.log('📱 In-app review flow finished:', hasFlowFinished);
 
     // Mark that we've attempted to show the review
     setReviewRequested();
 
     return hasFlowFinished;
   } catch (error) {
-    console.log('📱 In-app review error:', error);
     return false;
   }
 };
@@ -91,12 +88,10 @@ export const checkAndRequestReview = async () => {
   // Increment games played
   const gamesPlayed = incrementGamesPlayed();
 
-  console.log(`📱 Games played count: ${gamesPlayed}`);
 
   // Only show review after the first game (gamesPlayed === 1)
   // and if we haven't already requested a review
   if (gamesPlayed === 1 && !hasRequestedReview()) {
-    console.log('📱 First game completed! Requesting in-app review...');
 
     // Add a small delay to let the user see their results first
     await new Promise(resolve => setTimeout(resolve, 1500));

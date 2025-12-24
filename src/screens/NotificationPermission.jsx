@@ -1,4 +1,4 @@
-import React, {  useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, PermissionsAndroid, Image, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/Colors';
@@ -51,7 +51,14 @@ export default function NotificationPermission() {
     // Request OS permission
     const granted = await requestUserPermission();
     storage.set('notifEnabled', granted);
-    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+
+    // Navigate: new users go to referral, existing users go to Tabs
+    const isNewUser = storage.getBoolean('isNewUser');
+    if (isNewUser) {
+      navigation.navigate('ReferralCode');
+    } else {
+      navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+    }
 
 
     // If granted, ensure device is registered and subscribe to topic
@@ -84,7 +91,13 @@ export default function NotificationPermission() {
   const skip = () => {
     storage.set('notifDecided', true);
     storage.set('notifEnabled', false);
-    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+    // Navigate: new users go to referral, existing users go to Tabs
+    const isNewUser = storage.getBoolean('isNewUser');
+    if (isNewUser) {
+      navigation.navigate('ReferralCode');
+    } else {
+      navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+    }
   };
 
   return (
@@ -209,7 +222,7 @@ const styles = StyleSheet.create({
     padding: 30,
     // width: '90%',
     alignSelf: 'center',
-    margin : 20
+    margin: 20
   },
   cardShadow: {
     shadowColor: '#000',
@@ -336,7 +349,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     overflow: 'hidden',
-    marginHorizontal : 20,
+    marginHorizontal: 20,
   },
   primaryButtonGradient: {
     position: 'absolute',

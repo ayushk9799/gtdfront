@@ -1,18 +1,15 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { MMKV } from 'react-native-mmkv';
 import { API_BASE } from '../../../constants/Api';
 import { submitGameplay } from './currentGameSlice';
-
-const storage = new MMKV();
-
-const HEART_LEFT_KEY = 'HEART_LEFT';
-const HEART_UPDATED_AT_KEY = 'HEART_UPDATED_AT';
 
 export const getUser = createAsyncThunk(
   'user/getUser',
   async (userId, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${API_BASE}/api/users/${userId}`);
+      // Get device timezone to send to server
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const res = await fetch(`${API_BASE}/api/users/${userId}?timezone=${encodeURIComponent(timezone)}`);
       const data = await res.json();
 
       if (!res.ok || data?.error) {
@@ -50,6 +47,29 @@ export const updateUser = createAsyncThunk(
   }
 );
 
+// Async thunk to use a heart (calls server API)
+export const useHeart = createAsyncThunk(
+  'user/useHeart',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const { userData } = getState().user;
+      const userId = userData?._id;
+      if (!userId) return rejectWithValue('No user ID');
+
+      const res = await fetch(`${API_BASE}/api/users/${userId}/hearts/use`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+
+      if (!res.ok) return rejectWithValue(data?.error || 'Failed to use heart');
+      return data.hearts;
+    } catch (err) {
+      return rejectWithValue(err?.message || 'Network error');
+    }
+  }
+);
+
 
 const initialState = {
   userData: null,
@@ -73,10 +93,6 @@ const userSlice = createSlice({
       const next = Number(action.payload);
       state.hearts = Number.isFinite(next) ? next : 0;
     },
-    useHeart: (state) => {
-      state.hearts = state.hearts - 1;
-      storage.set(HEART_LEFT_KEY, state.hearts);
-    },
   },
   extraReducers: (builder) => {
     builder
@@ -87,6 +103,8 @@ const userSlice = createSlice({
       .addCase(getUser.fulfilled, (state, action) => {
         state.status = 'idle';
         state.userData = action.payload || null;
+        // Set hearts from server response
+        state.hearts = action.payload?.hearts ?? 0;
       })
       .addCase(getUser.rejected, (state) => {
         state.status = 'idle';
@@ -101,6 +119,10 @@ const userSlice = createSlice({
       })
       .addCase(updateUser.rejected, (state) => {
         state.status = 'idle';
+      })
+      // Handle useHeart async thunk
+      .addCase(useHeart.fulfilled, (state, action) => {
+        state.hearts = action.payload;
       })
       // Update user data when gameplay is submitted successfully
       .addCase(submitGameplay.fulfilled, (state, action) => {
@@ -136,48 +158,5 @@ const userSlice = createSlice({
   },
 });
 
-export const refreshHearts = createAsyncThunk(
-  'user/refreshHearts',
-  async (_, { dispatch }) => {
-    try {
-      const now = new Date();
-      const storedLeft = storage.getNumber(HEART_LEFT_KEY);
-      const storedUpdatedAt = storage.getString(HEART_UPDATED_AT_KEY);
-
-      let isNewDay = true;
-      if (storedUpdatedAt) {
-        const last = new Date(storedUpdatedAt);
-        if (!Number.isNaN(last.getTime())) {
-          isNewDay = now.toDateString() !== last.toDateString();
-        }
-      }
-
-      let heartsLeft;
-      if (isNewDay) {
-        heartsLeft = 2;
-        storage.set(HEART_LEFT_KEY, heartsLeft);
-        storage.set(HEART_UPDATED_AT_KEY, now.toISOString());
-      } else {
-        const validStored = typeof storedLeft === 'number' && Number.isFinite(storedLeft);
-        heartsLeft = validStored ? storedLeft : 2;
-        // ensure keys exist if missing
-        if (!validStored) storage.set(HEART_LEFT_KEY, heartsLeft);
-        if (!storedUpdatedAt) storage.set(HEART_UPDATED_AT_KEY, now.toISOString());
-      }
-
-      dispatch(userSlice.actions.setHearts(heartsLeft));
-      return heartsLeft;
-    } catch (e) {
-      const fallback = 2;
-      try {
-        storage.set(HEART_LEFT_KEY, fallback);
-        storage.set(HEART_UPDATED_AT_KEY, new Date().toISOString());
-      } catch { }
-      dispatch(userSlice.actions.setHearts(fallback));
-      return fallback;
-    }
-  }
-);
-
-export const { setCustomerInfo, setHearts, useHeart } = userSlice.actions;
+export const { setCustomerInfo, setHearts } = userSlice.actions;
 export default userSlice.reducer;

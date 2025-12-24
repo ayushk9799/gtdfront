@@ -27,9 +27,11 @@ import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPermission from './src/screens/NotificationPermission';
+import ReferralCodeScreen from './src/screens/ReferralCodeScreen';
 import HeartScreen from './src/screens/HeartScreen';
+import EditAccountScreen from './src/screens/EditAccountScreen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { getUser, updateUser, refreshHearts } from './src/store/slices/userSlice';
+import { getUser, updateUser } from './src/store/slices/userSlice';
 import RNBootSplash from 'react-native-bootsplash';
 import {
   registerDeviceForRemoteMessages,
@@ -362,10 +364,7 @@ export default function App() {
     initPurchases();
   }, [initPurchases]);
 
-  // Initialize hearts from storage on app launch
-  useEffect(() => {
-    dispatch(refreshHearts());
-  }, [dispatch]);
+
 
   // After interactive login, user state changes; fetch fresh user data from server
   useEffect(() => {
@@ -376,6 +375,8 @@ export default function App() {
     }
   }, [dispatch, user]);
   // storage.set('remoteMessage', JSON.stringify(remoteMessage?.data));
+
+
 
   // Identify RevenueCat user after first-time login (or when restored from storage)
   useEffect(() => {
@@ -522,14 +523,25 @@ export default function App() {
                 statusBarTranslucent: true,
               }}
               initialRouteName={
-                storage.getBoolean && !storage.getBoolean('notifDecided')
+                !storage.getBoolean('notifDecided')
                   ? 'NotificationPermission'
-                  : 'Tabs'
+                  : (storage.getBoolean('isNewUser') && !storage.getBoolean('referralDecided'))
+                    ? 'ReferralCode'
+                    : 'Tabs'
               }
             >
               <Stack.Screen
                 name="NotificationPermission"
                 component={NotificationPermission}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="ReferralCode"
+                component={ReferralCodeScreen}
                 options={{
                   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
                   presentation: 'card',
@@ -595,6 +607,15 @@ export default function App() {
               <Stack.Screen
                 name="Heart"
                 component={HeartScreen}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="EditAccount"
+                component={EditAccountScreen}
                 options={{
                   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
                   presentation: 'card',

@@ -120,7 +120,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
-  const { hearts } = useSelector(state => state.user);
+  const { hearts, isPremium } = useSelector(state => state.user);
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
@@ -312,9 +312,9 @@ export default function HomeScreen() {
 
   const openCaseById = async (caseId) => {
     try {
-      if (hearts <= -7) {
+      if (!isPremium && hearts <= 0) {
         ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);
-        premiumSheetRef.current?.present();
+        navigation.navigate('Heart');
         return;
       }
       await dispatch(loadCaseById(caseId));

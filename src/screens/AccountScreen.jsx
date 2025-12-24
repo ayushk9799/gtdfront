@@ -228,9 +228,25 @@ export default function AccountScreen() {
               {user?.name?.[0]?.toUpperCase?.() || user?.email?.[0]?.toUpperCase?.() || 'U'}
             </Text>
           </View>
-          <Text style={styles.title}>
-            {user?.name || 'User'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={styles.title}>
+              {user?.name || 'User'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('EditAccount')}
+              activeOpacity={0.7}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: '#FFE0EA',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MaterialCommunityIcons name="pencil" size={16} color={Colors.brand.darkPink} />
+            </TouchableOpacity>
+          </View>
           {!!user?.email && (
             <Text style={styles.subtitle}>{user.email}</Text>
           )}
@@ -360,7 +376,7 @@ export default function AccountScreen() {
         {/* Notification Banner */}
         {!effectiveEnabled && (
           <View style={{
-            marginHorizontal: 16,
+            marginHorizontal: 0,
             marginBottom: 16,
             padding: 16,
             borderRadius: 16,
@@ -569,22 +585,6 @@ export default function AccountScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
               <MaterialCommunityIcons name="logout" size={20} color="#ffffff" />
               <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 16, marginLeft: 10 }}>Log out</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleDeleteAccount}
-            activeOpacity={0.85}
-            style={{
-              alignSelf: 'stretch',
-              backgroundColor: '#FEF2F2',
-              paddingVertical: 16,
-              borderRadius: 14,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <MaterialCommunityIcons name="delete-outline" size={20} color="#DC2626" />
-              <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 16, marginLeft: 10 }}>Delete Account</Text>
             </View>
           </TouchableOpacity>
         </View>

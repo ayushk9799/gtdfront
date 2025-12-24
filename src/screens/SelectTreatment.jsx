@@ -98,7 +98,6 @@ export default function SelectTreatment() {
       }
       const tapSound = new Sound('tap_sound.wav', Sound.MAIN_BUNDLE, (error) => {
         if (error) {
-          console.log('Tap sound load error:', error);
           return;
         }
         tapSound.play((finished) => {
@@ -112,7 +111,6 @@ export default function SelectTreatment() {
       });
       tapSoundRef.current = tapSound;
     } catch (error) {
-      console.log('Tap sound error:', error);
     }
   }, []);
 
@@ -179,7 +177,6 @@ export default function SelectTreatment() {
   useEffect(() => {
     // Don't play if not focused (prevents unfocused instances from playing)
     if (!isFocusedRef.current) {
-      console.log('🔇 SelectTreatment audio skipped - not focused');
       return;
     }
 
@@ -187,7 +184,6 @@ export default function SelectTreatment() {
       return;
     }
 
-    console.log('🔊 SelectTreatment playing audio | voiceId:', voiceId);
 
     // Setup sound category
     try { Sound.setCategory('Playback', true); } catch (_) { }
@@ -197,7 +193,6 @@ export default function SelectTreatment() {
     const delayTimeout = setTimeout(() => {
       // Double-check focus before playing
       if (!isFocusedRef.current) {
-        console.log('🔇 SelectTreatment audio timeout skipped - lost focus');
         return;
       }
 
@@ -214,7 +209,6 @@ export default function SelectTreatment() {
           return;
         }
         if (error) {
-          console.log('Treatment audio load error:', error);
           try { s.release(); } catch (_) { }
           treatmentSoundRef.current = null;
           return;
@@ -240,12 +234,10 @@ export default function SelectTreatment() {
   useFocusEffect(
     React.useCallback(() => {
       // Screen gained focus
-      console.log('👁️ SelectTreatment FOCUSED');
       isFocusedRef.current = true;
 
       return () => {
         // Screen lost focus
-        console.log('👁️ SelectTreatment UNFOCUSED');
         isFocusedRef.current = false;
         stopTreatmentAudio();
         // Clean up tap sound

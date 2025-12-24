@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform, Share } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -16,7 +16,8 @@ const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 10;
 
 export default function HeartScreen() {
   // Static, presentational values (no calculations)
-  const { hearts } = useSelector(state => state.user);
+  const { hearts, userData } = useSelector(state => state.user);
+  const referralCode = userData?.referralCode || '';
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
@@ -93,6 +94,23 @@ export default function HeartScreen() {
     // navigation.navigate('Premium');
     // dispatch(useHeart());
     premiumSheetRef.current?.present();
+  };
+
+  const onShareWithFriend = async () => {
+    try {
+      const shareMessage = referralCode
+        ? `🩺 Learning medicine the real way!
+Diagnose It lets you treat patients step-by-step like real OPD cases.
+Use my referral code ${referralCode} while signing up ❤️
+Join me 👉 https://diagnoseit.in`
+        : '🎯 Hey! I\'m solving real clinical cases with Diagnose It! It is real and fun - you can treat patients like a real doctor. Join here: https://diagnoseit.in';
+
+      await Share.share({
+        message: shareMessage,
+        title: 'Invite to Diagnose It',
+      });
+    } catch (error) {
+    }
   };
 
   return (
@@ -237,28 +255,79 @@ export default function HeartScreen() {
               <Text style={styles.subtitleSecondary}>You get 2 hearts every 24 hour.</Text>
 
               <View style={styles.cardAlt}>
-                <Text style={styles.cardAltTitle}>Want to play more today ?</Text>
-                <Text style={styles.cardAltSubtitle}>Get <Text style={{ fontWeight: '700' }}>Premium To :</Text></Text>
+                <Text style={styles.cardAltTitle}>Want to play more today?</Text>
 
-                <View style={styles.listRow}>
-                  <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
-                  <Text style={styles.listText}>
-                    Unlock <Text style={{ fontWeight: '700' }}>unlimited Hearts</Text> for nonstop play.
-                  </Text>
+                {/* Premium Option */}
+                <View style={styles.optionSection}>
+                  <View style={styles.optionHeader}>
+                    <View style={styles.optionIconContainer}>
+                      <Ionicons name="diamond" size={20} color="#667eea" />
+                    </View>
+                    <Text style={styles.optionTitle}>Get Premium</Text>
+                  </View>
 
+                  <View style={styles.listRow}>
+                    <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
+                    <Text style={styles.listText}>
+                      Unlock <Text style={{ fontWeight: '700' }}>unlimited Hearts</Text>
+                    </Text>
+                  </View>
 
+                  <View style={styles.listRow}>
+                    <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
+                    <Text style={styles.listText}>
+                      Access <Text style={{ fontWeight: '700' }}>Clinical Insight</Text>
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
+                    <Text style={styles.ctaButtonText}>Get Premium →</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <View style={styles.listRow}>
-                  <Ionicons name="checkmark-circle" size={20} color="#02b3a4" style={{ marginRight: 8 }} />
-                  <Text style={styles.listText}>
-                    Access <Text style={{ fontWeight: '700' }}>clinical Insight</Text> for deeper learning.
-                  </Text>
+                {/* OR Divider */}
+                <View style={styles.orDividerContainer}>
+                  <View style={styles.orDividerLine} />
+                  <View style={styles.orDividerTextContainer}>
+                    <Text style={styles.orDividerText}>OR</Text>
+                  </View>
+                  <View style={styles.orDividerLine} />
                 </View>
 
-                <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
-                  <Text style={styles.ctaButtonText}>Get Premium →</Text>
-                </TouchableOpacity>
+                {/* Referral Option */}
+                <View style={styles.optionSection}>
+                  <View style={styles.optionHeader}>
+                    <View style={[styles.optionIconContainer, { backgroundColor: '#FFF0F0' }]}>
+                      <Ionicons name="gift" size={20} color="#ff4d4f" />
+                    </View>
+                    <Text style={styles.optionTitle}>Refer a Friend</Text>
+                    <View style={styles.heartBadge}>
+                      <Ionicons name="heart" size={12} color="#ff4d4f" />
+                      <Text style={styles.heartBadgeText}>+1</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.referralDescriptionText}>
+                    Share your code with friends. When they enter it, you get a free heart!
+                  </Text>
+
+                  {/* Referral Code Display */}
+                  {referralCode ? (
+                    <View style={styles.referralCodeBox}>
+                      <Text style={styles.referralCodeLabel}>Your Referral Code</Text>
+                      <Text style={styles.referralCodeValue}>{referralCode}</Text>
+                    </View>
+                  ) : null}
+
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={onShareWithFriend}
+                    activeOpacity={0.9}
+                  >
+                    <Ionicons name="share-social" size={18} color="#2D3142" style={{ marginRight: 8 }} />
+                    <Text style={styles.secondaryButtonText}>Share Code</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
             <PremiumBottomSheet ref={premiumSheetRef} />
@@ -452,6 +521,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryButton: {
+    flexDirection: 'row',
     marginTop: 10,
     borderColor: '#CBD5E1',
     borderWidth: 1,
@@ -459,10 +529,153 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   secondaryButtonText: {
     color: '#0F172A',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Option Section Styles (for Premium option)
+  optionSection: {
+    marginTop: 8,
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  optionIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0EDFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D3142',
+  },
+  // OR Divider Styles
+  orDividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E8E8E8',
+  },
+  orDividerTextContainer: {
+    paddingHorizontal: 12,
+    backgroundColor: 'white',
+  },
+  orDividerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#9CA3AF',
+  },
+  // Heart Badge Styles
+  heartBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginLeft: 'auto',
+  },
+  heartBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ff4d4f',
+    marginLeft: 3,
+  },
+  // Referral Description Text
+  referralDescriptionText: {
+    fontSize: 14,
+    color: '#5B6474',
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  // Steps Row Styles
+  stepsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginBottom: 14,
+  },
+  stepItem: {
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  stepCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E8E8E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  stepCircleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#5B6474',
+  },
+  stepLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#2D3142',
+    textAlign: 'center',
+  },
+  // Share CTA Button
+  shareCtaButton: {
+    flexDirection: 'row',
+    marginTop: 4,
+    backgroundColor: '#ff4d4f',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareCtaButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  // Referral Code Box
+  referralCodeBox: {
+    backgroundColor: '#FFF0F0',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFD6E5',
+    borderStyle: 'dashed',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 14,
+    alignItems: 'center',
+  },
+  referralCodeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  referralCodeValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#ff4d4f',
+    letterSpacing: 2,
   },
 });
