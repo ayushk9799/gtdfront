@@ -1,5 +1,5 @@
 import React from 'react';
-import { useWindowDimensions, View, Text, Image, ImageBackground, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler } from 'react-native';
+import { useWindowDimensions, View, Text, Image, ImageBackground, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, Modal, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
@@ -14,6 +14,8 @@ import { useSelector } from 'react-redux';
 import { computeGameplayScoreNormalized } from '../services/scoring';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import Sound from 'react-native-sound';
+import Video from 'react-native-video';
+import Pdf from 'react-native-pdf';
 
 const ORANGE = '#FF8A00';
 // Match the app's subtle pink gradient
@@ -216,6 +218,17 @@ export default function ClinicalInsight() {
   const [rationaleExpanded, setRationaleExpanded] = React.useState(false);
   const [txExpanded, setTxExpanded] = React.useState(false);
   const [whyExpanded, setWhyExpanded] = React.useState(false);
+
+  // Modal states for resources
+  const [videoModalVisible, setVideoModalVisible] = React.useState(false);
+  const [pdfModalVisible, setPdfModalVisible] = React.useState(false);
+  const [infographicModalVisible, setInfographicModalVisible] = React.useState(false);
+  const [videoLoading, setVideoLoading] = React.useState(true);
+  const [pdfLoading, setPdfLoading] = React.useState(true);
+
+  // PDF page tracking
+  const [pdfCurrentPage, setPdfCurrentPage] = React.useState(1);
+  const [pdfTotalPages, setPdfTotalPages] = React.useState(0);
 
   // Compute normalized scores (30/40/30)
   const scores = React.useMemo(() => {
@@ -635,7 +648,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapRed]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#7B1F24" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextRed]}>Why Other Diagnoses Didn’t Fit</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextRed]}>Why Other Diagnoses Didn't Fit</Text>
               </View>
               <MaterialCommunityIcons name={whyExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#7B1F24" />
             </Pressable>
@@ -665,6 +678,121 @@ export default function ClinicalInsight() {
             )}
           </View>
         ) : null}
+
+        {/* Video Overview - Standalone Card */}
+        <View style={[styles.standaloneResourceCard, !caseData?.videooverview && styles.resourceCardDisabled]}>
+          <View style={styles.resourceInfoRow}>
+            <MaterialCommunityIcons name="video-outline" size={20} color={caseData?.videooverview ? "#14919B" : "#B0B7BF"} />
+            <Text style={[styles.resourceTitle, !caseData?.videooverview && styles.resourceTitleDisabled]}>Video Overview</Text>
+            {!caseData?.videooverview && (
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Coming Soon</Text>
+              </View>
+            )}
+          </View>
+          {caseData?.videooverview ? (
+            <View style={styles.inlineVideoContainer}>
+              <Video
+                source={{ uri: caseData.videooverview }}
+                style={styles.inlineVideo}
+                resizeMode="contain"
+                controls={true}
+                paused={true}
+                controlsTimeout={1000}
+                hideShutterView={true}
+                controlsStyles={{
+                  hideNavigationBarOnFullScreenMode: true,
+                  hideNotificationBarOnFullScreenMode: true,
+                  liveLabel: '',
+                }}
+              />
+            </View>
+          ) : (
+            <View style={styles.resourcePlaceholderSmall}>
+              <MaterialCommunityIcons name="play-circle-outline" size={40} color="#B0B7BF" />
+              <Text style={styles.placeholderText}>Video not available</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Clinical Infographic - Standalone Card */}
+        <View style={[styles.standaloneResourceCard, !caseData?.infographic && styles.resourceCardDisabled]}>
+          <View style={styles.resourceInfoRow}>
+            <MaterialCommunityIcons name="image-multiple-outline" size={20} color={caseData?.infographic ? "#14919B" : "#B0B7BF"} />
+            <Text style={[styles.resourceTitle, !caseData?.infographic && styles.resourceTitleDisabled]}>Clinical Infographic</Text>
+            {!caseData?.infographic && (
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Coming Soon</Text>
+              </View>
+            )}
+          </View>
+          {caseData?.infographic ? (
+            <View style={styles.inlineImageContainer}>
+              <Image
+                source={{ uri: caseData.infographic }}
+                style={styles.inlineImage}
+                resizeMode="contain"
+              />
+            </View>
+          ) : (
+            <View style={styles.resourcePlaceholderSmall}>
+              <MaterialCommunityIcons name="image-outline" size={40} color="#B0B7BF" />
+              <Text style={styles.placeholderText}>Infographic not available</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Slide Deck PDF - Standalone Card */}
+        <View style={[styles.standaloneResourceCard, !caseData?.slidedeck && styles.resourceCardDisabled]}>
+          <View style={styles.resourceInfoRow}>
+            <MaterialCommunityIcons name="file-presentation-box" size={20} color={caseData?.slidedeck ? "#14919B" : "#B0B7BF"} />
+            <Text style={[styles.resourceTitle, !caseData?.slidedeck && styles.resourceTitleDisabled]}>Slide Deck (PDF)</Text>
+            {!caseData?.slidedeck && (
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Coming Soon</Text>
+              </View>
+            )}
+          </View>
+          {caseData?.slidedeck ? (
+            <View>
+              <View style={styles.inlinePdfContainer}>
+                <Pdf
+                  source={{ uri: caseData.slidedeck, cache: true }}
+                  style={styles.inlinePdf}
+                  horizontal={true}
+                  enablePaging={true}
+                  trustAllCerts={false}
+                  onLoadComplete={(numberOfPages) => {
+                    setPdfTotalPages(numberOfPages);
+                    setPdfCurrentPage(1);
+                  }}
+                  onPageChanged={(page) => {
+                    setPdfCurrentPage(page);
+                  }}
+                />
+              </View>
+              {/* Page indicator dots */}
+              {pdfTotalPages > 0 && (
+                <View style={styles.pdfDotsContainer}>
+                  {Array.from({ length: pdfTotalPages }, (_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.pdfDot,
+                        pdfCurrentPage === i + 1 && styles.pdfDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.resourcePlaceholderSmall}>
+              <MaterialCommunityIcons name="file-presentation-box" size={40} color="#B0B7BF" />
+              <Text style={styles.placeholderText}>PDF not available</Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       {/* <Pressable style={styles.fab}>
@@ -1237,5 +1365,261 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 8 },
     elevation: 5,
+  },
+  // Teal-themed card for Case Resources
+  insightCardTeal: {
+    borderColor: '#B2DFDB',
+    backgroundColor: '#E0F2F1',
+  },
+  insightHeaderTextTeal: { color: '#0D7377' },
+  insightIconWrapTeal: { backgroundColor: '#B2DFDB' },
+  // Standalone resource card (no parent wrapper)
+  standaloneResourceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E6EAF0',
+    padding: 12,
+    marginTop: 16,
+    shadowColor: '#14919B',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  // Resource card styles
+  resourceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#B2DFDB',
+    padding: 8,
+    marginBottom: 12,
+    shadowColor: '#14919B',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  resourceImageContainer: {
+    width: '100%',
+    height: 160,
+    borderRadius: 12,
+    backgroundColor: '#E0F7FA',
+    overflow: 'hidden',
+    marginBottom: 10,
+    position: 'relative',
+  },
+  resourceImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  resourcePlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E0F7FA',
+  },
+  resourcePlayOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  resourceInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  resourceTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0D7377',
+    marginLeft: 8,
+  },
+  resourceDesc: {
+    fontSize: 14,
+    color: '#5C6C83',
+    lineHeight: 20,
+  },
+  // Disabled states
+  resourceCardDisabled: {
+    opacity: 0.7,
+    backgroundColor: '#F5F5F5',
+    borderColor: '#E0E0E0',
+  },
+  resourceTitleDisabled: {
+    color: '#9E9E9E',
+  },
+  resourceDescDisabled: {
+    color: '#BDBDBD',
+  },
+  comingSoonBadge: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginLeft: 8,
+  },
+  comingSoonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E65100',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    backgroundColor: '#1A1A1A',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayer: {
+    width: '100%',
+    height: '100%',
+  },
+  pdfContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  pdfViewer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 10,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  // Infographic modal
+  infographicModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infographicCloseBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    zIndex: 10,
+  },
+  infographicFullImage: {
+    width: '100%',
+    height: '80%',
+  },
+  // Inline content styles
+  inlineVideoContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+    marginTop: 8,
+  },
+  inlineVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  inlineImageContainer: {
+    width: '100%',
+    height: 280,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
+    marginTop: 8,
+  },
+  inlineImage: {
+    width: '100%',
+    height: '100%',
+  },
+  inlinePdfContainer: {
+    width: '100%',
+    aspectRatio: 16/9,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#ba1d1dff',
+    marginTop: 8,
+  },
+  inlinePdf: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  resourcePlaceholderSmall: {
+    width: '100%',
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: '#F0F0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  placeholderText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#9E9E9E',
+    fontWeight: '600',
+  },
+  // PDF page indicator dots
+  pdfDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingBottom: 4,
+  },
+  pdfDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D0D0D0',
+    marginHorizontal: 4,
+  },
+  pdfDotActive: {
+    backgroundColor: '#14919B',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 });
