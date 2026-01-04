@@ -16,6 +16,7 @@ import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import Sound from 'react-native-sound';
 import Video from 'react-native-video';
 import Pdf from 'react-native-pdf';
+import { getGamesPlayedCount } from '../services/ratingService';
 
 const ORANGE = '#FF8A00';
 // Match the app's subtle pink gradient
@@ -79,6 +80,17 @@ export default function ClinicalInsight() {
   const initialTabParam = route?.params?.initialTab;
   const caseDataFromRoute = route?.params?.caseData;
   const premiumSheetRef = React.useRef(null);
+  const scrollViewRef = React.useRef(null);
+
+  // Refs for section Y positions (for cycling scroll)
+  const sectionYRefs = React.useRef({
+    coreInsights: 0,
+    howLanded: 0,
+    rationale: 0,
+    treatmentPriority: 0,
+    whyOther: 0,
+  });
+  const [currentSectionIndex, setCurrentSectionIndex] = React.useState(-1);
   const twinkleSoundRef = React.useRef(null);
 
   // Determine if opened from SelectTreatment
@@ -198,6 +210,15 @@ export default function ClinicalInsight() {
   } = useSelector((s) => s.currentGame);
 
   const { isPremium } = useSelector(state => state.user);
+
+  // Get games played count - re-read when screen comes into focus
+  const [gamesPlayed, setGamesPlayed] = React.useState(0);
+  useFocusEffect(
+    React.useCallback(() => {
+      setGamesPlayed(getGamesPlayedCount());
+    }, [])
+  );
+  const shouldShowPremiumBlur = !isPremium && gamesPlayed > 1;
 
 
   const caseData = caseDataFromRoute || caseDataFromStore || {};
@@ -378,7 +399,7 @@ export default function ClinicalInsight() {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
         <Pressable
           onPress={handleBackPress}
           style={styles.backBtnInline}
@@ -497,7 +518,12 @@ export default function ClinicalInsight() {
         </View>
 
         {/* core clinical insights card */}
-        <View style={styles.insightCard}>
+        <View
+          style={styles.insightCard}
+          onLayout={(e) => {
+            sectionYRefs.current.coreInsights = e.nativeEvent.layout.y;
+          }}
+        >
           <Pressable style={styles.insightHeaderRow} onPress={() => setInsightsExpanded((v) => !v)}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={styles.insightIconWrap}>
@@ -525,7 +551,12 @@ export default function ClinicalInsight() {
 
         {/* how we landed on the diagnosis */}
         {caseReview?.howWeLandedOnTheDiagnosis?.length ? (
-          <View style={[styles.insightCard, styles.insightCardBlue]}>
+          <View
+            style={[styles.insightCard, styles.insightCardBlue]}
+            onLayout={(e) => {
+              sectionYRefs.current.howLanded = e.nativeEvent.layout.y;
+            }}
+          >
             <Pressable style={styles.insightHeaderRow} onPress={() => setHowExpanded((v) => !v)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapBlue]}>
@@ -536,11 +567,11 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={howExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#2A4670" />
             </Pressable>
             {howExpanded && (
-              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, !isPremium && { height: 550 }]}>
-                {isPremium ? (
+              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
+                {!shouldShowPremiumBlur ? (
                   <HowDiagnosisList items={caseReview.howWeLandedOnTheDiagnosis} />
                 ) : null}
-                {!isPremium && (
+                {shouldShowPremiumBlur && (
                   <>
                     <BlurView
                       style={styles.premiumBlur}
@@ -564,7 +595,12 @@ export default function ClinicalInsight() {
 
         {/* rationale behind test selection */}
         {caseReview?.rationaleBehindTestSelection?.length ? (
-          <View style={[styles.insightCard, styles.insightCardOrange]}>
+          <View
+            style={[styles.insightCard, styles.insightCardOrange]}
+            onLayout={(e) => {
+              sectionYRefs.current.rationale = e.nativeEvent.layout.y;
+            }}
+          >
             <Pressable style={styles.insightHeaderRow} onPress={() => setRationaleExpanded((v) => !v)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
@@ -575,11 +611,11 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={rationaleExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#6E4A13" />
             </Pressable>
             {rationaleExpanded && (
-              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, !isPremium && { height: 550 }]}>
-                {isPremium ? (
+              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
+                {!shouldShowPremiumBlur ? (
                   <TestRationaleList items={caseReview.rationaleBehindTestSelection} />
                 ) : null}
-                {!isPremium && (
+                {shouldShowPremiumBlur && (
                   <>
                     <BlurView
                       style={styles.premiumBlur}
@@ -603,7 +639,12 @@ export default function ClinicalInsight() {
 
         {/* treatment priority and sequencing */}
         {caseReview?.treatmentPriorityAndSequencing?.length ? (
-          <View style={[styles.insightCard, styles.insightCardPurple]}>
+          <View
+            style={[styles.insightCard, styles.insightCardPurple]}
+            onLayout={(e) => {
+              sectionYRefs.current.treatmentPriority = e.nativeEvent.layout.y;
+            }}
+          >
             <Pressable style={styles.insightHeaderRow} onPress={() => setTxExpanded((v) => !v)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
@@ -614,11 +655,11 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={txExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#5B2E91" />
             </Pressable>
             {txExpanded && (
-              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, !isPremium && { height: 550 }]}>
-                {isPremium ? (
+              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
+                {!shouldShowPremiumBlur ? (
                   <TreatmentPriorityList items={caseReview.treatmentPriorityAndSequencing} />
                 ) : null}
-                {!isPremium && (
+                {shouldShowPremiumBlur && (
                   <>
                     <BlurView
                       style={styles.premiumBlur}
@@ -642,7 +683,12 @@ export default function ClinicalInsight() {
 
         {/* why other diagnoses didn't fit */}
         {caseReview?.whyOtherDiagnosesDidntFit?.length ? (
-          <View style={[styles.insightCard, styles.insightCardRed]}>
+          <View
+            style={[styles.insightCard, styles.insightCardRed]}
+            onLayout={(e) => {
+              sectionYRefs.current.whyOther = e.nativeEvent.layout.y;
+            }}
+          >
             <Pressable style={styles.insightHeaderRow} onPress={() => setWhyExpanded((v) => !v)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapRed]}>
@@ -653,11 +699,11 @@ export default function ClinicalInsight() {
               <MaterialCommunityIcons name={whyExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#7B1F24" />
             </Pressable>
             {whyExpanded && (
-              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, !isPremium && { height: 550 }]}>
-                {isPremium ? (
+              <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
+                {!shouldShowPremiumBlur ? (
                   <WhyNotList items={caseReview.whyOtherDiagnosesDidntFit} />
                 ) : null}
-                {!isPremium && (
+                {shouldShowPremiumBlur && (
                   <>
                     <BlurView
                       style={styles.premiumBlur}
@@ -679,127 +725,172 @@ export default function ClinicalInsight() {
           </View>
         ) : null}
 
-        {/* Video Overview - Standalone Card */}
-        <View style={[styles.standaloneResourceCard, !caseData?.videooverview && styles.resourceCardDisabled]}>
-          <View style={styles.resourceInfoRow}>
-            <MaterialCommunityIcons name="video-outline" size={20} color={caseData?.videooverview ? "#14919B" : "#B0B7BF"} />
-            <Text style={[styles.resourceTitle, !caseData?.videooverview && styles.resourceTitleDisabled]}>Video Overview</Text>
-            {!caseData?.videooverview && (
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>Coming Soon</Text>
-              </View>
-            )}
-          </View>
-          {caseData?.videooverview ? (
-            <View style={styles.inlineVideoContainer}>
-              <Video
-                source={{ uri: caseData.videooverview }}
-                style={styles.inlineVideo}
-                resizeMode="contain"
-                controls={true}
-                paused={true}
-                controlsTimeout={1000}
-                hideShutterView={true}
-                controlsStyles={{
-                  hideNavigationBarOnFullScreenMode: true,
-                  hideNotificationBarOnFullScreenMode: true,
-                  liveLabel: '',
-                }}
-              />
+        {/* Video Overview - Standalone Card (only show if available) */}
+        {caseData?.videooverview ? (
+          <View style={styles.standaloneResourceCard}>
+            <View style={styles.resourceInfoRow}>
+              <MaterialCommunityIcons name="video-outline" size={20} color="#14919B" />
+              <Text style={styles.resourceTitle}>Video Overview</Text>
             </View>
-          ) : (
-            <View style={styles.resourcePlaceholderSmall}>
-              <MaterialCommunityIcons name="play-circle-outline" size={40} color="#B0B7BF" />
-              <Text style={styles.placeholderText}>Video not available</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Clinical Infographic - Standalone Card */}
-        <View style={[styles.standaloneResourceCard, !caseData?.infographic && styles.resourceCardDisabled]}>
-          <View style={styles.resourceInfoRow}>
-            <MaterialCommunityIcons name="image-multiple-outline" size={20} color={caseData?.infographic ? "#14919B" : "#B0B7BF"} />
-            <Text style={[styles.resourceTitle, !caseData?.infographic && styles.resourceTitleDisabled]}>Clinical Infographic</Text>
-            {!caseData?.infographic && (
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>Coming Soon</Text>
-              </View>
-            )}
-          </View>
-          {caseData?.infographic ? (
-            <View style={styles.inlineImageContainer}>
-              <Image
-                source={{ uri: caseData.infographic }}
-                style={styles.inlineImage}
-                resizeMode="contain"
-              />
-            </View>
-          ) : (
-            <View style={styles.resourcePlaceholderSmall}>
-              <MaterialCommunityIcons name="image-outline" size={40} color="#B0B7BF" />
-              <Text style={styles.placeholderText}>Infographic not available</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Slide Deck PDF - Standalone Card */}
-        <View style={[styles.standaloneResourceCard, !caseData?.slidedeck && styles.resourceCardDisabled]}>
-          <View style={styles.resourceInfoRow}>
-            <MaterialCommunityIcons name="file-presentation-box" size={20} color={caseData?.slidedeck ? "#14919B" : "#B0B7BF"} />
-            <Text style={[styles.resourceTitle, !caseData?.slidedeck && styles.resourceTitleDisabled]}>Slide Deck (PDF)</Text>
-            {!caseData?.slidedeck && (
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>Coming Soon</Text>
-              </View>
-            )}
-          </View>
-          {caseData?.slidedeck ? (
-            <View>
-              <View style={styles.inlinePdfContainer}>
-                <Pdf
-                  source={{ uri: caseData.slidedeck, cache: true }}
-                  style={styles.inlinePdf}
-                  horizontal={true}
-                  enablePaging={true}
-                  trustAllCerts={false}
-                  onLoadComplete={(numberOfPages) => {
-                    setPdfTotalPages(numberOfPages);
-                    setPdfCurrentPage(1);
-                  }}
-                  onPageChanged={(page) => {
-                    setPdfCurrentPage(page);
+            <View style={[styles.inlineVideoContainer, { position: 'relative' }]}>
+              {!shouldShowPremiumBlur ? (
+                <Video
+                  source={{ uri: caseData.videooverview }}
+                  style={styles.inlineVideo}
+                  resizeMode="contain"
+                  controls={true}
+                  paused={true}
+                  controlsTimeout={1000}
+                  hideShutterView={true}
+                  controlsStyles={{
+                    hideNavigationBarOnFullScreenMode: true,
+                    hideNotificationBarOnFullScreenMode: true,
+                    liveLabel: '',
                   }}
                 />
-              </View>
-              {/* Page indicator dots */}
-              {pdfTotalPages > 0 && (
-                <View style={styles.pdfDotsContainer}>
-                  {Array.from({ length: pdfTotalPages }, (_, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.pdfDot,
-                        pdfCurrentPage === i + 1 && styles.pdfDotActive,
-                      ]}
-                    />
-                  ))}
-                </View>
+              ) : (
+                <>
+                  <BlurView
+                    style={styles.premiumBlur}
+                    blurType={'light'}
+                    blurAmount={10}
+                    overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
+                  />
+                  <View style={styles.premiumOverlay}>
+                    <MaterialCommunityIcons name="video-outline" size={40} color="#14919B" />
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
+                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                    </Pressable>
+                  </View>
+                </>
               )}
             </View>
-          ) : (
-            <View style={styles.resourcePlaceholderSmall}>
-              <MaterialCommunityIcons name="file-presentation-box" size={40} color="#B0B7BF" />
-              <Text style={styles.placeholderText}>PDF not available</Text>
+          </View>
+        ) : null}
+
+        {/* Clinical Infographic - Standalone Card (only show if available) */}
+        {caseData?.infographic ? (
+          <View style={styles.standaloneResourceCard}>
+            <View style={styles.resourceInfoRow}>
+              <MaterialCommunityIcons name="image-multiple-outline" size={20} color="#14919B" />
+              <Text style={styles.resourceTitle}>Clinical Infographic</Text>
             </View>
-          )}
-        </View>
+            <View style={[styles.inlineImageContainer, { position: 'relative' }]}>
+              {!shouldShowPremiumBlur ? (
+                <Image
+                  source={{ uri: caseData.infographic }}
+                  style={styles.inlineImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <>
+                  <BlurView
+                    style={styles.premiumBlur}
+                    blurType={'light'}
+                    blurAmount={10}
+                    overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
+                  />
+                  <View style={styles.premiumOverlay}>
+                    <MaterialCommunityIcons name="image-multiple-outline" size={40} color="#14919B" />
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
+                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Slide Deck PDF - Standalone Card (only show if available) */}
+        {caseData?.slidedeck ? (
+          <View style={styles.standaloneResourceCard}>
+            <View style={styles.resourceInfoRow}>
+              <MaterialCommunityIcons name="file-presentation-box" size={20} color="#14919B" />
+              <Text style={styles.resourceTitle}>Slide Deck (PDF)</Text>
+            </View>
+            <View style={[styles.inlinePdfContainer, { position: 'relative' }]}>
+              {!shouldShowPremiumBlur ? (
+                <>
+                  <Pdf
+                    source={{ uri: caseData.slidedeck, cache: true }}
+                    style={styles.inlinePdf}
+                    horizontal={true}
+                    enablePaging={true}
+                    trustAllCerts={false}
+                    onLoadComplete={(numberOfPages) => {
+                      setPdfTotalPages(numberOfPages);
+                      setPdfCurrentPage(1);
+                    }}
+                    onPageChanged={(page) => {
+                      setPdfCurrentPage(page);
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <BlurView
+                    style={styles.premiumBlur}
+                    blurType={'light'}
+                    blurAmount={10}
+                    overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
+                  />
+                  <View style={styles.premiumOverlay}>
+                    <MaterialCommunityIcons name="file-presentation-box" size={40} color="#14919B" />
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
+                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
+            {/* Page indicator dots - only show when not blurred */}
+            {!shouldShowPremiumBlur && pdfTotalPages > 0 && (
+              <View style={styles.pdfDotsContainer}>
+                {Array.from({ length: pdfTotalPages }, (_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.pdfDot,
+                      pdfCurrentPage === i + 1 && styles.pdfDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        ) : null}
       </ScrollView>
 
-      {/* <Pressable style={styles.fab}>
-        <MaterialCommunityIcons name="chevron-down" size={26} color="#FFFFFF" />
-      </Pressable> */}
+      {/* Floating scroll-to-insights button */}
+      <Pressable
+        style={styles.fab}
+        onPress={() => {
+          // Build array of available sections in order
+          const sectionKeys = ['coreInsights', 'howLanded', 'rationale', 'treatmentPriority', 'whyOther'];
+          const availableSections = sectionKeys.filter((key) => {
+            const y = sectionYRefs.current[key];
+            return y > 0; // Only include sections that exist (have a non-zero Y position)
+          });
+
+          if (availableSections.length === 0) return;
+
+          // Cycle to next section
+          const nextIndex = (currentSectionIndex + 1) % availableSections.length;
+          const nextSectionKey = availableSections[nextIndex];
+          const nextY = sectionYRefs.current[nextSectionKey];
+
+          scrollViewRef.current?.scrollTo({ y: nextY, animated: true });
+          setCurrentSectionIndex(nextIndex);
+        }}
+      >
+        <MaterialCommunityIcons name="chevron-down" size={48} color="#FFFFFF" />
+      </Pressable>
       <PremiumBottomSheet ref={premiumSheetRef} />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
@@ -1353,10 +1444,10 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    bottom: 60,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#0F1B2D',
@@ -1575,7 +1666,7 @@ const styles = StyleSheet.create({
   },
   inlinePdfContainer: {
     width: '100%',
-    aspectRatio: 16/9,
+    aspectRatio: 16 / 9,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#ba1d1dff',

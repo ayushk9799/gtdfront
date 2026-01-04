@@ -16,6 +16,7 @@ const HAS_REQUESTED_REVIEW_KEY = 'HAS_REQUESTED_REVIEW';
  */
 export const getGamesPlayedCount = () => {
   const count = storage.getNumber(GAMES_PLAYED_KEY);
+
   return typeof count === 'number' && Number.isFinite(count) ? count : 0;
 };
 
@@ -85,8 +86,8 @@ export const requestInAppReview = async () => {
  * @returns {Promise<boolean>} True if review was shown, false otherwise
  */
 export const checkAndRequestReview = async () => {
-  // Increment games played
-  const gamesPlayed = incrementGamesPlayed();
+  // Get games played count (incrementing is now done separately before navigation)
+  const gamesPlayed = getGamesPlayedCount();
 
 
   // Only show review after the first game (gamesPlayed === 1)
