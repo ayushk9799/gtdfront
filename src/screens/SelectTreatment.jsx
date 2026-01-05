@@ -14,7 +14,7 @@ import medImg from '../../constants/medicine.png';
 import surgImg from '../../constants/surgical.png';
 import { useHeart } from '../store/slices/userSlice';
 import Sound from 'react-native-sound';
-import { checkAndRequestReview, incrementGamesPlayed } from '../services/ratingService';
+import { checkAndRequestReview, incrementGamesPlayed, setFirstPlayedCaseId } from '../services/ratingService';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -370,6 +370,8 @@ export default function SelectTreatment() {
             try {
               // Increment games played BEFORE navigating so ClinicalInsight reads the updated count
               incrementGamesPlayed();
+              // Save the first played case ID (only saves on first game, ignored after)
+              setFirstPlayedCaseId(caseData?.caseId || caseData?._id);
               navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan', from: 'SelectTreatment' });
               await dispatch(submitGameplay());
               checkAndRequestReview();

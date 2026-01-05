@@ -427,14 +427,12 @@ export default function HomeScreen() {
               </View>
               {isDailyChallengeCompleted && (
                 <View style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 8,
-                  backgroundColor: '#E8F5E9',
-                  borderWidth: 1,
-                  borderColor: '#A5D6A7'
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  backgroundColor: '#2E7D32',
                 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#2E7D32' }}>Already Played ✓</Text>
+                  <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }}>Already Played ✓</Text>
                 </View>
               )}
             </View>

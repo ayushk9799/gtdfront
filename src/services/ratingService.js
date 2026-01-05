@@ -10,6 +10,31 @@ const storage = new MMKV();
 
 const GAMES_PLAYED_KEY = 'GAMES_PLAYED_COUNT';
 const HAS_REQUESTED_REVIEW_KEY = 'HAS_REQUESTED_REVIEW';
+const FIRST_PLAYED_CASE_ID_KEY = 'FIRST_PLAYED_CASE_ID';
+
+/**
+ * Get the case ID of the first case ever played (for free preview)
+ */
+export const getFirstPlayedCaseId = () => {
+  return storage.getString(FIRST_PLAYED_CASE_ID_KEY) || null;
+};
+
+/**
+ * Set the first played case ID (only sets once, when first case is played)
+ */
+export const setFirstPlayedCaseId = (caseId) => {
+  // Debug logging
+  const currentStored = getFirstPlayedCaseId();
+  console.log('[setFirstPlayedCaseId] currentStored:', currentStored);
+  console.log('[setFirstPlayedCaseId] incoming caseId:', caseId);
+  console.log('[setFirstPlayedCaseId] should set?:', !currentStored && caseId);
+
+  // Only set if not already set
+  if (!currentStored && caseId) {
+    storage.set(FIRST_PLAYED_CASE_ID_KEY, String(caseId));
+    console.log('[setFirstPlayedCaseId] SAVED:', caseId);
+  }
+};
 
 /**
  * Get the number of games/cases the user has completed
@@ -109,5 +134,6 @@ export const checkAndRequestReview = async () => {
 export const resetRatingState = () => {
   storage.delete(GAMES_PLAYED_KEY);
   storage.delete(HAS_REQUESTED_REVIEW_KEY);
+  storage.delete(FIRST_PLAYED_CASE_ID_KEY);
 };
 

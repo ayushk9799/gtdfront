@@ -16,7 +16,7 @@ import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import Sound from 'react-native-sound';
 import Video from 'react-native-video';
 import Pdf from 'react-native-pdf';
-import { getGamesPlayedCount } from '../services/ratingService';
+import { getGamesPlayedCount, getFirstPlayedCaseId } from '../services/ratingService';
 
 const ORANGE = '#FF8A00';
 // Match the app's subtle pink gradient
@@ -211,17 +211,26 @@ export default function ClinicalInsight() {
 
   const { isPremium } = useSelector(state => state.user);
 
-  // Get games played count - re-read when screen comes into focus
+  // Get games played count and first played case ID - re-read when screen comes into focus
   const [gamesPlayed, setGamesPlayed] = React.useState(0);
+  const [firstPlayedCaseId, setFirstPlayedCaseIdState] = React.useState(null);
   useFocusEffect(
     React.useCallback(() => {
       setGamesPlayed(getGamesPlayedCount());
+      setFirstPlayedCaseIdState(getFirstPlayedCaseId());
     }, [])
   );
-  const shouldShowPremiumBlur = !isPremium && gamesPlayed > 1;
-
 
   const caseData = caseDataFromRoute || caseDataFromStore || {};
+
+  // Get current case ID for comparison - MUST be after caseData is defined
+  const currentCaseId = caseData?.caseId || caseData?._id || null;
+  console.log("caseData:", caseData);
+  console.log("currentCaseId:", currentCaseId);
+  console.log("firstPlayedCaseId:", firstPlayedCaseId);
+  // First played case should always be viewable without blur
+  const isFirstPlayedCase = currentCaseId && firstPlayedCaseId && String(currentCaseId) === String(firstPlayedCaseId);
+  const shouldShowPremiumBlur = !isPremium && gamesPlayed > 1 && !isFirstPlayedCase;
 
   const layout = useWindowDimensions();
   // Alias mapping for initial tab labels coming from previous screens
@@ -407,42 +416,19 @@ export default function ClinicalInsight() {
         >
           <MaterialCommunityIcons name="chevron-left" size={26} color="#ffffff" />
         </Pressable>
-        <View style={styles.scoreBoardWrap}>
-          <ImageBackground
-            source={blackboard}
-            resizeMode="cover"
-            style={styles.scoreBoardBg}
-            imageStyle={styles.scoreBoardBgImage}
-          >
-            <AnimatedNumber
-              style={styles.scoreBoardText}
-              value={scores.total}
-              duration={800}
-              formatter={(v) => `Score: ${Math.round(v)} / 100`}
-            />
-            {/* Bottom fade to blend image into page background */}
-            <LinearGradient
-              pointerEvents="none"
-              colors={[
-                'rgba(255,255,255,0)',
-                'rgba(255,255,255,1)',
-                '#FFFFFF',
-                themeColors.card,
-              ]}
-              locations={[0, 0.3, 0.6, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.scoreBoardBottomFade}
-            />
-            {headerDx.correct ? (
-              <View style={styles.overlayDxWrap}>
-                <View style={[styles.dxPill, styles.dxPillCorrect]}>
-                  <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} style={{ marginRight: 8 }} />
-                  <Text style={[styles.dxPillText, styles.dxPillTextCorrect]}>{headerDx.correct}</Text>
-                </View>
-              </View>
-            ) : null}
-          </ImageBackground>
+        <View style={styles.scoreSection}>
+          <AnimatedNumber
+            style={styles.scoreBoardText}
+            value={scores.total}
+            duration={800}
+            formatter={(v) => `Score: ${Math.round(v)} / 100`}
+          />
+          {headerDx.correct ? (
+            <View style={[styles.dxPill, styles.dxPillCorrect, { marginTop: 16 }]}>
+              <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} style={{ marginRight: 8 }} />
+              <Text style={[styles.dxPillText, styles.dxPillTextCorrect]}>{headerDx.correct}</Text>
+            </View>
+          ) : null}
         </View>
         <View style={styles.topWrap}>
           {headerDx.mine && headerDx.mine !== headerDx.correct ? (
@@ -488,7 +474,7 @@ export default function ClinicalInsight() {
                 <ScrollView
                   style={{ flex: 1 }}
                   showsVerticalScrollIndicator={true}
-                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12 }}
+                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 6 }}
                 >
                   <Animated.View style={{ opacity: sceneAnimsRef.current[key].opacity, transform: [{ translateY: sceneAnimsRef.current[key].translateY }] }}>
                     <AnimatedNumber
@@ -1153,7 +1139,8 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   container: { paddingHorizontal: 8, paddingBottom: 120 },
   screenWrap: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
-  topWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 24 },
+  topWrap: { alignItems: 'center', paddingTop: 0, paddingBottom: 8 },
+  scoreSection: { alignItems: 'center', paddingTop: 12, paddingBottom: 4, width: '100%' },
   topImage: {
     width: 96,
     height: 96,
@@ -1181,14 +1168,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   // removed flex growth on the card to keep it compact
-  caseHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8, justifyContent: 'center' },
+  caseHeader: { flexDirection: 'row', alignItems: 'center', padding: 10, paddingBottom: 6, justifyContent: 'center' },
   caseIconWrap: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#E9EEF6', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   caseHeaderText: { fontSize: 16, fontWeight: '800', color: '#5C6C83' },
   tabText: { fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink },
   tabTextActive: { color: Colors.brand.darkPink },
   sectionIconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '800' },
-  bulletText: { fontSize: 16, color: '#223148', marginVertical: 8, marginLeft: 6 },
+  bulletText: { fontSize: 16, color: '#223148', marginVertical: 4, marginLeft: 6 },
   // removed fixed-position back button
   backBtnInline: {
     alignSelf: 'flex-start',
@@ -1205,25 +1192,21 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
-  scoreBoardWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 0, alignSelf: 'stretch', width: '100%' },
-  scoreBoardBg: { width: '100%', aspectRatio: 1, maxHeight: 450, paddingTop: 80 },
-  scoreBoardBgImage: { borderRadius: 0, resizeMode: 'contain' },
+  scoreBoardWrap: { width: '100%' },
+  scoreBoardBg: { width: '100%', aspectRatio: 1, maxHeight: 450 },
+  scoreBoardBgImage: { borderRadius: 0, resizeMode: 'cover', borderColor: '#FFEB3B', borderWidth: 2 },
   scoreBoardOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.25)'
   },
-  scoreBoardBottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 80 },
-  overlayDxWrap: { position: 'absolute', left: 20, right: 20, bottom: 10, alignItems: 'center' },
+  scoreBoardBottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 120 },
+  overlayDxWrap: { position: 'absolute', left: 20, right: 20, bottom: 50, alignItems: 'center' },
   overlayDxText: { color: '#0E6B51', textShadowColor: 'rgba(255,255,255,0.85)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
   scoreBoardText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-
-    paddingLeft: 58,
+    fontSize: 50,
+    color: '#C24467',
+    textAlign: 'center',
     fontFamily: 'BrightChalk',
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   dxPill: {
     flexDirection: 'row',
