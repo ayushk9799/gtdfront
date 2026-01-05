@@ -27,7 +27,7 @@ import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPermission from './src/screens/NotificationPermission';
-import ReferralCodeScreen from './src/screens/ReferralCodeScreen';
+
 import HeartScreen from './src/screens/HeartScreen';
 import EditAccountScreen from './src/screens/EditAccountScreen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
@@ -525,9 +525,7 @@ export default function App() {
               initialRouteName={
                 !storage.getBoolean('notifDecided')
                   ? 'NotificationPermission'
-                  : (storage.getBoolean('isNewUser') && !storage.getBoolean('referralDecided'))
-                    ? 'ReferralCode'
-                    : 'Tabs'
+                  : 'Tabs'
               }
             >
               <Stack.Screen
@@ -539,15 +537,7 @@ export default function App() {
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
               />
-              <Stack.Screen
-                name="ReferralCode"
-                component={ReferralCodeScreen}
-                options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
-                  presentation: 'card',
-                  contentStyle: { backgroundColor: 'transparent' },
-                }}
-              />
+
               <Stack.Screen name="Tabs" component={RootTabs} />
               <Stack.Screen
                 name="ClinicalInfo"

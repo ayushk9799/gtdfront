@@ -475,7 +475,7 @@ export default function HomeScreen() {
                         <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
                       </View>
                     }
-                    <Text style={[styles.cardDesc, { marginTop: 8 }]}>
+                    <Text style={[styles.cardDesc, { marginTop: 8, fontFamily: 'Artifika-Regular' , fontSize: 15}]}>
                       {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
                     </Text>
                     <TouchableOpacity

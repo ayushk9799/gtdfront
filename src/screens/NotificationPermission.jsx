@@ -52,13 +52,8 @@ export default function NotificationPermission() {
     const granted = await requestUserPermission();
     storage.set('notifEnabled', granted);
 
-    // Navigate: new users go to referral, existing users go to Tabs
-    const isNewUser = storage.getBoolean('isNewUser');
-    if (isNewUser) {
-      navigation.navigate('ReferralCode');
-    } else {
-      navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
-    }
+    // Navigate directly to Tabs
+    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
 
 
     // If granted, ensure device is registered and subscribe to topic
@@ -91,13 +86,8 @@ export default function NotificationPermission() {
   const skip = () => {
     storage.set('notifDecided', true);
     storage.set('notifEnabled', false);
-    // Navigate: new users go to referral, existing users go to Tabs
-    const isNewUser = storage.getBoolean('isNewUser');
-    if (isNewUser) {
-      navigation.navigate('ReferralCode');
-    } else {
-      navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
-    }
+    // Navigate directly to Tabs
+    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   };
 
   return (

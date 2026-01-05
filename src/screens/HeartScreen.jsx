@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform, Share, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -8,6 +8,10 @@ import { useSelector, useDispatch } from 'react-redux';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import heartImage from '../../constants/heart.png';
 import LinearGradient from 'react-native-linear-gradient';
+import { MMKV } from 'react-native-mmkv';
+import { API_BASE } from '../../constants/Api';
+
+const storage = new MMKV();
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const HERO_HEIGHT = 280;
@@ -24,6 +28,9 @@ export default function HeartScreen() {
   const MAX_HEARTS_DISPLAY = 2;
   const heartsToShow = Math.min(hearts, MAX_HEARTS_DISPLAY);
   const [timeUntilReset, setTimeUntilReset] = useState('');
+  const [friendCode, setFriendCode] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+  const [codeApplied, setCodeApplied] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
@@ -110,6 +117,39 @@ Join me 👉 https://diagnoseit.in`
         title: 'Invite to Diagnose It',
       });
     } catch (error) {
+    }
+  };
+
+  const handleApplyFriendCode = async () => {
+    if (!friendCode.trim()) return;
+
+    setIsApplying(true);
+    try {
+      const userStr = storage.getString('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user?.id || user?._id;
+
+      const response = await fetch(`${API_BASE}/api/referral/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referralCode: friendCode.trim().toUpperCase(),
+          userId
+        }),
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setCodeApplied(true);
+        setFriendCode('');
+        Alert.alert('Success!', 'Referral code applied. Your friend received a heart!');
+      } else {
+        Alert.alert('Oops!', data.message || 'Invalid or already used code.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Could not apply the code. Please try again.');
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -327,6 +367,47 @@ Join me 👉 https://diagnoseit.in`
                     <Ionicons name="share-social" size={18} color="#2D3142" style={{ marginRight: 8 }} />
                     <Text style={styles.secondaryButtonText}>Share Code</Text>
                   </TouchableOpacity>
+
+                  {/* Enter Friend's Code Section */}
+                  {!codeApplied && (
+                    <View style={styles.enterCodeSection}>
+                      <View style={styles.enterCodeDivider} />
+                      <Text style={styles.enterCodeLabel}>Have a friend's code?</Text>
+                      <View style={styles.enterCodeInputRow}>
+                        <TextInput
+                          style={styles.enterCodeInput}
+                          placeholder="Enter code"
+                          placeholderTextColor="#9CA3AF"
+                          value={friendCode}
+                          onChangeText={setFriendCode}
+                          autoCapitalize="characters"
+                          autoCorrect={false}
+                        />
+                        <TouchableOpacity
+                          style={[
+                            styles.applyCodeButton,
+                            (!friendCode.trim() || isApplying) && styles.applyCodeButtonDisabled
+                          ]}
+                          onPress={handleApplyFriendCode}
+                          disabled={!friendCode.trim() || isApplying}
+                          activeOpacity={0.8}
+                        >
+                          {isApplying ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <Text style={styles.applyCodeButtonText}>Apply</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {codeApplied && (
+                    <View style={styles.codeAppliedBadge}>
+                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                      <Text style={styles.codeAppliedText}>Friend's code applied!</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </View>
@@ -677,5 +758,67 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#ff4d4f',
     letterSpacing: 2,
+  },
+  // Enter Friend's Code Section
+  enterCodeSection: {
+    marginTop: 16,
+  },
+  enterCodeDivider: {
+    height: 1,
+    backgroundColor: '#E8E8E8',
+    marginBottom: 14,
+  },
+  enterCodeLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 10,
+  },
+  enterCodeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  enterCodeInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
+    letterSpacing: 1,
+  },
+  applyCodeButton: {
+    backgroundColor: Colors.brand.darkPink,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  applyCodeButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  applyCodeButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  codeAppliedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingVertical: 10,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 10,
+    gap: 6,
+  },
+  codeAppliedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
   },
 });
