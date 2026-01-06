@@ -18,6 +18,7 @@ import calendarIcon from '../../constants/calendar.png';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { API_BASE } from '../../constants/Api';
 import CloudBottom from '../components/CloudBottom';
+import { useResponsive } from '../hooks/useResponsive';
 
 // Skeleton Loader Component
 const SkeletonLoader = ({ width, height, borderRadius = 8, style }) => {
@@ -119,11 +120,15 @@ export default function HomeScreen() {
   const themeColors = Colors.light;
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { isTablet } = useResponsive();
   const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
   const { hearts, isPremium } = useSelector(state => state.user);
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
+
+  // Responsive image height: 300 for iPad/tablet, 200 for iPhone/mobile
+  const imageHeight = isTablet ? 350 : 200;
 
   // MMKV storage instance for persisting suggested case
   const storage = React.useMemo(() => new MMKV(), []);
@@ -464,18 +469,18 @@ export default function HomeScreen() {
                       {isDailyChallengeLoading ? (
                         <ActivityIndicator color="#FFFFFF" size="small" />
                       ) : (
-                        <Text style={styles.primaryButtonText}>Review Challenge</Text>
+                        <Text style={styles.primaryButtonText}>Show Clinical Insight</Text>
                       )}
                     </TouchableOpacity>
                   </>
                 ) : (
                   <>
                     {currentChallenge?.caseData?.mainimage &&
-                      <View style={{ width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
+                      <View style={{ width: '100%', height: imageHeight, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
                         <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
                       </View>
                     }
-                    <Text style={[styles.cardDesc, { marginTop: 8, fontFamily: 'Artifika-Regular' , fontSize: 15}]}>
+                    <Text style={[styles.cardDesc, { marginTop: 8, fontFamily: 'Artifika-Regular', fontSize: 18, color: "black" }]}>
                       {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
                     </Text>
                     <TouchableOpacity
@@ -537,7 +542,7 @@ export default function HomeScreen() {
               </View>
 
               {suggestedNextCase.mainimage && (
-                <View style={{ width: '100%', height: 200, backgroundColor: '#F5F5F5', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
+                <View style={{ width: '100%', height: imageHeight, backgroundColor: '#F5F5F5', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
                   <Image
                     source={{ uri: suggestedNextCase.mainimage }}
                     style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
@@ -545,7 +550,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              <Text style={[styles.cardDesc, { marginTop: 12, fontSize: 15 }]} numberOfLines={2}>
+              <Text style={[styles.cardDesc, { marginTop: 12, fontSize: 18, fontFamily: 'Artifika-Regular', color: "black" }]} numberOfLines={2}>
                 {suggestedNextCase.caseTitle}
               </Text>
 

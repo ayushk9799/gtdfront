@@ -625,10 +625,10 @@ export default function ClinicalInfo() {
                   setHeroLoadError(true);
                   try { console.warn('Main image failed:', mainImageUrl, e?.nativeEvent); } catch (_) { }
                 }}
-                style={styles.heroImage}
+                style={[styles.heroImage, { height: isTablet ? 300 : 200 }]}
               />
             ) : (
-              <ComingSoonImage style={styles.heroImage} />
+              <ComingSoonImage style={[styles.heroImage, { height: isTablet ? 300 : 200 }]} />
             )}
             <View style={styles.infoGrid}>
               <InfoColumn icon="badge-account" label="Name" value={p?.name || '—'} />

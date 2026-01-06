@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform, Share, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Animated, Platform, Share, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -14,7 +14,7 @@ import { API_BASE } from '../../constants/Api';
 const storage = new MMKV();
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-const HERO_HEIGHT = 280;
+const HERO_HEIGHT = 240;
 const HERO_GRADIENT_HEIGHT = 120;
 const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 10;
 
@@ -32,6 +32,7 @@ export default function HeartScreen() {
   const [isApplying, setIsApplying] = useState(false);
   const [codeApplied, setCodeApplied] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef(null);
   const insets = useSafeAreaInsets();
 
   const heroOpacity = useMemo(
@@ -97,6 +98,30 @@ export default function HeartScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  // Check if user has already applied a referral code
+  useEffect(() => {
+    const checkReferralStatus = async () => {
+      try {
+        const userStr = storage.getString('user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        const userId = user?.id || user?._id;
+
+        if (!userId) return;
+
+        const response = await fetch(`${API_BASE}/api/referral/status/${userId}`);
+        const data = await response.json();
+
+        if (response.ok && data.success && data.hasAppliedCode) {
+          setCodeApplied(true);
+        }
+      } catch (error) {
+        // Silently fail - user can still try to apply
+      }
+    };
+
+    checkReferralStatus();
+  }, []);
+
   const onGoPro = () => {
     // navigation.navigate('Premium');
     // dispatch(useHeart());
@@ -155,7 +180,11 @@ Join me 👉 https://diagnoseit.in`
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
         <LinearGradient
           colors={SUBTLE_PINK_GRADIENT}
           start={{ x: 0, y: 0 }}
@@ -237,9 +266,11 @@ Join me 👉 https://diagnoseit.in`
         </View>
 
         <Animated.ScrollView
+          ref={scrollViewRef}
           style={{ flex: 1, zIndex: 2, backgroundColor: 'transparent' }}
-          contentContainerStyle={{ paddingBottom: 28, paddingTop: 10 }}
+          contentContainerStyle={{ paddingBottom: 300, paddingTop: 10 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           scrollEventThrottle={16}
           onScroll={onScroll}
         >
@@ -382,6 +413,11 @@ Join me 👉 https://diagnoseit.in`
                           onChangeText={setFriendCode}
                           autoCapitalize="characters"
                           autoCorrect={false}
+                          onFocus={() => {
+                            setTimeout(() => {
+                              scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 300);
+                          }}
                         />
                         <TouchableOpacity
                           style={[
@@ -414,7 +450,7 @@ Join me 👉 https://diagnoseit.in`
             <PremiumBottomSheet ref={premiumSheetRef} />
           </View>
         </Animated.ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -470,7 +506,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#65727E',
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 4,
     marginTop: 6,
     fontWeight: '600',
   },
@@ -560,7 +596,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#EDEDED',
-    marginTop: 16,
+    marginTop: 4,
     width: '100%',
   },
   cardAltTitle: {

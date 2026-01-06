@@ -2,8 +2,28 @@
   "migIndex": 1,
   "data": [
     {
-      "path": "assets/fonts/Bright Chalk.ttf",
+      "path": "assets/fonts/NotoSerif-BoldItalic.ttf",
+      "sha1": "252cb19eabdcae099f5649ca6480af5306597e82"
+    },
+    {
+      "path": "assets/fonts/NotoSerif-Regular.ttf",
+      "sha1": "380d82610dd144a9b41a76cea59fd98074b7e72a"
+    },
+    {
+      "path": "assets/fonts/BrightChalk.ttf",
       "sha1": "05424eff949fb3043a2406f755831e520b5a47f6"
+    },
+    {
+      "path": "assets/fonts/NotoSerif-Italic.ttf",
+      "sha1": "dbd495ebbbdaab182ffdcdd862057665a8ee81a6"
+    },
+    {
+      "path": "assets/fonts/NotoSerif-Bold.ttf",
+      "sha1": "b09c8cd44738e10f0ea0e492da59e46d98c17637"
+    },
+    {
+      "path": "assets/fonts/Artifika-Regular.ttf",
+      "sha1": "df348979df49dd0a290430de6ceeba0be33e0c26"
     }
   ]
 }

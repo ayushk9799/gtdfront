@@ -47,7 +47,7 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string/>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>
@@ -72,6 +72,11 @@
 		<string>SimpleLineIcons.ttf</string>
 		<string>Zocial.ttf</string>
 		<string>BrightChalk.ttf</string>
+		<string>NotoSerif-BoldItalic.ttf</string>
+		<string>NotoSerif-Regular.ttf</string>
+		<string>NotoSerif-Italic.ttf</string>
+		<string>NotoSerif-Bold.ttf</string>
+		<string>Artifika-Regular.ttf</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>BootSplash</string>
