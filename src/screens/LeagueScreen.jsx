@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
@@ -77,6 +77,23 @@ export default function LeagueScreen() {
             dispatch(fetchTodayDailyLeaderboard({ userId: currentUserId }));
         }
     }, [activeTab, dailyStatus, dispatch, currentUserId]);
+
+    // Share daily challenge with friends
+    const handleShareChallenge = async () => {
+        try {
+            const dateText = dailyDate ? formatDate(dailyDate) : 'today';
+            const title = challengeTitle || 'Daily Challenge';
+            const appLink = 'https://diagnoseit.app/download'; // Replace with actual app link
+
+            await Share.share({
+                message: `Can you solve today's medical case?\n\n"${title}"\n📅 \n\nI just completed this daily challenge on Diagnose It! Download the app and see if you can beat my score! 🎯\n\n👉 ${appLink}\n\n#DiagnoseIt #MedicalCase #DailyChallenge`,
+                title: 'Challenge your friends!',
+                url: appLink, // iOS will use this as the shared URL
+            });
+        } catch (error) {
+            console.log('Error sharing:', error.message);
+        }
+    };
 
     // Separate top 3 for podium display
     const top3 = status === 'loading'
@@ -255,6 +272,9 @@ export default function LeagueScreen() {
                 <Text style={styles.participantsText}>
                     {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''}
                 </Text>
+
+                {/* Share Button */}
+
             </View>
         );
     };
@@ -319,6 +339,18 @@ export default function LeagueScreen() {
                         {renderLeaderboardItem(me, 0, true)}
                     </>
                 )}
+
+                {/* Challenge Friends Button */}
+                <View style={styles.challengeFriendsContainer}>
+                    <TouchableOpacity
+                        style={styles.shareButton}
+                        onPress={handleShareChallenge}
+                        activeOpacity={0.7}
+                    >
+                        <MaterialCommunityIcons name="share-variant" size={18} color="#FFFFFF" />
+                        <Text style={styles.shareButtonText}>Challenge Friends</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </>
     );
@@ -385,7 +417,15 @@ export default function LeagueScreen() {
                     {dailyTop10.length === 1 && (
                         <View style={styles.encouragementContainer}>
                             <Text style={styles.encouragementText}>🎉 You're the first to complete today's challenge!</Text>
-                            <Text style={styles.encouragementSubtext}>Share with friends to see who can score higher</Text>
+                            <Text style={styles.encouragementSubtext}>Challenge your friends to beat your score</Text>
+                            <TouchableOpacity
+                                style={styles.shareButton}
+                                onPress={handleShareChallenge}
+                                activeOpacity={0.7}
+                            >
+                                <MaterialCommunityIcons name="share-variant" size={18} color="#FFFFFF" />
+                                <Text style={styles.shareButtonText}>Challenge Friends</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </>
@@ -544,6 +584,48 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         textAlign: 'center',
         marginTop: 6,
+    },
+    shareButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FF407D',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        marginTop: 16,
+        gap: 6,
+        shadowColor: '#FF407D',
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 4,
+    },
+    shareButtonLarge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FF407D',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 24,
+        marginTop: 16,
+        gap: 8,
+        shadowColor: '#FF407D',
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 4,
+    },
+    shareButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    challengeFriendsContainer: {
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 10,
     },
     cloudContainer: {
         position: 'absolute',

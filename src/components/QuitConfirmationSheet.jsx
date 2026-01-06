@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 24,
         paddingTop: 8,
-        paddingBottom: 16,
+        paddingBottom: 48,
         alignItems: 'center',
     },
     iconContainer: {
