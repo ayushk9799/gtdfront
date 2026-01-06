@@ -91,7 +91,6 @@ export default function LeagueScreen() {
                 url: appLink, // iOS will use this as the shared URL
             });
         } catch (error) {
-            console.log('Error sharing:', error.message);
         }
     };
 

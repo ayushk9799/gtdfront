@@ -225,9 +225,7 @@ export default function ClinicalInsight() {
 
   // Get current case ID for comparison - MUST be after caseData is defined
   const currentCaseId = caseData?.caseId || caseData?._id || null;
-  console.log("caseData:", caseData);
-  console.log("currentCaseId:", currentCaseId);
-  console.log("firstPlayedCaseId:", firstPlayedCaseId);
+
   // First played case should always be viewable without blur
   const isFirstPlayedCase = currentCaseId && firstPlayedCaseId && String(currentCaseId) === String(firstPlayedCaseId);
   const shouldShowPremiumBlur = !isPremium && gamesPlayed > 1 && !isFirstPlayedCase;

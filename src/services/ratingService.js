@@ -25,14 +25,11 @@ export const getFirstPlayedCaseId = () => {
 export const setFirstPlayedCaseId = (caseId) => {
   // Debug logging
   const currentStored = getFirstPlayedCaseId();
-  console.log('[setFirstPlayedCaseId] currentStored:', currentStored);
-  console.log('[setFirstPlayedCaseId] incoming caseId:', caseId);
-  console.log('[setFirstPlayedCaseId] should set?:', !currentStored && caseId);
+ 
 
   // Only set if not already set
   if (!currentStored && caseId) {
     storage.set(FIRST_PLAYED_CASE_ID_KEY, String(caseId));
-    console.log('[setFirstPlayedCaseId] SAVED:', caseId);
   }
 };
 

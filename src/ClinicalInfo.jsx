@@ -1053,14 +1053,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     minWidth: '47%',
     maxWidth: '47%',
-    height: 96,
+    minHeight: 96,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    // alignItems : 'center'
   },
   statHeaderRow: { flexDirection: 'row', alignItems: 'center' },
   statIcon: { marginRight: 8 },
-  statValue: { fontSize: 16, fontWeight: '600', marginTop: 4 },
+  statValue: { fontSize: 16, fontWeight: '600', marginTop: 4, flexShrink: 1 },
   statLabel: { marginTop: 4, fontSize: 12, color: '#687076', fontWeight: '700' },
   dotsContainer: {
     position: 'absolute',

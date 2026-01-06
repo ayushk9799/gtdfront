@@ -469,7 +469,7 @@ export default function HomeScreen() {
                       {isDailyChallengeLoading ? (
                         <ActivityIndicator color="#FFFFFF" size="small" />
                       ) : (
-                        <Text style={styles.primaryButtonText}>Show Clinical Insight</Text>
+                        <Text style={styles.primaryButtonText}>✨ Show Clinical Insight ✨</Text>
                       )}
                     </TouchableOpacity>
                   </>
