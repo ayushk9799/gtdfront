@@ -57,8 +57,7 @@ export default function PremiumScreen() {
       { label: 'Daily Challenges', free: true, pro: true },
       { label: 'Video Overview', free: false, pro: true },
       { label: 'Clinical images', free: false, pro: true },
-      { label: 'Deep Dive explanations', free: false, pro: true },
-      { label: 'No ads', free: false, pro: true },
+      { label: 'Clinical Insights', free: false, pro: true },
     ],
     [],
   );
@@ -269,11 +268,11 @@ export default function PremiumScreen() {
               height: HERO_GRADIENT_HEIGHT,
             }}
           />
-          <View style={{ position: 'absolute', bottom: 32, width: '100%', alignItems: 'center', paddingHorizontal: 24 }}>
+          <View style={{ position: 'absolute', bottom: 75, width: '100%', alignItems: 'center', paddingHorizontal: 24 }}>
             <View
               style={{
                 backgroundColor: 'rgba(255,255,255,0.95)',
-                paddingVertical: 14,
+                paddingVertical: 7,
                 paddingHorizontal: 20,
                 borderRadius: 20,
                 shadowColor: '#000',
@@ -284,8 +283,8 @@ export default function PremiumScreen() {
                 alignItems: 'center',
               }}
             >
-              <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
-              <Text style={{ fontSize: 16, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
+              <Text style={{ fontSize: 12, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
                 Get unlimited access to all features
               </Text>
             </View>
@@ -342,8 +341,8 @@ export default function PremiumScreen() {
               backgroundColor: '#FFFFFF',
               borderTopLeftRadius: 32,
               borderTopRightRadius: 32,
-              marginTop: -24,
-              paddingTop: 24,
+              marginTop: -62,
+              paddingTop: 4,
               paddingBottom: 24,
               shadowColor: '#000',
               shadowOpacity: 0.05,
@@ -387,7 +386,7 @@ export default function PremiumScreen() {
             )}
 
             {/* Feature comparison table */}
-            <View style={{ paddingHorizontal: 16, marginTop: 4 }}>
+            <View style={{ paddingHorizontal: 16, marginTop: 0 }}>
               <View
                 style={{
                   backgroundColor: '#FFFFFF',
@@ -402,7 +401,7 @@ export default function PremiumScreen() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    paddingVertical: 12,
+                    paddingVertical: 6,
                     paddingHorizontal: 14,
                     backgroundColor: '#FAFAFA',
                     borderBottomWidth: 1,
@@ -432,7 +431,7 @@ export default function PremiumScreen() {
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      paddingVertical: 14,
+                      paddingVertical: 10,
                       paddingHorizontal: 14,
                       backgroundColor: 'transparent',
                       borderTopWidth: idx === 0 ? 0 : 1,
@@ -463,7 +462,7 @@ export default function PremiumScreen() {
 
             {/* Plan cards */}
             {!isPremium && (
-              <View style={{ paddingHorizontal: 16, marginTop: 18 }}>
+              <View style={{ paddingHorizontal: 12, marginTop: 10 }}>
                 {/* Monthly */}
                 <Pressable
                   onPress={() => monthlyPackage && setSelectedPlan('monthly')}
@@ -486,7 +485,7 @@ export default function PremiumScreen() {
                     />
                     <View style={{ marginLeft: 10, flex: 1 }}>
                       <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Monthly Plan</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
                         {'Short term plan. Auto-renewal subscription'}
                       </Text>
                     </View>
@@ -537,7 +536,7 @@ export default function PremiumScreen() {
                     />
                     <View style={{ marginLeft: 10, flex: 1, paddingRight: 10 }}>
                       <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>6 Month Plan</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
                         {'Value for money. Auto-renewal subscription'}
                       </Text>
                       {sixMonthPackage?.product?.pricePerMonthString && (
