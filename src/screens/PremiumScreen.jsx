@@ -55,7 +55,7 @@ export default function PremiumScreen() {
     () => [
       { label: 'Unlimited Cases', free: false, pro: true },
       { label: 'Daily Challenges', free: true, pro: true },
-      { label: 'Specialist-level cases', free: false, pro: true },
+      { label: 'Video Overview', free: false, pro: true },
       { label: 'Clinical images', free: false, pro: true },
       { label: 'Deep Dive explanations', free: false, pro: true },
       { label: 'No ads', free: false, pro: true },

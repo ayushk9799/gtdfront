@@ -9,8 +9,37 @@ const brand = {
   blue: "#1E88E5",
 };
 
+// Skeleton Theme Configuration
+const skeleton = {
+  light: {
+    base: "#E8E8E8",
+    highlight: "#F5F5F5",
+    opacityRange: [0.4, 0.8],
+  },
+  dark: {
+    base: "#2A2D2E",
+    highlight: "#3A3D3E",
+    opacityRange: [0.3, 0.6],
+  },
+  // Animation settings
+  animation: {
+    duration: 1000,
+    easing: 'ease-in-out',
+  },
+  // Common border radius presets
+  borderRadius: {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    full: 9999,
+  },
+};
+
 export const Colors = {
   brand,
+  skeleton,
   light: {
     text: "#11181C",
     background: "#ffffff",
