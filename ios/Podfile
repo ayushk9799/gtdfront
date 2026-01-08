@@ -23,7 +23,6 @@ target 'frontend' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
   pod 'GoogleSignIn', '~> 7.0'
-
   pod 'FirebaseCoreInternal', :modular_headers => true
   pod 'GoogleUtilities', :modular_headers => true
   pod 'FirebaseCore', :modular_headers => true

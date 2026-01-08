@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid, Animated, StyleSheet } from 'react-native';
+import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -19,101 +19,7 @@ import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { API_BASE } from '../../constants/Api';
 import CloudBottom from '../components/CloudBottom';
 import { useResponsive } from '../hooks/useResponsive';
-
-// Skeleton Loader Component
-const SkeletonLoader = ({ width, height, borderRadius = 8, style }) => {
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const shimmer = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    shimmer.start();
-    return () => shimmer.stop();
-  }, []);
-
-  const opacity = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
-  return (
-    <Animated.View
-      style={[
-        {
-          width,
-          height,
-          borderRadius,
-          backgroundColor: '#E0E0E0',
-          opacity,
-        },
-        style,
-      ]}
-    />
-  );
-};
-
-// Daily Challenge Skeleton
-const DailyChallengeSkeleton = () => (
-  <View style={{ marginTop: 8 }}>
-    {/* Image skeleton */}
-    <SkeletonLoader width="100%" height={200} borderRadius={16} style={{ marginBottom: 12 }} />
-    {/* Title skeleton */}
-    <SkeletonLoader width="80%" height={16} style={{ marginBottom: 8 }} />
-    {/* Description skeleton */}
-    <SkeletonLoader width="60%" height={14} style={{ marginBottom: 16 }} />
-    {/* Button skeleton */}
-    <SkeletonLoader width="100%" height={48} borderRadius={24} />
-  </View>
-);
-
-// Department Card Skeleton
-const DepartmentCardSkeleton = () => (
-  <View style={skeletonStyles.departmentCard}>
-    {/* Icon skeleton */}
-    <SkeletonLoader width={48} height={48} borderRadius={12} />
-    <View style={{ flex: 1, marginLeft: 12 }}>
-      {/* Title skeleton */}
-      <SkeletonLoader width="70%" height={16} style={{ marginBottom: 8 }} />
-      {/* Progress bar skeleton */}
-      <SkeletonLoader width="100%" height={8} borderRadius={4} style={{ marginBottom: 6 }} />
-      {/* Progress text skeleton */}
-      <SkeletonLoader width="40%" height={12} />
-    </View>
-  </View>
-);
-
-// Departments List Skeleton
-const DepartmentsListSkeleton = () => (
-  <View style={{ marginTop: 12 }}>
-    <DepartmentCardSkeleton />
-    <DepartmentCardSkeleton />
-    <DepartmentCardSkeleton />
-    <DepartmentCardSkeleton />
-  </View>
-);
-
-const skeletonStyles = StyleSheet.create({
-  departmentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
-});
+import { Skeleton } from '../components/Skeleton';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -126,6 +32,7 @@ export default function HomeScreen() {
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
+  const [isCheckingCompletion, setIsCheckingCompletion] = useState(true); // Start as true to show skeleton initially
 
   // Responsive image height: 300 for iPad/tablet, 200 for iPhone/mobile
   const imageHeight = isTablet ? 350 : 200;
@@ -203,14 +110,26 @@ export default function HomeScreen() {
   // Check if daily challenge is completed and get suggested next case
   useEffect(() => {
     const checkDailyChallengeCompletion = async () => {
-      if (!currentChallenge?._id || !currentUserId) return;
+      // If no challenge or user, stop checking and show appropriate UI
+      if (!currentChallenge?._id || !currentUserId) {
+        // Only stop checking if challenge has finished loading
+        if (!isChallengeLoading) {
+          setIsCheckingCompletion(false);
+        }
+        return;
+      }
+
+      setIsCheckingCompletion(true);
 
       try {
         const res = await fetch(
           `${API_BASE}/api/gameplays?userId=${encodeURIComponent(currentUserId)}&dailyChallengeId=${encodeURIComponent(currentChallenge._id)}&sourceType=dailyChallenge`
         );
 
-        if (!res.ok) return;
+        if (!res.ok) {
+          setIsCheckingCompletion(false);
+          return;
+        }
 
         const data = await res.json();
         const gameplays = data?.gameplays || [];
@@ -219,11 +138,13 @@ export default function HomeScreen() {
         setIsDailyChallengeCompleted(!!completedGameplay);
       } catch (error) {
         console.warn('Error checking daily challenge completion:', error);
+      } finally {
+        setIsCheckingCompletion(false);
       }
     };
 
     checkDailyChallengeCompletion();
-  }, [currentChallenge, currentUserId]);
+  }, [currentChallenge, currentUserId, isChallengeLoading]);
 
   // Get a random next case from departments when:
   // 1. Daily challenge is completed, OR
@@ -430,7 +351,7 @@ export default function HomeScreen() {
                 <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
               </View>
-              {isDailyChallengeCompleted && (
+              {isDailyChallengeCompleted && !isCheckingCompletion && (
                 <View style={{
                   paddingHorizontal: 8,
                   paddingVertical: 3,
@@ -442,7 +363,7 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {isChallengeLoading && <DailyChallengeSkeleton />}
+            {(isChallengeLoading || isCheckingCompletion) && <Skeleton.DailyChallenge imageHeight={imageHeight} />}
 
             {hasChallengeError && !isChallengeLoading && (
               <View style={{ marginTop: 8 }}>
@@ -453,7 +374,7 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {currentChallenge && !isChallengeLoading && !hasChallengeError && (
+            {currentChallenge && !isChallengeLoading && !isCheckingCompletion && !hasChallengeError && (
               <>
                 {isDailyChallengeCompleted ? (
                   <>
@@ -467,7 +388,10 @@ export default function HomeScreen() {
                       disabled={isDailyChallengeLoading}
                     >
                       {isDailyChallengeLoading ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                          <Text style={styles.primaryButtonText}>✨ Show Clinical Insight ✨</Text>
+                        </View>
                       ) : (
                         <Text style={styles.primaryButtonText}>✨ Show Clinical Insight ✨</Text>
                       )}
@@ -490,9 +414,12 @@ export default function HomeScreen() {
                       disabled={isDailyChallengeLoading}
                     >
                       {isDailyChallengeLoading ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                          <Text style={styles.primaryButtonText}>Solve Today's Challenge </Text>
+                        </View>
                       ) : (
-                        <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
+                        <Text style={styles.primaryButtonText}>Solve Today's Challenge </Text>
                       )}
                     </TouchableOpacity>
                   </>
@@ -500,7 +427,7 @@ export default function HomeScreen() {
               </>
             )}
 
-            {!currentChallenge && !isChallengeLoading && !hasChallengeError && (
+            {!currentChallenge && !isChallengeLoading && !isCheckingCompletion && !hasChallengeError && (
               <>
                 <Text style={[styles.cardDesc, { marginTop: 8 }]}>
                   No daily challenge available for today. Check back tomorrow!
@@ -572,7 +499,7 @@ export default function HomeScreen() {
               <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Departments</Text>
             </View>
           </View>
-          {categoriesLoading === 'loading' && <DepartmentsListSkeleton />}
+          {categoriesLoading === 'loading' && <Skeleton.DepartmentsList />}
           {categoriesError && categoriesLoading !== 'loading' && (
             <Text style={[styles.cardDesc, { color: '#C62828', marginTop: 8 }]}>{categoriesError}</Text>
           )}

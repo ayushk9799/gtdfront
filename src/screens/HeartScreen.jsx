@@ -25,7 +25,7 @@ export default function HeartScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
-  const MAX_HEARTS_DISPLAY = 2;
+  const MAX_HEARTS_DISPLAY = 1;
   const heartsToShow = Math.min(hearts, MAX_HEARTS_DISPLAY);
   const [timeUntilReset, setTimeUntilReset] = useState('');
   const [friendCode, setFriendCode] = useState('');
@@ -323,7 +323,7 @@ Join me 👉 https://diagnoseit.in`
                 </View>
               </View>
 
-              <Text style={styles.subtitleSecondary}>You get 2 hearts every 24 hour.</Text>
+              <Text style={styles.subtitleSecondary}>You get 1 heart every 24 hour.</Text>
 
               <View style={styles.cardAlt}>
                 <Text style={styles.cardAltTitle}>Want to play more today?</Text>
@@ -340,7 +340,7 @@ Join me 👉 https://diagnoseit.in`
                   <View style={styles.listRow}>
                     <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
                     <Text style={styles.listText}>
-                      Unlock <Text style={{ fontWeight: '700' }}>unlimited Hearts</Text>
+                      Unlock <Text style={{ fontWeight: '700' }}>Unlimited Hearts</Text>
                     </Text>
                   </View>
 
@@ -348,6 +348,12 @@ Join me 👉 https://diagnoseit.in`
                     <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
                     <Text style={styles.listText}>
                       Access <Text style={{ fontWeight: '700' }}>Clinical Insight</Text>
+                    </Text>
+                  </View>
+                    <View style={styles.listRow}>
+                    <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
+                    <Text style={styles.listText}>
+                      Access <Text style={{ fontWeight: '700' }}>Video analysis and Slide Decks</Text>
                     </Text>
                   </View>
 
@@ -371,7 +377,7 @@ Join me 👉 https://diagnoseit.in`
                     <View style={[styles.optionIconContainer, { backgroundColor: '#FFF0F0' }]}>
                       <Ionicons name="gift" size={20} color="#ff4d4f" />
                     </View>
-                    <Text style={styles.optionTitle}>Refer a Friend</Text>
+                    <Text style={styles.optionTitle}>Get one more Heart</Text>
                     <View style={styles.heartBadge}>
                       <Ionicons name="heart" size={12} color="#ff4d4f" />
                       <Text style={styles.heartBadgeText}>+1</Text>
@@ -379,7 +385,7 @@ Join me 👉 https://diagnoseit.in`
                   </View>
 
                   <Text style={styles.referralDescriptionText}>
-                    Share your code with friends. When they enter it, you get a free heart!
+                    Share your code with <Text style={{ fontWeight: '700', color:"black" }}>friends</Text>. When they enter it, you get a <Text style={{ fontWeight: '700', color:"black" }}>free heart!</Text>
                   </Text>
 
                   {/* Referral Code Display */}

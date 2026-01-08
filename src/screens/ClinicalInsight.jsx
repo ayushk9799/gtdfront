@@ -1,5 +1,6 @@
 import React from 'react';
-import { useWindowDimensions, View, Text, Image, ImageBackground, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, Modal, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, PanResponder, UIManager } from 'react-native';
+import ReAnimated, { useSharedValue, useAnimatedStyle, withTiming, Easing as ReEasing } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
@@ -7,8 +8,6 @@ import { TabView, TabBar } from 'react-native-tab-view';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Line } from 'react-native-svg';
 import { Colors } from '../../constants/Colors';
-import inappicon from '../../constants/inappicon.png';
-import blackboard from '../../constants/seniorblackboard.png';
 import { BlurView } from '@react-native-community/blur';
 import { useSelector } from 'react-redux';
 import { computeGameplayScoreNormalized } from '../services/scoring';
@@ -16,13 +15,62 @@ import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import Sound from 'react-native-sound';
 import Video from 'react-native-video';
 import Pdf from 'react-native-pdf';
+import Markdown from 'react-native-markdown-display';
 import { getGamesPlayedCount, getFirstPlayedCaseId } from '../services/ratingService';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Animated Collapsible Component for smooth expand/collapse
+const AnimatedCollapsible = ({ expanded, children }) => {
+  const [contentHeight, setContentHeight] = React.useState(0);
+  const [shouldRender, setShouldRender] = React.useState(expanded);
+  const animatedHeight = useSharedValue(expanded ? 1 : 0);
+
+  React.useEffect(() => {
+    if (expanded) {
+      setShouldRender(true);
+    }
+    animatedHeight.value = withTiming(expanded ? 1 : 0, {
+      duration: 300,
+      easing: ReEasing.bezier(0.4, 0, 0.2, 1),
+    });
+    // Delay unmounting until animation completes
+    if (!expanded) {
+      const timeout = setTimeout(() => setShouldRender(false), 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [expanded]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    maxHeight: contentHeight > 0 ? animatedHeight.value * contentHeight : 2000 * animatedHeight.value,
+    opacity: animatedHeight.value,
+    overflow: 'hidden',
+  }));
+
+  if (!shouldRender && !expanded) return null;
+
+  return (
+    <ReAnimated.View style={animatedStyle}>
+      <View
+        onLayout={(e) => {
+          const height = e.nativeEvent.layout.height;
+          if (height > 0) {
+            setContentHeight(height);
+          }
+        }}
+      >
+        {children}
+      </View>
+    </ReAnimated.View>
+  );
+};
 
 const ORANGE = '#FF8A00';
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
-
-
 const SUCCESS_COLOR = '#12A77A';
 const SUCCESS_BG = '#EAF7F2';
 const ERROR_COLOR = '#E2555A';
@@ -32,20 +80,10 @@ const INFO_BG = '#F6EFE4';
 
 const TABS = ['Tests', 'Diagnosis', 'Treatment'];
 
-// Premium benefits (mirroring PremiumScreen)
-const PREMIUM_BENEFITS = [
-  'Specialist-level cases',
-  'Unlimited Hearts',
-  'Clinical images',
-  'Deep Dive explanations',
-  'No ads',
-];
-
-// Exact features matrix to mirror PremiumScreen
 const PREMIUM_FEATURES = [
-  { label: 'Intern to Attending cases', free: true, pro: true },
-  { label: 'Specialist-level cases', free: false, pro: true },
-  { label: 'Unlimited Hearts', free: false, pro: true },
+  { label: 'Unlimited Cases', free: false, pro: true },
+  { label: 'Daily Challenge', free: true, pro: true },
+  { label: 'Video Overview', free: false, pro: true },
   { label: 'Clinical images', free: false, pro: true },
   { label: 'Deep Dive explanations', free: false, pro: true },
   { label: 'No ads', free: false, pro: true },
@@ -92,6 +130,7 @@ export default function ClinicalInsight() {
   });
   const [currentSectionIndex, setCurrentSectionIndex] = React.useState(-1);
   const twinkleSoundRef = React.useRef(null);
+  const pdfRef = React.useRef(null);
 
   // Determine if opened from SelectTreatment
   const openedFromTreatment = React.useMemo(() => {
@@ -228,18 +267,119 @@ export default function ClinicalInsight() {
 
   // First played case should always be viewable without blur
   const isFirstPlayedCase = currentCaseId && firstPlayedCaseId && String(currentCaseId) === String(firstPlayedCaseId);
-  const shouldShowPremiumBlur = !isPremium && gamesPlayed > 1 && !isFirstPlayedCase;
+  const shouldShowPremiumBlur = !isPremium && !isFirstPlayedCase; // Show blur for non-premium users, except first case
+
+  // Video preview state - allow 30 seconds preview for non-premium users
+  const [videoPlayedSeconds, setVideoPlayedSeconds] = React.useState(0);
+  const [videoPaused, setVideoPaused] = React.useState(true); // Start paused
+  const [isVideoFullscreen, setIsVideoFullscreen] = React.useState(false);
+  const videoRef = React.useRef(null);
+  const shouldShowVideoPremiumOverlay = shouldShowPremiumBlur && videoPlayedSeconds >= 30;
+
+  // Auto-pause video and exit fullscreen when 30 seconds reached
+  React.useEffect(() => {
+    if (shouldShowVideoPremiumOverlay) {
+      setVideoPaused(true);
+      // Exit fullscreen if in fullscreen mode so overlay is visible
+      if (isVideoFullscreen) {
+        videoRef.current?.dismissFullscreenPlayer();
+      }
+    }
+  }, [shouldShowVideoPremiumOverlay, isVideoFullscreen]);
+
+  // PDF preview state - allow slides 1-4 preview for non-premium users
+  const [pdfAttemptedPastLimit, setPdfAttemptedPastLimit] = React.useState(false);
+
+  // Show overlay when non-premium user is on page 4 and has attempted to go past it
+  // OR if they somehow reach page 5+ (as additional safety)
+  const shouldShowPdfPremiumOverlay = shouldShowPremiumBlur && (pdfAttemptedPastLimit || pdfCurrentPage >= 5);
+
 
   const layout = useWindowDimensions();
   // Alias mapping for initial tab labels coming from previous screens
   const normalizedInitialTab = (initialTabParam === 'Treatment Plan') ? 'Treatment' : initialTabParam;
   const [index, setIndex] = React.useState(
-    Math.max(0, TABS.indexOf(TABS.includes(normalizedInitialTab) ? normalizedInitialTab : 'Tests'))
+    Math.max(0, TABS.indexOf(TABS.includes(normalizedInitialTab) ? normalizedInitialTab : 'Diagnosis'))
   );
 
   const [routes] = React.useState(
     TABS.map((t) => ({ key: t.toLowerCase(), title: t }))
   );
+
+  // Single expanded state for all tabs - when true, all tabs show full content
+  const [isContentExpanded, setIsContentExpanded] = React.useState(false);
+  const [contentHeights, setContentHeights] = React.useState({ tests: 200, diagnosis: 200, treatment: 200 });
+  const COLLAPSED_HEIGHT = 285; // Content height when collapsed
+  const COLLAPSED_TAB_HEIGHT = 350; // TabView height when collapsed
+  // Calculate expanded height dynamically: max content height + tab bar (50) + padding (30) + button (50)
+  const maxContentHeight = Math.max(contentHeights.tests, contentHeights.diagnosis, contentHeights.treatment);
+  const EXPANDED_TAB_HEIGHT = maxContentHeight + 100;
+
+  // Animated height for smooth transitions
+  const animatedHeight = React.useRef(new Animated.Value(COLLAPSED_TAB_HEIGHT)).current;
+
+  // Animate height when expanded state changes
+  React.useEffect(() => {
+    const targetHeight = isContentExpanded ? EXPANDED_TAB_HEIGHT : COLLAPSED_TAB_HEIGHT;
+    Animated.timing(animatedHeight, {
+      toValue: targetHeight,
+      duration: 250,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false, // height cannot use native driver
+    }).start();
+  }, [isContentExpanded, EXPANDED_TAB_HEIGHT]);
+
+  // Ping animation for check-circle icon
+  const pingAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    const pingLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pingAnim, {
+          toValue: 1,
+          duration: 2000, // Slower animation = less CPU
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pingAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pingLoop.start();
+    return () => pingLoop.stop();
+  }, []);
+
+  const pingScale = pingAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 2], // Less scaling = better performance
+  });
+  const pingOpacity = pingAnim.interpolate({
+    inputRange: [0, 0.7, 1],
+    outputRange: [0.5, 0.2, 0],
+  });
+
+  // Swipe gesture handler for PDF Premium Overlay - allow swiping back to slide 4
+  const pdfOverlayPanResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Detect horizontal movement
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const swipeThreshold = 50;
+        if (gestureState.dx > swipeThreshold) {
+          // Swiped right - go back to slide 4 and hide overlay
+          setPdfAttemptedPastLimit(false);
+          setPdfCurrentPage(4);
+          pdfRef.current?.setPage(4);
+        }
+      },
+    })
+  ).current;
 
   const [insightsExpanded, setInsightsExpanded] = React.useState(true);
   const [howExpanded, setHowExpanded] = React.useState(true);
@@ -247,12 +387,8 @@ export default function ClinicalInsight() {
   const [txExpanded, setTxExpanded] = React.useState(false);
   const [whyExpanded, setWhyExpanded] = React.useState(false);
 
-  // Modal states for resources
-  const [videoModalVisible, setVideoModalVisible] = React.useState(false);
-  const [pdfModalVisible, setPdfModalVisible] = React.useState(false);
-  const [infographicModalVisible, setInfographicModalVisible] = React.useState(false);
-  const [videoLoading, setVideoLoading] = React.useState(true);
-  const [pdfLoading, setPdfLoading] = React.useState(true);
+  // Simple toggle function - AnimatedCollapsible handles animation
+  const toggleSection = (setter) => setter((v) => !v);
 
   // PDF page tracking
   const [pdfCurrentPage, setPdfCurrentPage] = React.useState(1);
@@ -277,24 +413,20 @@ export default function ClinicalInsight() {
   // Animated per-tab category scores (animate on tab change)
   // Animated locally per scene via AnimatedNumber
 
-  // Subtle fade/slide-in for active tab content
+  // Subtle fade/slide-in for active tab content (disabled to prevent reload appearance)
   const sceneAnimsRef = React.useRef({
-    tests: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
-    diagnosis: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
-    treatment: { opacity: new Animated.Value(0), translateY: new Animated.Value(8) },
+    tests: { opacity: new Animated.Value(1), translateX: new Animated.Value(0) },
+    diagnosis: { opacity: new Animated.Value(1), translateX: new Animated.Value(0) },
+    treatment: { opacity: new Animated.Value(1), translateX: new Animated.Value(0) },
   });
 
+  // Track previous index for slide direction (kept for potential future use)
+  const prevIndexRef = React.useRef(index);
+
   React.useEffect(() => {
-    const activeKey = routes[index]?.key;
-    if (!activeKey) return;
-    const anims = sceneAnimsRef.current[activeKey];
-    anims.opacity.setValue(0);
-    anims.translateY.setValue(8);
-    Animated.parallel([
-      Animated.timing(anims.opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.timing(anims.translateY, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-    ]).start();
-  }, [index, routes, sections]);
+    // Update prev index without animation - TabView handles its own swipe animation
+    prevIndexRef.current = index;
+  }, [index]);
 
   // Build evaluation sections from caseData + selections
   const sections = React.useMemo(() => {
@@ -406,7 +538,13 @@ export default function ClinicalInsight() {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.container}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+      >
         <Pressable
           onPress={handleBackPress}
           style={styles.backBtnInline}
@@ -422,9 +560,26 @@ export default function ClinicalInsight() {
             formatter={(v) => `Score: ${Math.round(v)} / 100`}
           />
           {headerDx.correct ? (
-            <View style={[styles.dxPill, styles.dxPillCorrect, { marginTop: 16 }]}>
-              <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} style={{ marginRight: 8 }} />
-              <Text style={[styles.dxPillText, styles.dxPillTextCorrect]}>{headerDx.correct}</Text>
+            <View style={[styles.dxPill, styles.dxPillCorrect, { marginTop: 16, marginHorizontal: 16 }]}>
+              <View style={{ position: 'relative', marginRight: 8 }}>
+                {/* Ping effect - expanding circle */}
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    top: -1,
+                    left: -1,
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    backgroundColor: SUCCESS_COLOR,
+                    transform: [{ scale: pingScale }],
+                    opacity: pingOpacity,
+                  }}
+                />
+                {/* Icon */}
+                <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} />
+              </View>
+              <Markdown style={{ ...markdownStyles, body: { ...styles.dxPillText, ...styles.dxPillTextCorrect } }}>{headerDx.correct}</Markdown>
             </View>
           ) : null}
         </View>
@@ -432,12 +587,11 @@ export default function ClinicalInsight() {
           {headerDx.mine && headerDx.mine !== headerDx.correct ? (
             <View style={[styles.dxPill, styles.dxPillMine]}>
               <MaterialCommunityIcons name="alert-circle" size={18} color={ERROR_COLOR} style={{ marginRight: 8 }} />
-              <Text style={[styles.dxPillText, styles.dxPillTextMine]}>{headerDx.mine}</Text>
+              <Markdown style={{ ...markdownStyles, body: { ...styles.dxPillText, ...styles.dxPillTextMine } }}>{headerDx.mine}</Markdown>
             </View>
           ) : null}
         </View>
-        {/* case review card */}
-        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, borderTopWidth: 0, marginTop: -14, minHeight: 600 }]}>
+        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, borderTopWidth: 0, marginTop: -14 }]}>
           <View style={styles.caseHeader}>
             <View style={styles.caseIconWrap}>
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
@@ -445,61 +599,310 @@ export default function ClinicalInsight() {
             <Text style={styles.caseHeaderText}>CASE REVIEW</Text>
           </View>
 
-          <TabView
-            style={{ flex: 1, margin: 8 }}
-            navigationState={{ index, routes }}
-            onIndexChange={setIndex}
-            initialLayout={{ width: layout.width }}
-            renderTabBar={(tabBarProps) => (
-              <TabBar
-                {...tabBarProps}
-                activeColor={Colors.brand.darkPink}
-                inactiveColor="#5C6C83"
-                indicatorStyle={{ backgroundColor: Colors.brand.darkPink, height: 3, borderRadius: 2 }}
-                style={{ backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0, borderBottomWidth: 1, borderBottomColor: '#E6EAF0' }}
-                // tabStyle={{ width: layout.width / 3 }}
-                renderLabel={({ route: r, focused }) => (
-                  <Text style={[styles.tabText, focused ? styles.tabTextActive : null]}>{r.title}</Text>
-                )}
-              />
-            )}
-            renderScene={({ route: r }) => {
-              const key = r.key;
-              const currentSections = sections[key] || [];
-              const categoryMax = key === 'diagnosis' ? 40 : 30;
-              const categoryScore = key === 'tests' ? scores.tests : key === 'diagnosis' ? scores.diagnosis : scores.treatment;
-              return (
-                <ScrollView
-                  style={{ flex: 1 }}
-                  showsVerticalScrollIndicator={true}
-                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 6 }}
-                >
-                  <Animated.View style={{ opacity: sceneAnimsRef.current[key].opacity, transform: [{ translateY: sceneAnimsRef.current[key].translateY }] }}>
-                    <AnimatedNumber
-                      style={[styles.bulletText, { marginLeft: 0, fontWeight: '900', color: Colors.brand.darkPink }]}
-                      value={categoryScore}
-                      duration={650}
-                      formatter={(v) => `Score: ${Math.round(v)} / ${categoryMax}`}
-                    />
-                    {currentSections.length === 0 ? (
-                      <Text style={[styles.bulletText, { marginLeft: 0 }]}>No items to display.</Text>
-                    ) : (
-                      currentSections.map((section, idx) => (
-                        <Section
-                          key={idx}
-                          kind={section.kind}
-                          title={section.title}
-                          items={section.items}
-                          showDivider={idx !== currentSections.length - 1}
-                        />
-                      ))
+          <Animated.View style={{ height: animatedHeight, margin: 4, overflow: 'hidden' }}>
+            <TabView
+              style={{ flex: 1 }}
+              navigationState={{ index, routes }}
+              onIndexChange={setIndex}
+              initialLayout={{ width: layout.width }}
+              swipeEnabled={true}
+              renderTabBar={(tabBarProps) => (
+                <TabBar
+                  {...tabBarProps}
+                  activeColor={Colors.brand.darkPink}
+                  inactiveColor="#5C6C83"
+                  indicatorStyle={{ backgroundColor: Colors.brand.darkPink, height: 3, borderRadius: 2 }}
+                  style={{ backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0, borderBottomWidth: 1, borderBottomColor: '#E6EAF0' }}
+                  renderLabel={({ route: r, focused }) => (
+                    <Text style={[styles.tabText, focused ? styles.tabTextActive : null]}>{r.title}</Text>
+                  )}
+                />
+              )}
+              renderScene={({ route: r }) => {
+                const key = r.key;
+                const currentSections = sections[key] || [];
+                const categoryMax = key === 'diagnosis' ? 40 : 30;
+                const categoryScore = key === 'tests' ? scores.tests : key === 'diagnosis' ? scores.diagnosis : scores.treatment;
+
+                // Show button only on Tests and Treatment tabs
+                const showExpandButton = key === 'tests' || key === 'treatment';
+
+                return (
+                  <View style={{ flex: 1, paddingHorizontal: 8, paddingTop: 4 }}>
+                    {/* Content wrapper with relative positioning for gradient overlay */}
+                    <View style={{ position: 'relative', flex: 1, minHeight: !isContentExpanded ? COLLAPSED_HEIGHT : undefined }}>
+                      {/* Content area with clipping when collapsed */}
+                      <View style={!isContentExpanded ? { height: COLLAPSED_HEIGHT, overflow: 'hidden' } : { flex: 1 }}>
+                        <Animated.View
+                          style={{ opacity: sceneAnimsRef.current[key]?.opacity || 1, transform: [{ translateX: sceneAnimsRef.current[key]?.translateX || 0 }] }}
+                          onLayout={(e) => {
+                            const height = e.nativeEvent.layout.height;
+                            setContentHeights(prev => {
+                              if (prev[key] !== height && height > 0) {
+                                return { ...prev, [key]: height };
+                              }
+                              return prev;
+                            });
+                          }}
+                        >
+                          <AnimatedNumber
+                            style={[styles.bulletText, { marginLeft: 0, fontWeight: '900', color: Colors.brand.darkPink }]}
+                            value={categoryScore}
+                            duration={650}
+                            formatter={(v) => `Score: ${Math.round(v)} / ${categoryMax}`}
+                          />
+                          {currentSections.length === 0 ? (
+                            <Text style={[styles.bulletText, { marginLeft: 0 }]}>No items to display.</Text>
+                          ) : (
+                            currentSections.map((section, idx) => (
+                              <Section
+                                key={idx}
+                                kind={section.kind}
+                                title={section.title}
+                                items={section.items}
+                                showDivider={idx !== currentSections.length - 1}
+                              />
+                            ))
+                          )}
+                        </Animated.View>
+                      </View>
+
+                      {/* Gradient overlay with Show More button - for Tests and Treatment when collapsed */}
+                      {(key === 'tests' || key === 'treatment') && !isContentExpanded && currentSections.length > 0 && (
+                        <Pressable
+                          onPress={() => setIsContentExpanded(true)}
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: -8,
+                            right: -8,
+                            height: 70,
+                          }}
+                        >
+                          <LinearGradient
+                            colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.85)', 'rgba(255,255,255,1)']}
+                            locations={[0, 0.5, 1]}
+                            style={{
+                              flex: 1,
+                              justifyContent: 'flex-end',
+                              alignItems: 'center',
+                              paddingBottom: 10,
+                            }}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={{ color: Colors.brand.darkPink, fontWeight: '700', fontSize: 14 }}>
+                                Show More
+                              </Text>
+                              <MaterialCommunityIcons
+                                name="chevron-down"
+                                size={18}
+                                color={Colors.brand.darkPink}
+                                style={{ marginLeft: 4 }}
+                              />
+                            </View>
+                          </LinearGradient>
+                        </Pressable>
+                      )}
+                    </View>
+
+                    {/* Show Less button when expanded - only on Tests and Treatment tabs */}
+                    {showExpandButton && currentSections.length > 0 && isContentExpanded && (
+                      <Pressable
+                        onPress={() => setIsContentExpanded(false)}
+                        style={{
+                          alignItems: 'center',
+                          paddingVertical: 12,
+                          paddingBottom: 8,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={{ color: Colors.brand.darkPink, fontWeight: '700', fontSize: 14 }}>
+                            Show Less
+                          </Text>
+                          <MaterialCommunityIcons
+                            name="chevron-up"
+                            size={18}
+                            color={Colors.brand.darkPink}
+                            style={{ marginLeft: 4 }}
+                          />
+                        </View>
+                      </Pressable>
                     )}
-                  </Animated.View>
-                </ScrollView>
-              );
-            }}
-          />
+                  </View>
+                );
+              }}
+            />
+          </Animated.View>
         </View>
+
+        {/* Video Overview - Standalone Card (only show if available) */}
+        {caseData?.videooverview ? (
+          <View style={[styles.insightCard, styles.insightCardPurple]}>
+            <View style={styles.insightHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
+                  <MaterialCommunityIcons name="video-outline" size={16} color="#5B2E91" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Video Overview</Text>
+              </View>
+            </View>
+            <View style={[styles.inlineVideoContainer, { position: 'relative' }]}>
+              {/* Always show video - track progress for premium overlay */}
+              <Video
+                ref={videoRef}
+                source={{ uri: caseData.videooverview }}
+                style={styles.inlineVideo}
+                resizeMode="contain"
+                controls={!shouldShowVideoPremiumOverlay}
+                paused={videoPaused}
+                onPlaybackStateChanged={(state) => {
+                  if (state.isPlaying && !shouldShowVideoPremiumOverlay) {
+                    setVideoPaused(false);
+                  }
+                }}
+                controlsTimeout={1000}
+                hideShutterView={true}
+                onProgress={(data) => {
+                  if (shouldShowPremiumBlur && !shouldShowVideoPremiumOverlay) {
+                    setVideoPlayedSeconds(Math.floor(data.currentTime));
+                  }
+                }}
+                onFullscreenPlayerWillPresent={() => setIsVideoFullscreen(true)}
+                onFullscreenPlayerWillDismiss={() => setIsVideoFullscreen(false)}
+                controlsStyles={{
+                  hideNavigationBarOnFullScreenMode: true,
+                  hideNotificationBarOnFullScreenMode: true,
+                  liveLabel: '',
+                }}
+              />
+
+              {/* Show premium overlay after 30 seconds for non-premium users */}
+              {shouldShowVideoPremiumOverlay && (
+                <>
+                  <BlurView
+                    style={styles.premiumBlur}
+                    blurType={'light'}
+                    blurAmount={10}
+                    overlayColor={Platform.OS === 'android' ? 'rgba(242,236,250,0.85)' : 'transparent'} // Purple theme
+                  />
+                  <View style={styles.premiumOverlay}>
+                    <MaterialCommunityIcons name="video-outline" size={40} color="#5B2E91" />
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 4 }]}>Unlock Full Video with Premium</Text>
+                    {/* <Text style={{ color: '#5B2E91', fontSize: 13, marginTop: 4, textAlign: 'center', fontWeight: '600' }}>
+                      Watch full video to unlock premium
+                    </Text> */}
+                    <Pressable style={[styles.premiumCtaButton, { marginTop: 8 }]} onPress={() => premiumSheetRef.current?.present()}>
+                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                    </Pressable>
+                    <Pressable
+                      style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
+                      onPress={() => {
+                        // Seek video to 0 seconds and restart 30-second preview
+                        videoRef.current?.seek(0);
+                        setVideoPlayedSeconds(0);
+                        setVideoPaused(false);
+                      }}
+                    >
+                      <MaterialCommunityIcons name="restart" size={16} color="#5B2E91" style={{ marginRight: 4 }} />
+                      <Text style={{ color: '#5B2E91', fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' }}>Restart Video</Text>
+                    </Pressable>
+
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Slide Deck PDF - Standalone Card (only show if available) */}
+        {caseData?.slidedeck ? (
+          <View style={[styles.insightCard, styles.insightCardOrange]}>
+            <View style={styles.insightHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
+                  <MaterialCommunityIcons name="file-presentation-box" size={16} color="#6E4A13" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Slide Deck (PDF)</Text>
+              </View>
+            </View>
+            <View style={[styles.inlinePdfContainer, { position: 'relative' }]}>
+              {/* Render PDF with page limit for non-premium users */}
+              <Pdf
+                ref={pdfRef}
+                source={{ uri: caseData.slidedeck, cache: true }}
+                style={styles.inlinePdf}
+                horizontal={true}
+                enablePaging={true}
+                trustAllCerts={false}
+                onLoadComplete={(numberOfPages) => {
+                  setPdfTotalPages(numberOfPages);
+                  setPdfCurrentPage(1);
+                }}
+                onPageChanged={(page) => {
+                  // For non-premium users, don't allow going past page 4
+                  if (shouldShowPremiumBlur && page > 4) {
+                    pdfRef.current?.setPage(4);
+                    setPdfAttemptedPastLimit(true); // Trigger overlay
+                  } else {
+                    setPdfCurrentPage(page);
+                  }
+                }}
+              />
+
+              {/* Show premium overlay when non-premium user tries to go beyond slide 4 */}
+              {shouldShowPdfPremiumOverlay && (
+                <>
+                  <BlurView
+                    style={styles.premiumBlur}
+                    blurType={'light'}
+                    blurAmount={10}
+                    overlayColor={Platform.OS === 'android' ? 'rgba(246,239,228,0.85)' : 'transparent'} // Orange theme
+                  />
+                  <View style={styles.premiumOverlay} {...pdfOverlayPanResponder.panHandlers}>
+                    <MaterialCommunityIcons name="file-presentation-box" size={40} color="#6E4A13" />
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
+                    <Text style={{ color: '#6E4A13', fontSize: 13, marginTop: 4, textAlign: 'center' }}>
+                      {pdfTotalPages > 4 ? `${pdfTotalPages - 4} more slides available` : 'More content available'}
+                    </Text>
+                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
+            {/* Page indicator dots - show limited dots for non-premium users */}
+            {pdfTotalPages > 0 && (
+              <View style={styles.pdfDotsContainer}>
+                {Array.from({ length: shouldShowPremiumBlur ? Math.min(pdfTotalPages, 4) : pdfTotalPages }, (_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.pdfDot,
+                      !shouldShowPdfPremiumOverlay && pdfCurrentPage === i + 1 && { backgroundColor: '#FF8A00', width: 10, height: 10, borderRadius: 5 },
+                    ]}
+                  />
+                ))}
+                {/* Show locked indicator for non-premium users if more pages exist */}
+                {shouldShowPremiumBlur && pdfTotalPages > 4 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                    <MaterialCommunityIcons
+                      name="lock"
+                      size={14}
+                      color={shouldShowPdfPremiumOverlay ? '#FF8A00' : '#A0AEC0'}
+                    />
+                    <Text style={{
+                      fontSize: 12,
+                      color: shouldShowPdfPremiumOverlay ? '#FF8A00' : '#A0AEC0',
+                      marginLeft: 2,
+                      fontWeight: shouldShowPdfPremiumOverlay ? '900' : '500'
+                    }}>+{pdfTotalPages - 4}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        ) : null}
 
         {/* core clinical insights card */}
         <View
@@ -508,7 +911,7 @@ export default function ClinicalInsight() {
             sectionYRefs.current.coreInsights = e.nativeEvent.layout.y;
           }}
         >
-          <Pressable style={styles.insightHeaderRow} onPress={() => setInsightsExpanded((v) => !v)}>
+          <Pressable style={styles.insightHeaderRow} onPress={() => toggleSection(setInsightsExpanded)}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={styles.insightIconWrap}>
                 <MaterialCommunityIcons name="chevron-right" size={16} color={SUCCESS_COLOR} />
@@ -518,19 +921,17 @@ export default function ClinicalInsight() {
             <MaterialCommunityIcons name={insightsExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={SUCCESS_COLOR} />
           </Pressable>
 
-          {insightsExpanded && (
-            <>
-              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-                {insights.map((insight, idx) => (
-                  <InsightSection
-                    key={idx}
-                    title={insight.title}
-                    bullets={insight.bullets}
-                  />
-                ))}
-              </View>
-            </>
-          )}
+          <AnimatedCollapsible expanded={insightsExpanded}>
+            <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+              {insights.map((insight, idx) => (
+                <InsightSection
+                  key={idx}
+                  title={insight.title}
+                  bullets={insight.bullets}
+                />
+              ))}
+            </View>
+          </AnimatedCollapsible>
         </View>
 
         {/* how we landed on the diagnosis */}
@@ -541,7 +942,7 @@ export default function ClinicalInsight() {
               sectionYRefs.current.howLanded = e.nativeEvent.layout.y;
             }}
           >
-            <Pressable style={styles.insightHeaderRow} onPress={() => setHowExpanded((v) => !v)}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => toggleSection(setHowExpanded)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapBlue]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#2A4670" />
@@ -550,7 +951,7 @@ export default function ClinicalInsight() {
               </View>
               <MaterialCommunityIcons name={howExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#2A4670" />
             </Pressable>
-            {howExpanded && (
+            <AnimatedCollapsible expanded={howExpanded}>
               <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
                 {!shouldShowPremiumBlur ? (
                   <HowDiagnosisList items={caseReview.howWeLandedOnTheDiagnosis} />
@@ -573,7 +974,7 @@ export default function ClinicalInsight() {
                   </>
                 )}
               </View>
-            )}
+            </AnimatedCollapsible>
           </View>
         ) : null}
 
@@ -585,7 +986,7 @@ export default function ClinicalInsight() {
               sectionYRefs.current.rationale = e.nativeEvent.layout.y;
             }}
           >
-            <Pressable style={styles.insightHeaderRow} onPress={() => setRationaleExpanded((v) => !v)}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => toggleSection(setRationaleExpanded)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#6E4A13" />
@@ -594,7 +995,7 @@ export default function ClinicalInsight() {
               </View>
               <MaterialCommunityIcons name={rationaleExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#6E4A13" />
             </Pressable>
-            {rationaleExpanded && (
+            <AnimatedCollapsible expanded={rationaleExpanded}>
               <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
                 {!shouldShowPremiumBlur ? (
                   <TestRationaleList items={caseReview.rationaleBehindTestSelection} />
@@ -617,7 +1018,7 @@ export default function ClinicalInsight() {
                   </>
                 )}
               </View>
-            )}
+            </AnimatedCollapsible>
           </View>
         ) : null}
 
@@ -629,7 +1030,7 @@ export default function ClinicalInsight() {
               sectionYRefs.current.treatmentPriority = e.nativeEvent.layout.y;
             }}
           >
-            <Pressable style={styles.insightHeaderRow} onPress={() => setTxExpanded((v) => !v)}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => toggleSection(setTxExpanded)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#5B2E91" />
@@ -638,7 +1039,7 @@ export default function ClinicalInsight() {
               </View>
               <MaterialCommunityIcons name={txExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#5B2E91" />
             </Pressable>
-            {txExpanded && (
+            <AnimatedCollapsible expanded={txExpanded}>
               <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
                 {!shouldShowPremiumBlur ? (
                   <TreatmentPriorityList items={caseReview.treatmentPriorityAndSequencing} />
@@ -661,7 +1062,7 @@ export default function ClinicalInsight() {
                   </>
                 )}
               </View>
-            )}
+            </AnimatedCollapsible>
           </View>
         ) : null}
 
@@ -673,7 +1074,7 @@ export default function ClinicalInsight() {
               sectionYRefs.current.whyOther = e.nativeEvent.layout.y;
             }}
           >
-            <Pressable style={styles.insightHeaderRow} onPress={() => setWhyExpanded((v) => !v)}>
+            <Pressable style={styles.insightHeaderRow} onPress={() => toggleSection(setWhyExpanded)}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.insightIconWrap, styles.insightIconWrapRed]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#7B1F24" />
@@ -682,7 +1083,7 @@ export default function ClinicalInsight() {
               </View>
               <MaterialCommunityIcons name={whyExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#7B1F24" />
             </Pressable>
-            {whyExpanded && (
+            <AnimatedCollapsible expanded={whyExpanded}>
               <View style={[{ paddingHorizontal: 12, paddingBottom: 12, position: 'relative' }, shouldShowPremiumBlur && { height: 550 }]}>
                 {!shouldShowPremiumBlur ? (
                   <WhyNotList items={caseReview.whyOtherDiagnosesDidntFit} />
@@ -705,51 +1106,7 @@ export default function ClinicalInsight() {
                   </>
                 )}
               </View>
-            )}
-          </View>
-        ) : null}
-
-        {/* Video Overview - Standalone Card (only show if available) */}
-        {caseData?.videooverview ? (
-          <View style={styles.standaloneResourceCard}>
-            <View style={styles.resourceInfoRow}>
-              <MaterialCommunityIcons name="video-outline" size={20} color="#14919B" />
-              <Text style={styles.resourceTitle}>Video Overview</Text>
-            </View>
-            <View style={[styles.inlineVideoContainer, { position: 'relative' }]}>
-              {!shouldShowPremiumBlur ? (
-                <Video
-                  source={{ uri: caseData.videooverview }}
-                  style={styles.inlineVideo}
-                  resizeMode="contain"
-                  controls={true}
-                  paused={true}
-                  controlsTimeout={1000}
-                  hideShutterView={true}
-                  controlsStyles={{
-                    hideNavigationBarOnFullScreenMode: true,
-                    hideNotificationBarOnFullScreenMode: true,
-                    liveLabel: '',
-                  }}
-                />
-              ) : (
-                <>
-                  <BlurView
-                    style={styles.premiumBlur}
-                    blurType={'light'}
-                    blurAmount={10}
-                    overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
-                  />
-                  <View style={styles.premiumOverlay}>
-                    <MaterialCommunityIcons name="video-outline" size={40} color="#14919B" />
-                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
-                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
-                    </Pressable>
-                  </View>
-                </>
-              )}
-            </View>
+            </AnimatedCollapsible>
           </View>
         ) : null}
 
@@ -788,65 +1145,6 @@ export default function ClinicalInsight() {
           </View>
         ) : null}
 
-        {/* Slide Deck PDF - Standalone Card (only show if available) */}
-        {caseData?.slidedeck ? (
-          <View style={styles.standaloneResourceCard}>
-            <View style={styles.resourceInfoRow}>
-              <MaterialCommunityIcons name="file-presentation-box" size={20} color="#14919B" />
-              <Text style={styles.resourceTitle}>Slide Deck (PDF)</Text>
-            </View>
-            <View style={[styles.inlinePdfContainer, { position: 'relative' }]}>
-              {!shouldShowPremiumBlur ? (
-                <>
-                  <Pdf
-                    source={{ uri: caseData.slidedeck, cache: true }}
-                    style={styles.inlinePdf}
-                    horizontal={true}
-                    enablePaging={true}
-                    trustAllCerts={false}
-                    onLoadComplete={(numberOfPages) => {
-                      setPdfTotalPages(numberOfPages);
-                      setPdfCurrentPage(1);
-                    }}
-                    onPageChanged={(page) => {
-                      setPdfCurrentPage(page);
-                    }}
-                  />
-                </>
-              ) : (
-                <>
-                  <BlurView
-                    style={styles.premiumBlur}
-                    blurType={'light'}
-                    blurAmount={10}
-                    overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
-                  />
-                  <View style={styles.premiumOverlay}>
-                    <MaterialCommunityIcons name="file-presentation-box" size={40} color="#14919B" />
-                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
-                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
-                    </Pressable>
-                  </View>
-                </>
-              )}
-            </View>
-            {/* Page indicator dots - only show when not blurred */}
-            {!shouldShowPremiumBlur && pdfTotalPages > 0 && (
-              <View style={styles.pdfDotsContainer}>
-                {Array.from({ length: pdfTotalPages }, (_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.pdfDot,
-                      pdfCurrentPage === i + 1 && styles.pdfDotActive,
-                    ]}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        ) : null}
       </ScrollView>
 
       {/* Floating scroll-to-insights button */}
@@ -878,34 +1176,43 @@ export default function ClinicalInsight() {
   );
 }
 
-function BulletList({ bullets }) {
-  if (!Array.isArray(bullets) || bullets.length === 0) return null;
-  return (
-    <View style={{ paddingTop: 16 }}>
-      {bullets.map((b, i) => (
-        <Text key={i} style={styles.insightBullet}>{`\u2022 ${b}`}</Text>
-      ))}
-    </View>
-  );
-}
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    color: '#223148',
+  },
+  strong: {
+    fontWeight: 'bold',
+  },
+  paragraph: {
+    marginTop: 0,
+    marginBottom: 0,
+    flexWrap: 'wrap',
+  },
+};
 
-function WhyNotList({ items }) {
+const WhyNotList = React.memo(({ items }) => {
   if (!Array.isArray(items) || items.length === 0) return null;
   return (
     <View style={{ paddingTop: 16 }}>
       {items.map((it, i) => (
         <View key={i} style={{ marginBottom: 10 }}>
-          <Text style={styles.insightTitle}>{it?.diagnosisName || 'Alternative Diagnosis'}</Text>
+          <Markdown style={{ ...markdownStyles, body: styles.insightTitle }}>{it?.diagnosisName || 'Alternative Diagnosis'}</Markdown>
           {!!it?.reasoning && (
-            <Text style={styles.insightBullet}>{`\u2022 ${it.reasoning}`}</Text>
+            <View style={{ flexDirection: 'row', marginTop: 4, alignItems: 'flex-start' }}>
+              <Text style={[styles.insightBullet, { marginTop: Platform.OS === 'ios' ? 0 : 2 }]}>{`\u2022 `}</Text>
+              <View style={{ flex: 1 }}>
+                <Markdown style={markdownStyles}>{it.reasoning}</Markdown>
+              </View>
+            </View>
           )}
         </View>
       ))}
     </View>
   );
-}
+});
 
-function TreatmentPriorityList({ items }) {
+const TreatmentPriorityList = React.memo(({ items }) => {
   if (!Array.isArray(items) || items.length === 0) return null;
   const parseItem = (text, index) => {
     if (typeof text !== 'string') {
@@ -934,17 +1241,21 @@ function TreatmentPriorityList({ items }) {
               <Text style={styles.treatmentStepBadgeText}>{step}</Text>
             </View>
             <View style={styles.treatmentStepContent}>
-              {!!title && <Text style={styles.treatmentStepTitle}>{title}</Text>}
-              {!!desc && <Text style={styles.treatmentStepDesc}>{desc}</Text>}
+              {!!title && (
+                <Markdown style={{ ...markdownStyles, body: styles.treatmentStepTitle }}>{title}</Markdown>
+              )}
+              {!!desc && (
+                <Markdown style={{ ...markdownStyles, body: styles.treatmentStepDesc }}>{desc}</Markdown>
+              )}
             </View>
           </View>
         );
       })}
     </View>
   );
-}
+});
 
-function TestRationaleList({ items }) {
+const TestRationaleList = React.memo(({ items }) => {
   if (!Array.isArray(items) || items.length === 0) return null;
   const parseRationale = (text) => {
     if (typeof text !== 'string') return { name: String(text), priority: '', desc: '' };
@@ -986,22 +1297,24 @@ function TestRationaleList({ items }) {
         return (
           <View key={i} style={styles.rationaleRow}>
             <View style={styles.rationaleHeader}>
-              <Text style={styles.rationaleTitle}>{name}</Text>
+              <Markdown style={{ ...markdownStyles, body: styles.rationaleTitle }}>{name}</Markdown>
               {!!priority && (
                 <View style={styles.rationaleChip}>
                   <Text style={styles.rationaleChipText}>{priority}</Text>
                 </View>
               )}
             </View>
-            {!!desc && <Text style={styles.rationaleDesc}>{desc}</Text>}
+            {!!desc && (
+              <Markdown style={{ ...markdownStyles, body: styles.rationaleDesc }}>{desc}</Markdown>
+            )}
           </View>
         );
       })}
     </View>
   );
-}
+});
 
-function HowDiagnosisList({ items }) {
+const HowDiagnosisList = React.memo(({ items }) => {
   if (!Array.isArray(items) || items.length === 0) return null;
   const parseHow = (text) => {
     if (typeof text !== 'string') return { title: String(text), desc: '' };
@@ -1036,15 +1349,19 @@ function HowDiagnosisList({ items }) {
               <MaterialCommunityIcons name="check-circle-outline" size={16} color="#2A4670" />
             </View>
             <View style={styles.howContent}>
-              {!!title && <Text style={styles.howTitle}>{title}</Text>}
-              {!!desc && <Text style={styles.howDesc}>{desc}</Text>}
+              {!!title && (
+                <Markdown style={{ ...markdownStyles, body: styles.howTitle }}>{title}</Markdown>
+              )}
+              {!!desc && (
+                <Markdown style={{ ...markdownStyles, body: styles.howDesc }}>{desc}</Markdown>
+              )}
             </View>
           </View>
         );
       })}
     </View>
   );
-}
+});
 
 function PremiumBenefitsTable() {
   return (
@@ -1091,13 +1408,13 @@ function PremiumBenefitsTable() {
   );
 }
 
-function Section({ kind, title, items, showDivider }) {
+const Section = React.memo(({ kind, title, items, showDivider }) => {
   const color = kind === 'success' ? SUCCESS_COLOR : kind === 'error' ? ERROR_COLOR : INFO_COLOR;
   const bg = kind === 'success' ? SUCCESS_BG : kind === 'error' ? ERROR_BG : INFO_BG;
   const icon = kind === 'success' ? 'check-circle-outline' : kind === 'error' ? 'close-circle-outline' : 'information-outline';
 
   return (
-    <View style={{ paddingTop: 16 }}>
+    <View style={{ paddingTop: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
         <View style={[styles.sectionIconWrap, { backgroundColor: bg }]}>
           <MaterialCommunityIcons name={icon} size={16} color={color} />
@@ -1106,13 +1423,18 @@ function Section({ kind, title, items, showDivider }) {
       </View>
 
       {items.map((text, i) => (
-        <Text key={i} style={styles.bulletText}>{`\u2022 ${text}`}</Text>
+        <View key={i} style={{ flexDirection: 'row', marginBottom: 4, alignItems: 'flex-start' }}>
+          <Text style={[styles.bulletText, { marginTop: Platform.OS === 'ios' ? 0 : 2 }]}>{`\u2022 `}</Text>
+          <View style={{ flex: 1 }}>
+            <Markdown style={{ ...markdownStyles, body: styles.bulletText }}>{text}</Markdown>
+          </View>
+        </View>
       ))}
 
       {showDivider && <DashedDivider />}
     </View>
   );
-}
+});
 
 function DashedDivider() {
   return (
@@ -1122,22 +1444,27 @@ function DashedDivider() {
   );
 }
 
-function InsightSection({ title, bullets }) {
+const InsightSection = React.memo(({ title, bullets }) => {
   return (
     <View style={{ paddingTop: 16 }}>
-      <Text style={styles.insightTitle}>{title}</Text>
+      <Markdown style={{ ...markdownStyles, body: styles.insightTitle }}>{title}</Markdown>
       {bullets.map((b, i) => (
-        <Text key={i} style={styles.insightBullet}>{`\u2022 ${b}`}</Text>
+        <View key={i} style={{ flexDirection: 'row', marginBottom: 4, alignItems: 'flex-start' }}>
+          <Text style={[styles.insightBullet, { marginTop: Platform.OS === 'ios' ? 0 : 2 }]}>{`\u2022 `}</Text>
+          <View style={{ flex: 1 }}>
+            <Markdown style={{ ...markdownStyles, body: styles.insightBullet }}>{b}</Markdown>
+          </View>
+        </View>
       ))}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   container: { paddingHorizontal: 8, paddingBottom: 120 },
   screenWrap: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
-  topWrap: { alignItems: 'center', paddingTop: 0, paddingBottom: 8 },
+  topWrap: { alignItems: 'center', paddingTop: 0, paddingBottom: 8, marginBottom: 16, marginHorizontal: 16 },
   scoreSection: { alignItems: 'center', paddingTop: 12, paddingBottom: 4, width: '100%' },
   topImage: {
     width: 96,
@@ -1166,14 +1493,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   // removed flex growth on the card to keep it compact
-  caseHeader: { flexDirection: 'row', alignItems: 'center', padding: 10, paddingBottom: 6, justifyContent: 'center' },
+  caseHeader: { flexDirection: 'row', alignItems: 'center', padding: 8, paddingBottom: 4, justifyContent: 'center' },
   caseIconWrap: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#E9EEF6', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   caseHeaderText: { fontSize: 16, fontWeight: '800', color: '#5C6C83' },
   tabText: { fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink },
   tabTextActive: { color: Colors.brand.darkPink },
   sectionIconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '800' },
-  bulletText: { fontSize: 16, color: '#223148', marginVertical: 4, marginLeft: 6 },
+  bulletText: { fontSize: 16, color: '#223148', marginVertical: 2, marginLeft: 4 },
   // removed fixed-position back button
   backBtnInline: {
     alignSelf: 'flex-start',
@@ -1211,7 +1538,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.9)',
     shadowColor: '#000',
     shadowOpacity: 0.08,

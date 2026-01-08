@@ -28,17 +28,9 @@
 				<string>com.googleusercontent.apps.125181194595-joc9v9367fldq9qigu2bh9uoosq4u67d</string>
 			</array>
 		</dict>
-		 <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
-            <string>fb1934968697446183</string>
-        </array>
-    </dict>
+		
 	</array>
-	<key>FacebookAppID</key>
-<string>1934968697446183</string>
-<key>FacebookDisplayName</key>
-<string>Diagnose It</string>
+	
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GIDClientID</key>

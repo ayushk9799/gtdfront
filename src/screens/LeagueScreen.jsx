@@ -42,7 +42,6 @@ const formatDate = (dateStr) => {
 };
 
 export default function LeagueScreen() {
-    const themeColors = Colors.light;
     const dispatch = useDispatch();
     const insets = useSafeAreaInsets();
 
@@ -362,55 +361,33 @@ export default function LeagueScreen() {
 
             {dailyTop10.length > 0 && (
                 <>
-                    {/* Top 3 Podium */}
-                    <View style={[styles.podiumSection, { marginTop: 0 }]}>
-                        <View style={styles.podiumContainer}>
-                            {/* 2nd Place - Left */}
-                            <View style={styles.podiumSide}>
-                                {dailyTop3[1] && renderPodiumPlayer(dailyTop3[1], 2)}
-                            </View>
-
-                            {/* 1st Place - Center */}
-                            <View style={styles.podiumCenter}>
-                                {dailyTop3[0] && renderPodiumPlayer(dailyTop3[0], 1)}
-                            </View>
-
-                            {/* 3rd Place - Right */}
-                            <View style={styles.podiumSide}>
-                                {dailyTop3[2] && renderPodiumPlayer(dailyTop3[2], 3)}
-                            </View>
+                    {/* Full Leaderboard List (no podium for daily challenge) */}
+                    <View style={styles.leaderboardContainer}>
+                        {/* Header */}
+                        <View style={styles.listHeader}>
+                            <Text style={styles.listHeaderText}>RANK</Text>
+                            <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>PLAYER</Text>
+                            <Text style={styles.listHeaderText}>SCORE</Text>
                         </View>
+
+                        {/* List Items - All participants */}
+                        {dailyTop10.map((item, idx) => {
+                            const isMe = dailyMe && item?.userId && dailyMe?.userId && String(item.userId) === String(dailyMe.userId);
+                            return renderLeaderboardItem({ ...item, rank: item.rank || idx + 1 }, idx, isMe);
+                        })}
+
+                        {/* Show user's rank if not in top 10 */}
+                        {dailyMe && dailyMe.rank > 10 && (
+                            <>
+                                <View style={styles.ellipsisContainer}>
+                                    <View style={styles.ellipsisDot} />
+                                    <View style={styles.ellipsisDot} />
+                                    <View style={styles.ellipsisDot} />
+                                </View>
+                                {renderLeaderboardItem(dailyMe, 0, true)}
+                            </>
+                        )}
                     </View>
-
-                    {/* Rest of Leaderboard - Only show if more than 3 participants */}
-                    {dailyRestLeaderboard.length > 0 && (
-                        <View style={styles.leaderboardContainer}>
-                            {/* Header */}
-                            <View style={styles.listHeader}>
-                                <Text style={styles.listHeaderText}>RANK</Text>
-                                <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>PLAYER</Text>
-                                <Text style={styles.listHeaderText}>SCORE</Text>
-                            </View>
-
-                            {/* List Items */}
-                            {dailyRestLeaderboard.map((item, idx) => {
-                                const isMe = dailyMe && item?.userId && dailyMe?.userId && String(item.userId) === String(dailyMe.userId);
-                                return renderLeaderboardItem(item, idx, isMe);
-                            })}
-
-                            {/* Show user's rank if not in top 10 */}
-                            {dailyMe && dailyMe.rank > 10 && (
-                                <>
-                                    <View style={styles.ellipsisContainer}>
-                                        <View style={styles.ellipsisDot} />
-                                        <View style={styles.ellipsisDot} />
-                                        <View style={styles.ellipsisDot} />
-                                    </View>
-                                    {renderLeaderboardItem(dailyMe, 0, true)}
-                                </>
-                            )}
-                        </View>
-                    )}
 
                     {/* Show encouragement when user is the only participant */}
                     {dailyTop10.length === 1 && (

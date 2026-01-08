@@ -274,8 +274,9 @@ export default function SelectTests() {
 
   const reportsSheetRef = useRef(null);
   const reportsScrollRef = useRef(null);
+  const chipsScrollRef = useRef(null);
   const [reportIndex, setReportIndex] = useState(0);
-  const reportSnapPoints = React.useMemo(() => ['70%', '80%'], []);
+  const reportSnapPoints = React.useMemo(() => ['85%', '95%'], []);
   const renderBackdrop = React.useCallback(
     (props) => (
       <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.4} />
@@ -403,27 +404,47 @@ export default function SelectTests() {
                 <View style={styles.sheetHeaderRow}>
                   <Text style={styles.sheetHeaderTitle}>Reports ({evaluatedResults.length})</Text>
                 </View>
-                <View style={styles.chipsRow}>
-                  {evaluatedResults.map((r, i) => {
-                    const testMeta = testsById.get(r.id);
-                    const label = testMeta?.testName || r.id;
-                    const shortLabel = (label && label.split('(')[0]) || label;
-                    const active = i === reportIndex;
-                    return (
-                      <TouchableOpacity
-                        key={r.id}
-                        onPress={() => {
-                          const pageWidth = width - 32;
-                          reportsScrollRef.current?.scrollTo({ x: pageWidth * i, animated: true });
-                          setReportIndex(i);
-                        }}
-                        style={[styles.chip, active && styles.chipActive]}
-                        accessibilityRole="button"
-                      >
-                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{shortLabel}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                <View style={styles.chipsScrollWrapper}>
+                  <ScrollView
+                    ref={chipsScrollRef}
+                    style={styles.chipsScrollContainer}
+                    contentContainerStyle={styles.chipsRow}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled
+                  >
+                    {evaluatedResults.map((r, i) => {
+                      const testMeta = testsById.get(r.id);
+                      const label = testMeta?.testName || r.id;
+                      const shortLabel = (label && label.split('(')[0]) || label;
+                      const active = i === reportIndex;
+                      // Calculate approximate row position (assuming ~40px per chip row, ~3 chips per row)
+                      const rowIndex = Math.floor(i / 3);
+                      const scrollY = rowIndex * 48;
+                      return (
+                        <TouchableOpacity
+                          key={r.id}
+                          onPress={() => {
+                            const pageWidth = width - 32;
+                            reportsScrollRef.current?.scrollTo({ x: pageWidth * i, animated: true });
+                            // Scroll chips to bring the selected row into view
+                            chipsScrollRef.current?.scrollTo({ y: scrollY, animated: true });
+                            setReportIndex(i);
+                          }}
+                          style={[styles.chip, active && styles.chipActive]}
+                          accessibilityRole="button"
+                        >
+                          <Text style={[styles.chipText, active && styles.chipTextActive]}>{shortLabel}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                  {evaluatedResults.length > 4 && (
+                    <LinearGradient
+                      colors={['rgba(232, 242, 255, 0)', 'rgba(232, 242, 255, 0.9)', '#E8F2FF']}
+                      style={styles.chipsFadeGradient}
+                      pointerEvents="none"
+                    />
+                  )}
                 </View>
                 <GestureScrollView
                   ref={reportsScrollRef}
@@ -703,10 +724,26 @@ const styles = StyleSheet.create({
   },
 
   // Chip Tabs Section
+  chipsScrollWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  chipsScrollContainer: {
+    maxHeight: 180,
+  },
+  chipsFadeGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
+    paddingBottom: 16,
     gap: 8, // Adds spacing between chips
   },
   chip: {
