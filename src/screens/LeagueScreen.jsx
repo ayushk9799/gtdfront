@@ -83,7 +83,7 @@ export default function LeagueScreen() {
         try {
             const dateText = dailyDate ? formatDate(dailyDate) : 'today';
             const title = challengeTitle || 'Daily Challenge';
-            const appLink = 'https://diagnoseit.app/download'; // Replace with actual app link
+            const appLink = 'https://diagnoseit.in'; // Replace with actual app link
 
             await Share.share({
                 message: `Can you solve today's medical case?\n\n"${title}"\n📅 \n\nI just completed this daily challenge on Diagnose It! Download the app and see if you can beat my score! 🎯\n\n👉 ${appLink}\n\n#DiagnoseIt #MedicalCase #DailyChallenge`,
