@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, TouchableOpacity, Image, Animated, InteractionManager, Platform, useWindowDimensions, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, TouchableOpacity, Image, Animated, InteractionManager, Platform, useWindowDimensions, BackHandler, ActivityIndicator } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/botto
 import { BlurView } from '@react-native-community/blur';
 import PremiumBottomSheet from './components/PremiumBottomSheet';
 import QuitConfirmationSheet from './components/QuitConfirmationSheet';
+import Markdown from 'react-native-markdown-display';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -26,6 +27,23 @@ const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 const CARD_HEIGHT_PCT = 0.70;
 const CARD_HEIGHT_PX = Math.round(Dimensions.get('window').height * CARD_HEIGHT_PCT);
 const AURA_SIZE = 70;
+
+// Markdown styles for rendering formatted text
+const markdownStyles = {
+  body: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#333',
+  },
+  strong: {
+    fontWeight: 'bold',
+  },
+  paragraph: {
+    marginTop: 0,
+    marginBottom: 0,
+    flexWrap: 'wrap',
+  },
+};
 
 
 // DecorativeSeparator is now a shared component
@@ -81,10 +99,18 @@ function Section({ title, children, onPressAudio, audioPlaying, audioDisabled, a
 
 function BulletItem({ children }) {
   const themeColors = Colors.light;
+  // If children is a string, render with Markdown; otherwise render as-is
+  const content = typeof children === 'string' ? (
+    <Markdown style={{ ...markdownStyles, body: { ...markdownStyles.body, color: themeColors.text } }}>
+      {children}
+    </Markdown>
+  ) : (
+    <Text style={[styles.bulletText, { color: themeColors.text }]}>{children}</Text>
+  );
   return (
     <View style={styles.bulletRow}>
       <View style={styles.bulletDot} />
-      <Text style={[styles.bulletText, { color: themeColors.text }]}>{children}</Text>
+      <View style={{ flex: 1 }}>{content}</View>
     </View>
   );
 }
@@ -163,9 +189,11 @@ export default function ClinicalInfo() {
   const dispatch = useDispatch();
   const caseDataFromRoute = route?.params?.caseData;
   const caseDataFromStore = useSelector((s) => s.currentGame.caseData);
+  const caseLoadingStatus = useSelector((s) => s.currentGame.status);
   const { isPremium } = useSelector((s) => s.user || {});
   const caseData = caseDataFromRoute || caseDataFromStore || {};
   const caseId = (caseData?.caseId && String(caseData.caseId)) || '';
+  const isLoading = caseLoadingStatus === 'loading' || (!caseId && !caseDataFromRoute);
   const [heroLoadError, setHeroLoadError] = useState(false);
   const mainImageUrl = caseData?.mainimage || '';
   const [heroLoaded, setHeroLoaded] = useState(false);
@@ -563,6 +591,8 @@ export default function ClinicalInfo() {
     togglePlayForIndexRef.current = togglePlayForIndex;
   }, [togglePlayForIndex]);
   const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+
+ 
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>

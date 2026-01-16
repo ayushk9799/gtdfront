@@ -10,7 +10,7 @@ import LeagueHeader from './LeagueHeader';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch, useSelector } from 'react-redux';
-import { loadCaseById, setUserId, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } from '../store/slices/currentGameSlice';
+import { loadCaseById, setUserId, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, clearCurrentGame } from '../store/slices/currentGameSlice';
 import { loadTodaysChallenge, selectCurrentChallenge, selectIsChallengeLoading, selectHasChallengeError, selectChallengeError } from '../store/slices/dailyChallengeSlice';
 import { fetchCategories } from '../store/slices/categoriesSlice';
 import departmentIcon from '../../constants/department.png';
@@ -98,7 +98,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (categoriesLoading === 'idle') {
-      dispatch(fetchCategories());
+      dispatch(fetchCategories()); 
     }
   }, [dispatch]);
 
@@ -243,8 +243,9 @@ export default function HomeScreen() {
         navigation.navigate('Heart');
         return;
       }
-      await dispatch(loadCaseById(caseId));
+      dispatch(clearCurrentGame()); // Clear old data to prevent stale flash
       navigation.navigate('ClinicalInfo');
+      await dispatch(loadCaseById(caseId));
     } catch (_) { }
   };
 
