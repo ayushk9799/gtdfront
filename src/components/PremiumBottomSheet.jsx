@@ -1,5 +1,5 @@
-import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, StyleSheet, ScrollView, Linking } from 'react-native';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, StyleSheet, ScrollView, Linking, BackHandler } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch, useSelector } from 'react-redux';
@@ -16,9 +16,22 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
   const [offerings, setOfferings] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const theme = Colors.light;
 
   const snapPoints = useMemo(() => ['65%'], []);
+
+  // Handle Android back button when sheet is open
+  useEffect(() => {
+    if (!isSheetOpen) return;
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      sheetRef.current?.dismiss();
+      return true; // Prevent default back behavior
+    });
+
+    return () => backHandler.remove();
+  }, [isSheetOpen]);
 
   const backdrop = useCallback((props) => (
     <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.4} />
@@ -205,6 +218,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
       backdropComponent={backdrop}
       enablePanDownToClose={true}
       onChange={(index) => {
+        setIsSheetOpen(index >= 0);
         if (index >= 0) {
           // refresh data when opened
           getOfferingsAndEntitlements().catch(() => { });
@@ -232,7 +246,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
               >
                 <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
-                 Get unlimited access to all features
+                  Get unlimited access to all features
                 </Text>
               </View>
             </View>

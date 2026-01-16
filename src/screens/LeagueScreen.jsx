@@ -428,12 +428,10 @@ export default function LeagueScreen() {
                 >
                     {/* Render content based on active tab */}
                     {activeTab === 0 ? renderOverallContent() : renderDailyContent()}
-                </ScrollView>
 
-                {/* CloudBottom fixed at bottom */}
-                <View style={styles.cloudContainer}>
+                    {/* CloudBottom at bottom of list */}
                     <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.25 }} />
-                </View>
+                </ScrollView>
             </View>
         </SafeAreaView>
     );
@@ -602,13 +600,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 20,
         marginBottom: 10,
-    },
-    cloudContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        pointerEvents: 'none',
     },
 
     // Existing styles
