@@ -1,5 +1,6 @@
 import React from 'react';
-import { useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, PanResponder, UIManager } from 'react-native';
+import { useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, PanResponder, UIManager, Alert, ToastAndroid } from 'react-native';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import ReAnimated, { useSharedValue, useAnimatedStyle, withTiming, Easing as ReEasing } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -824,6 +825,61 @@ export default function ClinicalInsight() {
                 </View>
                 <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Slide Deck (PDF)</Text>
               </View>
+              <Pressable
+                onPress={async () => {
+                  // Check if user is premium
+                  if (shouldShowPremiumBlur) {
+                    // Show premium purchase sheet for non-premium users
+                    premiumSheetRef.current?.present();
+                    return;
+                  }
+
+                  try {
+                    const { dirs } = ReactNativeBlobUtil.fs;
+                    const fileName = `SlideDeck_${Date.now()}.pdf`;
+
+                    // Show download started toast
+                    if (Platform.OS === 'android') {
+                      ToastAndroid.show('Downloading PDF...', ToastAndroid.SHORT);
+                    }
+
+                    if (Platform.OS === 'android') {
+                      // For Android, use Download Manager which automatically adds to Downloads
+                      const downloadPath = `${dirs.DownloadDir}/${fileName}`;
+
+                      await ReactNativeBlobUtil.config({
+                        addAndroidDownloads: {
+                          useDownloadManager: true,
+                          notification: true,
+                          title: fileName,
+                          description: 'Downloading slide deck PDF',
+                          path: downloadPath,
+                          mime: 'application/pdf',
+                          mediaScannable: true,
+                        },
+                      }).fetch('GET', caseData.slidedeck);
+
+                      ToastAndroid.show('PDF saved to Downloads!', ToastAndroid.LONG);
+                    } else {
+                      // For iOS
+                      const downloadPath = `${dirs.DocumentDir}/${fileName}`;
+                      const res = await ReactNativeBlobUtil.config({
+                        fileCache: true,
+                        path: downloadPath,
+                      }).fetch('GET', caseData.slidedeck);
+
+                      ReactNativeBlobUtil.ios.openDocument(res.path());
+                    }
+                  } catch (error) {
+                    console.error('Download error:', error);
+                    Alert.alert('Download Failed', 'Unable to download the PDF. Please try again.');
+                  }
+                }}
+                hitSlop={10}
+                style={{ padding: 4 }}
+              >
+                <MaterialCommunityIcons name="download" size={22} color="#6E4A13" />
+              </Pressable>
             </View>
             <View style={[styles.inlinePdfContainer, { position: 'relative' }]}>
               {/* Render PDF with page limit for non-premium users */}
@@ -922,7 +978,7 @@ export default function ClinicalInsight() {
           </Pressable>
 
           <AnimatedCollapsible expanded={insightsExpanded}>
-            <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+            <View style={{ paddingHorizontal: 8, paddingBottom: 8 }}>
               {insights.map((insight, idx) => (
                 <InsightSection
                   key={idx}
@@ -991,7 +1047,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#6E4A13" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Rationale Behind Test Selection</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Logic Behind Test Selection</Text>
               </View>
               <MaterialCommunityIcons name={rationaleExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#6E4A13" />
             </Pressable>
@@ -1035,7 +1091,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#5B2E91" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Treatment Priority and Sequencing</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Treatment Priority </Text>
               </View>
               <MaterialCommunityIcons name={txExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#5B2E91" />
             </Pressable>
@@ -1194,12 +1250,12 @@ const markdownStyles = {
 const WhyNotList = React.memo(({ items }) => {
   if (!Array.isArray(items) || items.length === 0) return null;
   return (
-    <View style={{ paddingTop: 16 }}>
+    <View style={{ paddingTop: 8 }}>
       {items.map((it, i) => (
-        <View key={i} style={{ marginBottom: 10 }}>
+        <View key={i} style={{ marginBottom: 4 }}>
           <Markdown style={{ ...markdownStyles, body: styles.insightTitle }}>{it?.diagnosisName || 'Alternative Diagnosis'}</Markdown>
           {!!it?.reasoning && (
-            <View style={{ flexDirection: 'row', marginTop: 4, alignItems: 'flex-start' }}>
+            <View style={{ flexDirection: 'row', marginTop: 0, alignItems: 'flex-start' }}>
               <Text style={[styles.insightBullet, { marginTop: Platform.OS === 'ios' ? 0 : 2 }]}>{`\u2022 `}</Text>
               <View style={{ flex: 1 }}>
                 <Markdown style={markdownStyles}>{it.reasoning}</Markdown>
@@ -1232,7 +1288,7 @@ const TreatmentPriorityList = React.memo(({ items }) => {
     return { step, title, desc };
   };
   return (
-    <View style={{ paddingTop: 16 }}>
+    <View style={{ paddingTop: 8 }}>
       {items.map((it, idx) => {
         const { step, title, desc } = parseItem(it, idx);
         return (
@@ -1291,7 +1347,7 @@ const TestRationaleList = React.memo(({ items }) => {
     return { name, priority, desc };
   };
   return (
-    <View style={{ paddingTop: 16 }}>
+    <View style={{ paddingTop: 8 }}>
       {items.map((it, i) => {
         const { name, priority, desc } = parseRationale(it);
         return (
@@ -1340,7 +1396,7 @@ const HowDiagnosisList = React.memo(({ items }) => {
     return { title, desc };
   };
   return (
-    <View style={{ paddingTop: 16 }}>
+    <View style={{ paddingTop: 8 }}>
       {items.map((it, i) => {
         const { title, desc } = parseHow(it);
         return (
@@ -1446,10 +1502,10 @@ function DashedDivider() {
 
 const InsightSection = React.memo(({ title, bullets }) => {
   return (
-    <View style={{ paddingTop: 16 }}>
+    <View style={{ paddingTop: 8 }}>
       <Markdown style={{ ...markdownStyles, body: styles.insightTitle }}>{title}</Markdown>
       {bullets.map((b, i) => (
-        <View key={i} style={{ flexDirection: 'row', marginBottom: 4, alignItems: 'flex-start' }}>
+        <View key={i} style={{ flexDirection: 'row', marginBottom: 0, alignItems: 'flex-start' }}>
           <Text style={[styles.insightBullet, { marginTop: Platform.OS === 'ios' ? 0 : 2 }]}>{`\u2022 `}</Text>
           <View style={{ flex: 1 }}>
             <Markdown style={{ ...markdownStyles, body: styles.insightBullet }}>{b}</Markdown>
@@ -1582,8 +1638,8 @@ const styles = StyleSheet.create({
   },
   insightHeaderText: { color: '#1F9E90', fontWeight: '800', fontSize: 18 },
 
-  insightTitle: { fontSize: 18, fontWeight: '900', color: '#163D3A', marginBottom: 6 },
-  insightBullet: { fontSize: 15.5, color: '#163D3A', lineHeight: 22, marginLeft: 6 },
+  insightTitle: { fontSize: 15, fontWeight: '900', color: '#163D3A', marginBottom: 0 },
+  insightBullet: { fontSize: 15.5, color: '#163D3A', lineHeight: 20 },
   // Themed variants for additional cards
   insightCardBlue: {
     borderColor: '#B7C7E6',
@@ -1609,7 +1665,7 @@ const styles = StyleSheet.create({
   },
   insightHeaderTextRed: { color: '#7B1F24' },
   insightIconWrapRed: { backgroundColor: '#F6D9DB' },
-  treatmentStepRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
+  treatmentStepRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
   treatmentStepBadge: {
     width: 28,
     height: 28,
@@ -1622,11 +1678,11 @@ const styles = StyleSheet.create({
   },
   treatmentStepBadgeText: { color: SUCCESS_COLOR, fontWeight: '900' },
   treatmentStepContent: { flex: 1 },
-  treatmentStepTitle: { fontSize: 16.5, fontWeight: '900', color: '#163D3A' },
-  treatmentStepDesc: { fontSize: 15.5, color: '#163D3A', lineHeight: 22, marginTop: 2 },
-  rationaleRow: { marginBottom: 14 },
+  treatmentStepTitle: { fontSize: 15, fontWeight: '900', color: '#163D3A' },
+  treatmentStepDesc: { fontSize: 15, color: '#163D3A', lineHeight: 20, marginTop: 0 },
+  rationaleRow: { marginBottom: 6 },
   rationaleHeader: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
-  rationaleTitle: { fontSize: 16.5, fontWeight: '900', color: '#6E4A13', marginRight: 8 },
+  rationaleTitle: { fontSize: 15, fontWeight: '900', color: '#6E4A13', marginRight: 8 },
   rationaleChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -1636,8 +1692,8 @@ const styles = StyleSheet.create({
     borderColor: '#E6D5B8',
   },
   rationaleChipText: { fontSize: 12.5, fontWeight: '800', color: '#6E4A13' },
-  rationaleDesc: { fontSize: 15.5, color: '#6E4A13', lineHeight: 22, marginTop: 4 },
-  howRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
+  rationaleDesc: { fontSize: 15, color: '#6E4A13', lineHeight: 20, marginTop: 0 },
+  howRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
   howBullet: {
     width: 24,
     height: 24,
@@ -1649,8 +1705,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   howContent: { flex: 1 },
-  howTitle: { fontSize: 16.5, fontWeight: '900', color: '#2A4670' },
-  howDesc: { fontSize: 15.5, color: '#2A4670', lineHeight: 22, marginTop: 2 },
+  howTitle: { fontSize: 15, fontWeight: '900', color: '#2A4670' },
+  howDesc: { fontSize: 15, color: '#2A4670', lineHeight: 20, marginTop: 0 },
   premiumBlur: { ...StyleSheet.absoluteFillObject, borderRadius: 12, zIndex: 1 },
   premiumCta: {
     position: 'absolute',
