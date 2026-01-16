@@ -30,6 +30,7 @@ import NotificationPermission from './src/screens/NotificationPermission';
 
 import HeartScreen from './src/screens/HeartScreen';
 import EditAccountScreen from './src/screens/EditAccountScreen';
+import PastChallengesScreen from './src/screens/PastChallengesScreen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { getUser, updateUser } from './src/store/slices/userSlice';
 import RNBootSplash from 'react-native-bootsplash';
@@ -606,6 +607,15 @@ export default function App() {
               <Stack.Screen
                 name="EditAccount"
                 component={EditAccountScreen}
+                options={{
+                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="PastChallenges"
+                component={PastChallengesScreen}
                 options={{
                   animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
                   presentation: 'card',

@@ -7,7 +7,7 @@ export const loadTodaysChallenge = createAsyncThunk(
   async () => {
     // Get user's timezone
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    
+
     const res = await fetch(`${API_BASE}/api/daily-challenge/today?timezone=${encodeURIComponent(userTimezone)}`);
     if (!res.ok) {
       const errorData = await res.json();
@@ -22,14 +22,18 @@ export const loadTodaysChallenge = createAsyncThunk(
   }
 );
 
-// Thunk: load daily challenge by specific date
+// Thunk: load daily challenge by specific date (with userId for premium access check)
 export const loadChallengeByDate = createAsyncThunk(
   'dailyChallenge/loadChallengeByDate',
-  async (date) => {
+  async ({ date, userId }) => {
     // Get user's timezone
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    
-    const res = await fetch(`${API_BASE}/api/daily-challenge/${date}?timezone=${encodeURIComponent(userTimezone)}`);
+
+    const url = new URL(`${API_BASE}/api/daily-challenge/${date}`);
+    url.searchParams.set('timezone', userTimezone);
+    if (userId) url.searchParams.set('userId', userId);
+
+    const res = await fetch(url.toString());
     if (!res.ok) {
       const errorData = await res.json();
       throw new Error(errorData.message || `Failed to load challenge for date ${date} (${res.status})`);
@@ -38,7 +42,9 @@ export const loadChallengeByDate = createAsyncThunk(
     return {
       challenge: data.challenge,
       requestedDate: data.requestedDate,
-      timezone: data.timezone
+      timezone: data.timezone,
+      isBackdate: data.isBackdate || false,
+      isPremiumAccess: data.isPremiumAccess || false
     };
   }
 );
@@ -48,6 +54,8 @@ const initialState = {
   challengeDate: null,
   userDate: null,
   timezone: null,
+  isBackdate: false,
+  isPremiumAccess: false,
   status: 'idle', // 'idle', 'loading', 'succeeded', 'failed'
   error: null,
   lastFetched: null,
@@ -62,6 +70,8 @@ const dailyChallengeSlice = createSlice({
       state.challengeDate = null;
       state.userDate = null;
       state.timezone = null;
+      state.isBackdate = false;
+      state.isPremiumAccess = false;
       state.status = 'idle';
       state.error = null;
       state.lastFetched = null;
@@ -86,6 +96,8 @@ const dailyChallengeSlice = createSlice({
         state.challengeDate = action.payload.challenge?.date || null;
         state.userDate = action.payload.userDate;
         state.timezone = action.payload.timezone;
+        state.isBackdate = false; // Today's challenge is never a backdate
+        state.isPremiumAccess = false;
         state.error = null;
         state.lastFetched = new Date().toISOString();
       })
@@ -108,6 +120,8 @@ const dailyChallengeSlice = createSlice({
         state.challengeDate = action.payload.challenge?.date || null;
         state.userDate = action.payload.requestedDate;
         state.timezone = action.payload.timezone;
+        state.isBackdate = action.payload.isBackdate;
+        state.isPremiumAccess = action.payload.isPremiumAccess;
         state.error = null;
         state.lastFetched = new Date().toISOString();
       })
@@ -133,5 +147,7 @@ export const selectChallengeStatus = (state) => state.dailyChallenge.status;
 export const selectChallengeError = (state) => state.dailyChallenge.error;
 export const selectIsChallengeLoading = (state) => state.dailyChallenge.status === 'loading';
 export const selectHasChallengeError = (state) => state.dailyChallenge.status === 'failed';
+export const selectIsBackdate = (state) => state.dailyChallenge.isBackdate;
+export const selectIsPremiumAccess = (state) => state.dailyChallenge.isPremiumAccess;
 
 export default dailyChallengeSlice.reducer;

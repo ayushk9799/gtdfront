@@ -26,6 +26,7 @@ const initialState = {
   caseData: null,
   voiceId: null,
   audioPaused: false,
+  isBackdatePlay: false, // For premium users playing past challenges (no points counted)
   selectedTestIds: [],
   selectedDiagnosisId: null,
   selectedTreatmentIds: [],
@@ -42,9 +43,9 @@ const currentGameSlice = createSlice({
     },
     // setCaseData now supports both case and dailyChallenge
     // For case: { caseId, caseData, sourceType: 'case', voiceId?: string }
-    // For dailyChallenge: { dailyChallengeId, caseData, sourceType: 'dailyChallenge' }
+    // For dailyChallenge: { dailyChallengeId, caseData, sourceType: 'dailyChallenge', isBackdatePlay?: boolean }
     setCaseData(state, action) {
-      const { caseId, dailyChallengeId, caseData, sourceType, voiceId } = action.payload || {};
+      const { caseId, dailyChallengeId, caseData, sourceType, voiceId, isBackdatePlay } = action.payload || {};
 
       // Determine source type
       const effectiveSourceType = sourceType || (dailyChallengeId ? 'dailyChallenge' : 'case');
@@ -54,10 +55,12 @@ const currentGameSlice = createSlice({
         state.dailyChallengeId = dailyChallengeId || null;
         state.caseId = null;
         state.voiceId = null; // Daily challenges don't have voiceId
+        state.isBackdatePlay = isBackdatePlay === true; // Track backdate plays for premium users
       } else {
         state.caseId = caseId || null;
         state.dailyChallengeId = null;
         state.voiceId = voiceId || null; // Set voiceId if provided
+        state.isBackdatePlay = false; // Cases are never backdate plays
       }
 
       state.caseData = caseData || null;
@@ -88,6 +91,7 @@ const currentGameSlice = createSlice({
       state.caseData = null;
       state.voiceId = null;
       state.audioPaused = false;
+      state.isBackdatePlay = false;
       state.gameplayId = null;
       state.selectedTestIds = [];
       state.selectedDiagnosisId = null;
@@ -135,6 +139,7 @@ export const submitGameplay = createAsyncThunk(
       caseId,
       dailyChallengeId,
       caseData,
+      isBackdatePlay,
       selectedTestIds,
       selectedDiagnosisId,
       selectedTreatmentIds
@@ -201,6 +206,10 @@ export const submitGameplay = createAsyncThunk(
     // Add the appropriate ID based on source type
     if (sourceType === 'dailyChallenge') {
       requestBody.dailyChallengeId = dailyChallengeId;
+      // For backdate plays (premium practice mode), include the flag
+      if (isBackdatePlay) {
+        requestBody.isBackdatePlay = true;
+      }
     } else {
       requestBody.caseId = caseId;
     }

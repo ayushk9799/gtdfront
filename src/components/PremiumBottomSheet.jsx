@@ -8,7 +8,7 @@ import premiumImage from '../../constants/premium-image.png';
 import Purchases from 'react-native-purchases';
 import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 
-const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
+const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] }, ref) {
   const dispatch = useDispatch();
   const { userData } = useSelector(state => state.user);
   const sheetRef = useRef(null);
@@ -232,11 +232,25 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet(_props, ref) {
               >
                 <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
-                 Get unlimited access to all features
+                  Get unlimited access to all features
                 </Text>
               </View>
             </View>
           </View>
+
+          {/* Custom Points Section */}
+          {points && points.length > 0 && (
+            <View style={{ paddingHorizontal: 20, marginTop: 6 }}>
+              {points.map((point, index) => (
+                <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 1 }}>
+                  <MaterialCommunityIcons name="checkbox-marked-circle" size={18} color={Colors.brand.darkPink} style={{ marginTop: 2 }} />
+                  <Text style={{ marginLeft: 8, fontSize: 14, fontWeight: '600', color: '#4A4A4A', flex: 1 }}>
+                    {point}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
             {isPremium && (

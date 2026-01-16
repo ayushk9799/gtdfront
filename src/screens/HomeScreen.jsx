@@ -441,6 +441,21 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </>
             )}
+
+            {/* Past Challenges Link - Always visible within Daily Challenge card */}
+            {!isChallengeLoading && !isCheckingCompletion && (
+              <TouchableOpacity
+                style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('PastChallenges')}
+              >
+                <MaterialCommunityIcons name="history" size={18} color={Colors.brand.darkPink} />
+                <Text style={{ marginLeft: 6, color: Colors.brand.darkPink, fontSize: 14, fontWeight: '600' }}>
+                  Play Past Challenges
+                </Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={Colors.brand.darkPink} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
