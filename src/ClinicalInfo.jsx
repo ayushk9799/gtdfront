@@ -340,6 +340,8 @@ export default function ClinicalInfo() {
   }, [shimmerAnim]);
 
 
+
+
   // Extract data from the CASES_ARRAY structure (steps[0].data)
   const step1Data = caseData?.steps?.[0]?.data || {};
 
@@ -592,7 +594,7 @@ export default function ClinicalInfo() {
   }, [togglePlayForIndex]);
   const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
- 
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -724,7 +726,7 @@ export default function ClinicalInfo() {
                   activeOpacity={0.95}
                 >
                   <LinearGradient
-                    colors={["#F472B6", "#FB7185"]}
+                    colors={["#C2185B", "#880E4F"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.sectionFloatingButtonGradient}
