@@ -84,6 +84,7 @@ const TABS = ['Tests', 'Diagnosis', 'Treatment'];
 const PREMIUM_FEATURES = [
   { label: 'Unlimited Cases', free: false, pro: true },
   { label: 'Daily Challenge', free: true, pro: true },
+  { label: 'Past Daily Challenge', free: false, pro: true },
   { label: 'Video Overview', free: false, pro: true },
   { label: 'Clinical images', free: false, pro: true },
   { label: 'Deep Dive explanations', free: false, pro: true },

@@ -8,6 +8,7 @@ import {
     useColorScheme,
     InteractionManager,
     StyleSheet,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -172,10 +173,8 @@ export default function PastChallengesScreen() {
             const data = await res.json();
 
             if (!res.ok) {
-                console.log('API Error Response:', data);
                 if (data.alreadyCompleted && data.challenge) {
                     // Show bottom sheet with option to view insights
-                    console.log('Showing completed sheet for:', data.challenge.date);
                     setCompletedChallengeData(data.challenge);
                     setCompletedGameplayData(data.gameplay);
                     setTimeout(() => {
@@ -211,6 +210,16 @@ export default function PastChallengesScreen() {
     // Filter out today's challenge and future dates
     const pastChallenges = challenges.filter(c => c.date < today);
 
+    // Format date to "dd Month yyyy" (e.g., "16 January 2026")
+    const formatDate = (dateStr) => {
+        const date = new Date(dateStr + 'T00:00:00');
+        return date.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    };
+
     const renderChallengeItem = ({ item }) => (
         <TouchableOpacity
             style={[
@@ -228,8 +237,8 @@ export default function PastChallengesScreen() {
         >
             <View style={styles.cardContent}>
                 <View style={styles.rowCenterBetween}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 13, color: themeColors.icon, marginBottom: 4 }}>{item.date}</Text>
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                        <Text style={{ fontSize: 13, color: themeColors.icon, marginBottom: 4 }}>{formatDate(item.date)}</Text>
                         <Text style={[styles.cardTitle, { color: themeColors.text, fontSize: 16, marginBottom: 2 }]} numberOfLines={1}>
                             {item.metadata?.title || 'Daily Challenge'}
                         </Text>
@@ -237,10 +246,15 @@ export default function PastChallengesScreen() {
                             {item.metadata?.category || 'General'}
                         </Text>
                     </View>
-                    {loadingChallenge === item.date ? (
-                        <ActivityIndicator size="small" color={Colors.brand.darkPink} />
-                    ) : (
-                        <MaterialCommunityIcons name="chevron-right" size={24} color={themeColors.icon} />
+                    {/* Thumbnail Image */}
+                    {item.metadata?.mainimage && (
+                        <Image
+                            source={{ uri: item.metadata.mainimage }}
+                            style={localStyles.thumbnail}
+                        />
+                    )}
+                    {loadingChallenge === item.date && (
+                        <ActivityIndicator size="small" color={Colors.brand.darkPink} style={{ marginLeft: 12 }} />
                     )}
                 </View>
             </View>
@@ -395,3 +409,12 @@ export default function PastChallengesScreen() {
     );
 }
 
+const localStyles = StyleSheet.create({
+    thumbnail: {
+        width: 84,
+        height: 64,
+        borderRadius: 12,
+        resizeMode: 'cover',
+        backgroundColor: '#F3F6FA',
+    },
+});
