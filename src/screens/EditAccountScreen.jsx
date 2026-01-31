@@ -43,7 +43,7 @@ export default function EditAccountScreen() {
     }, [storage]);
 
     // Form states
-    const [name, setName] = useState(user?.name || userData?.name || '');
+    const [name, setName] = useState(userData?.name || user?.name || '');
     const [isUpdating, setIsUpdating] = useState(false);
 
     // Email is read-only

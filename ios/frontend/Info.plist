@@ -28,9 +28,7 @@
 				<string>com.googleusercontent.apps.125181194595-joc9v9367fldq9qigu2bh9uoosq4u67d</string>
 			</array>
 		</dict>
-		
 	</array>
-	
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GIDClientID</key>
@@ -49,7 +47,7 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string/>
+	<string></string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

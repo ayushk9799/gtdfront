@@ -1,7 +1,7 @@
 import React from 'react';
-import { useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, PanResponder, UIManager, Alert, ToastAndroid } from 'react-native';
+import { useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, PanResponder, UIManager, Alert, ToastAndroid, InteractionManager } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
-import ReAnimated, { useSharedValue, useAnimatedStyle, withTiming, Easing as ReEasing } from 'react-native-reanimated';
+import ReAnimated, { useSharedValue, useAnimatedStyle, withTiming, Easing as ReEasing, cancelAnimation } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, CommonActions, useFocusEffect } from '@react-navigation/native';
@@ -39,11 +39,17 @@ const AnimatedCollapsible = ({ expanded, children }) => {
       easing: ReEasing.bezier(0.4, 0, 0.2, 1),
     });
     // Delay unmounting until animation completes
+    let timeout;
     if (!expanded) {
-      const timeout = setTimeout(() => setShouldRender(false), 300);
-      return () => clearTimeout(timeout);
+      timeout = setTimeout(() => setShouldRender(false), 300);
     }
-  }, [expanded]);
+
+    // Cleanup: cancel animation when component unmounts or expanded changes
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      cancelAnimation(animatedHeight);
+    };
+  }, [expanded, animatedHeight]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     maxHeight: contentHeight > 0 ? animatedHeight.value * contentHeight : 2000 * animatedHeight.value,
@@ -92,23 +98,52 @@ const PREMIUM_FEATURES = [
 ];
 
 // Local animated number to avoid re-rendering the whole screen each frame
-function AnimatedNumber({ value, duration = 800, easing = Easing.out(Easing.cubic), style, formatter }) {
-  const animatedValueRef = React.useRef(new Animated.Value(0));
+// Set animate=false to show value immediately without animation
+function AnimatedNumber({ value, duration = 800, easing = Easing.out(Easing.cubic), style, formatter, animate = true }) {
+  const animatedValueRef = React.useRef(new Animated.Value(animate ? 0 : (value || 0)));
   const animatedValue = animatedValueRef.current;
-  const [display, setDisplay] = React.useState(0);
+  const [display, setDisplay] = React.useState(animate ? 0 : (value || 0));
+  const animationRef = React.useRef(null);
+
   React.useEffect(() => {
+    // If not animating, just set the value directly
+    if (!animate) {
+      setDisplay(value || 0);
+      animatedValue.setValue(value || 0);
+      return;
+    }
+
     const id = animatedValue.addListener(({ value: v }) => setDisplay(v));
-    return () => animatedValue.removeListener(id);
-  }, [animatedValue]);
+    return () => {
+      animatedValue.removeListener(id);
+      // Stop any running animation on unmount
+      animatedValue.stopAnimation();
+    };
+  }, [animatedValue, animate, value]);
+
   React.useEffect(() => {
+    // Skip animation if animate is false
+    if (!animate) {
+      return;
+    }
+
     animatedValue.stopAnimation();
-    Animated.timing(animatedValue, {
+    animationRef.current = Animated.timing(animatedValue, {
       toValue: value || 0,
       duration,
       easing,
       useNativeDriver: false,
-    }).start();
-  }, [value, duration, easing, animatedValue]);
+    });
+    animationRef.current.start();
+
+    return () => {
+      // Cleanup animation when value changes or component unmounts
+      if (animationRef.current) {
+        animatedValue.stopAnimation();
+      }
+    };
+  }, [value, duration, easing, animatedValue, animate]);
+
   const text = typeof formatter === 'function' ? formatter(display) : String(Math.round(display));
   return <Text style={style}>{text}</Text>;
 }
@@ -133,6 +168,24 @@ export default function ClinicalInsight() {
   const [currentSectionIndex, setCurrentSectionIndex] = React.useState(-1);
   const twinkleSoundRef = React.useRef(null);
   const pdfRef = React.useRef(null);
+
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = React.useRef(true);
+
+  // Comprehensive cleanup on unmount - prevents jitter on navigation
+  React.useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      // Clean up sound
+      try {
+        twinkleSoundRef.current?.stop?.();
+        twinkleSoundRef.current?.release?.();
+      } catch (_) { }
+      twinkleSoundRef.current = null;
+    };
+  }, []);
 
   // Determine if opened from SelectTreatment
   const openedFromTreatment = React.useMemo(() => {
@@ -323,45 +376,29 @@ export default function ClinicalInsight() {
   // Animate height when expanded state changes
   React.useEffect(() => {
     const targetHeight = isContentExpanded ? EXPANDED_TAB_HEIGHT : COLLAPSED_TAB_HEIGHT;
-    Animated.timing(animatedHeight, {
+    const animation = Animated.timing(animatedHeight, {
       toValue: targetHeight,
       duration: 250,
       easing: Easing.out(Easing.ease),
       useNativeDriver: false, // height cannot use native driver
-    }).start();
-  }, [isContentExpanded, EXPANDED_TAB_HEIGHT]);
+    });
+    animation.start();
 
-  // Ping animation for check-circle icon
-  const pingAnim = React.useRef(new Animated.Value(0)).current;
+    // Cleanup: stop animation when component unmounts or state changes
+    return () => {
+      animatedHeight.stopAnimation();
+    };
+  }, [isContentExpanded, EXPANDED_TAB_HEIGHT, animatedHeight]);
 
+  // Additional cleanup: ensure animatedHeight is fully stopped on unmount
   React.useEffect(() => {
-    const pingLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pingAnim, {
-          toValue: 1,
-          duration: 2000, // Slower animation = less CPU
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pingAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pingLoop.start();
-    return () => pingLoop.stop();
+    return () => {
+      animatedHeight.stopAnimation();
+      animatedHeight.setValue(COLLAPSED_TAB_HEIGHT);
+    };
   }, []);
 
-  const pingScale = pingAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 2], // Less scaling = better performance
-  });
-  const pingOpacity = pingAnim.interpolate({
-    inputRange: [0, 0.7, 1],
-    outputRange: [0.5, 0.2, 0],
-  });
+
 
   // Swipe gesture handler for PDF Premium Overlay - allow swiping back to slide 4
   const pdfOverlayPanResponder = React.useRef(
@@ -415,20 +452,7 @@ export default function ClinicalInsight() {
   // Animated per-tab category scores (animate on tab change)
   // Animated locally per scene via AnimatedNumber
 
-  // Subtle fade/slide-in for active tab content (disabled to prevent reload appearance)
-  const sceneAnimsRef = React.useRef({
-    tests: { opacity: new Animated.Value(1), translateX: new Animated.Value(0) },
-    diagnosis: { opacity: new Animated.Value(1), translateX: new Animated.Value(0) },
-    treatment: { opacity: new Animated.Value(1), translateX: new Animated.Value(0) },
-  });
 
-  // Track previous index for slide direction (kept for potential future use)
-  const prevIndexRef = React.useRef(index);
-
-  React.useEffect(() => {
-    // Update prev index without animation - TabView handles its own swipe animation
-    prevIndexRef.current = index;
-  }, [index]);
 
   // Build evaluation sections from caseData + selections
   const sections = React.useMemo(() => {
@@ -559,28 +583,12 @@ export default function ClinicalInsight() {
             style={styles.scoreBoardText}
             value={scores.total}
             duration={800}
+            animate={openedFromTreatment}
             formatter={(v) => `Score: ${Math.round(v)} / 100`}
           />
           {headerDx.correct ? (
             <View style={[styles.dxPill, styles.dxPillCorrect, { marginTop: 16, marginHorizontal: 16 }]}>
-              <View style={{ position: 'relative', marginRight: 8 }}>
-                {/* Ping effect - expanding circle */}
-                <Animated.View
-                  style={{
-                    position: 'absolute',
-                    top: -1,
-                    left: -1,
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    backgroundColor: SUCCESS_COLOR,
-                    transform: [{ scale: pingScale }],
-                    opacity: pingOpacity,
-                  }}
-                />
-                {/* Icon */}
-                <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} />
-              </View>
+              <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} style={{ marginRight: 8 }} />
               <Markdown style={{ ...markdownStyles, body: { ...styles.dxPillText, ...styles.dxPillTextCorrect } }}>{headerDx.correct}</Markdown>
             </View>
           ) : null}
@@ -635,8 +643,7 @@ export default function ClinicalInsight() {
                     <View style={{ position: 'relative', flex: 1, minHeight: !isContentExpanded ? COLLAPSED_HEIGHT : undefined }}>
                       {/* Content area with clipping when collapsed */}
                       <View style={!isContentExpanded ? { height: COLLAPSED_HEIGHT, overflow: 'hidden' } : { flex: 1 }}>
-                        <Animated.View
-                          style={{ opacity: sceneAnimsRef.current[key]?.opacity || 1, transform: [{ translateX: sceneAnimsRef.current[key]?.translateX || 0 }] }}
+                        <View
                           onLayout={(e) => {
                             const height = e.nativeEvent.layout.height;
                             setContentHeights(prev => {
@@ -651,6 +658,7 @@ export default function ClinicalInsight() {
                             style={[styles.bulletText, { marginLeft: 0, fontWeight: '900', color: Colors.brand.darkPink }]}
                             value={categoryScore}
                             duration={650}
+                            animate={openedFromTreatment}
                             formatter={(v) => `Score: ${Math.round(v)} / ${categoryMax}`}
                           />
                           {currentSections.length === 0 ? (
@@ -666,7 +674,7 @@ export default function ClinicalInsight() {
                               />
                             ))
                           )}
-                        </Animated.View>
+                        </View>
                       </View>
 
                       {/* Gradient overlay with Show More button - for Tests and Treatment when collapsed */}
@@ -737,229 +745,7 @@ export default function ClinicalInsight() {
           </Animated.View>
         </View>
 
-        {/* Video Overview - Standalone Card (only show if available) */}
-        {caseData?.videooverview ? (
-          <View style={[styles.insightCard, styles.insightCardPurple]}>
-            <View style={styles.insightHeaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
-                  <MaterialCommunityIcons name="video-outline" size={16} color="#5B2E91" />
-                </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Video Overview</Text>
-              </View>
-            </View>
-            <View style={[styles.inlineVideoContainer, { position: 'relative' }]}>
-              {/* Always show video - track progress for premium overlay */}
-              <Video
-                ref={videoRef}
-                source={{ uri: caseData.videooverview }}
-                style={styles.inlineVideo}
-                resizeMode="contain"
-                controls={!shouldShowVideoPremiumOverlay}
-                paused={videoPaused}
-                onPlaybackStateChanged={(state) => {
-                  if (state.isPlaying && !shouldShowVideoPremiumOverlay) {
-                    setVideoPaused(false);
-                  }
-                }}
-                controlsTimeout={1000}
-                hideShutterView={true}
-                onProgress={(data) => {
-                  if (shouldShowPremiumBlur && !shouldShowVideoPremiumOverlay) {
-                    setVideoPlayedSeconds(Math.floor(data.currentTime));
-                  }
-                }}
-                onFullscreenPlayerWillPresent={() => setIsVideoFullscreen(true)}
-                onFullscreenPlayerWillDismiss={() => setIsVideoFullscreen(false)}
-                controlsStyles={{
-                  hideNavigationBarOnFullScreenMode: true,
-                  hideNotificationBarOnFullScreenMode: true,
-                  liveLabel: '',
-                }}
-              />
 
-              {/* Show premium overlay after 30 seconds for non-premium users */}
-              {shouldShowVideoPremiumOverlay && (
-                <>
-                  <BlurView
-                    style={styles.premiumBlur}
-                    blurType={'light'}
-                    blurAmount={10}
-                    overlayColor={Platform.OS === 'android' ? 'rgba(242,236,250,0.85)' : 'transparent'} // Purple theme
-                  />
-                  <View style={styles.premiumOverlay}>
-                    <MaterialCommunityIcons name="video-outline" size={40} color="#5B2E91" />
-                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 4 }]}>Unlock Full Video with Premium</Text>
-                    {/* <Text style={{ color: '#5B2E91', fontSize: 13, marginTop: 4, textAlign: 'center', fontWeight: '600' }}>
-                      Watch full video to unlock premium
-                    </Text> */}
-                    <Pressable style={[styles.premiumCtaButton, { marginTop: 8 }]} onPress={() => premiumSheetRef.current?.present()}>
-                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
-                    </Pressable>
-                    <Pressable
-                      style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
-                      onPress={() => {
-                        // Seek video to 0 seconds and restart 30-second preview
-                        videoRef.current?.seek(0);
-                        setVideoPlayedSeconds(0);
-                        setVideoPaused(false);
-                      }}
-                    >
-                      <MaterialCommunityIcons name="restart" size={16} color="#5B2E91" style={{ marginRight: 4 }} />
-                      <Text style={{ color: '#5B2E91', fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' }}>Restart Video</Text>
-                    </Pressable>
-
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
-        ) : null}
-
-        {/* Slide Deck PDF - Standalone Card (only show if available) */}
-        {caseData?.slidedeck ? (
-          <View style={[styles.insightCard, styles.insightCardOrange]}>
-            <View style={styles.insightHeaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
-                  <MaterialCommunityIcons name="file-presentation-box" size={16} color="#6E4A13" />
-                </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Slide Deck (PDF)</Text>
-              </View>
-              <Pressable
-                onPress={async () => {
-                  // Check if user is premium
-                  if (shouldShowPremiumBlur) {
-                    // Show premium purchase sheet for non-premium users
-                    premiumSheetRef.current?.present();
-                    return;
-                  }
-
-                  try {
-                    const { dirs } = ReactNativeBlobUtil.fs;
-                    const fileName = `SlideDeck_${Date.now()}.pdf`;
-
-                    // Show download started toast
-                    if (Platform.OS === 'android') {
-                      ToastAndroid.show('Downloading PDF...', ToastAndroid.SHORT);
-                    }
-
-                    if (Platform.OS === 'android') {
-                      // For Android, use Download Manager which automatically adds to Downloads
-                      const downloadPath = `${dirs.DownloadDir}/${fileName}`;
-
-                      await ReactNativeBlobUtil.config({
-                        addAndroidDownloads: {
-                          useDownloadManager: true,
-                          notification: true,
-                          title: fileName,
-                          description: 'Downloading slide deck PDF',
-                          path: downloadPath,
-                          mime: 'application/pdf',
-                          mediaScannable: true,
-                        },
-                      }).fetch('GET', caseData.slidedeck);
-
-                      ToastAndroid.show('PDF saved to Downloads!', ToastAndroid.LONG);
-                    } else {
-                      // For iOS
-                      const downloadPath = `${dirs.DocumentDir}/${fileName}`;
-                      const res = await ReactNativeBlobUtil.config({
-                        fileCache: true,
-                        path: downloadPath,
-                      }).fetch('GET', caseData.slidedeck);
-
-                      ReactNativeBlobUtil.ios.openDocument(res.path());
-                    }
-                  } catch (error) {
-                    console.error('Download error:', error);
-                    Alert.alert('Download Failed', 'Unable to download the PDF. Please try again.');
-                  }
-                }}
-                hitSlop={10}
-                style={{ padding: 4 }}
-              >
-                <MaterialCommunityIcons name="download" size={22} color="#6E4A13" />
-              </Pressable>
-            </View>
-            <View style={[styles.inlinePdfContainer, { position: 'relative' }]}>
-              {/* Render PDF with page limit for non-premium users */}
-              <Pdf
-                ref={pdfRef}
-                source={{ uri: caseData.slidedeck, cache: true }}
-                style={styles.inlinePdf}
-                horizontal={true}
-                enablePaging={true}
-                trustAllCerts={false}
-                onLoadComplete={(numberOfPages) => {
-                  setPdfTotalPages(numberOfPages);
-                  setPdfCurrentPage(1);
-                }}
-                onPageChanged={(page) => {
-                  // For non-premium users, don't allow going past page 4
-                  if (shouldShowPremiumBlur && page > 4) {
-                    pdfRef.current?.setPage(4);
-                    setPdfAttemptedPastLimit(true); // Trigger overlay
-                  } else {
-                    setPdfCurrentPage(page);
-                  }
-                }}
-              />
-
-              {/* Show premium overlay when non-premium user tries to go beyond slide 4 */}
-              {shouldShowPdfPremiumOverlay && (
-                <>
-                  <BlurView
-                    style={styles.premiumBlur}
-                    blurType={'light'}
-                    blurAmount={10}
-                    overlayColor={Platform.OS === 'android' ? 'rgba(246,239,228,0.85)' : 'transparent'} // Orange theme
-                  />
-                  <View style={styles.premiumOverlay} {...pdfOverlayPanResponder.panHandlers}>
-                    <MaterialCommunityIcons name="file-presentation-box" size={40} color="#6E4A13" />
-                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
-                    <Text style={{ color: '#6E4A13', fontSize: 13, marginTop: 4, textAlign: 'center' }}>
-                      {pdfTotalPages > 4 ? `${pdfTotalPages - 4} more slides available` : 'More content available'}
-                    </Text>
-                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
-                    </Pressable>
-                  </View>
-                </>
-              )}
-            </View>
-            {/* Page indicator dots - show limited dots for non-premium users */}
-            {pdfTotalPages > 0 && (
-              <View style={styles.pdfDotsContainer}>
-                {Array.from({ length: shouldShowPremiumBlur ? Math.min(pdfTotalPages, 4) : pdfTotalPages }, (_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.pdfDot,
-                      !shouldShowPdfPremiumOverlay && pdfCurrentPage === i + 1 && { backgroundColor: '#FF8A00', width: 10, height: 10, borderRadius: 5 },
-                    ]}
-                  />
-                ))}
-                {/* Show locked indicator for non-premium users if more pages exist */}
-                {shouldShowPremiumBlur && pdfTotalPages > 4 && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
-                    <MaterialCommunityIcons
-                      name="lock"
-                      size={14}
-                      color={shouldShowPdfPremiumOverlay ? '#FF8A00' : '#A0AEC0'}
-                    />
-                    <Text style={{
-                      fontSize: 12,
-                      color: shouldShowPdfPremiumOverlay ? '#FF8A00' : '#A0AEC0',
-                      marginLeft: 2,
-                      fontWeight: shouldShowPdfPremiumOverlay ? '900' : '500'
-                    }}>+{pdfTotalPages - 4}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        ) : null}
 
         {/* core clinical insights card */}
         <View
@@ -1199,6 +985,230 @@ export default function ClinicalInsight() {
                 </>
               )}
             </View>
+          </View>
+        ) : null}
+
+        {/* Video Overview - Standalone Card (only show if available) */}
+        {caseData?.videooverview ? (
+          <View style={[styles.insightCard, styles.insightCardPurple]}>
+            <View style={styles.insightHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
+                  <MaterialCommunityIcons name="video-outline" size={16} color="#5B2E91" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Video Overview</Text>
+              </View>
+            </View>
+            <View style={[styles.inlineVideoContainer, { position: 'relative' }]}>
+              {/* Always show video - track progress for premium overlay */}
+              <Video
+                ref={videoRef}
+                source={{ uri: caseData.videooverview }}
+                style={styles.inlineVideo}
+                resizeMode="contain"
+                controls={!shouldShowVideoPremiumOverlay}
+                paused={videoPaused}
+                onPlaybackStateChanged={(state) => {
+                  if (state.isPlaying && !shouldShowVideoPremiumOverlay) {
+                    setVideoPaused(false);
+                  }
+                }}
+                controlsTimeout={1000}
+                hideShutterView={true}
+                onProgress={(data) => {
+                  if (shouldShowPremiumBlur && !shouldShowVideoPremiumOverlay) {
+                    setVideoPlayedSeconds(Math.floor(data.currentTime));
+                  }
+                }}
+                onFullscreenPlayerWillPresent={() => setIsVideoFullscreen(true)}
+                onFullscreenPlayerWillDismiss={() => setIsVideoFullscreen(false)}
+                controlsStyles={{
+                  hideNavigationBarOnFullScreenMode: true,
+                  hideNotificationBarOnFullScreenMode: true,
+                  liveLabel: '',
+                }}
+              />
+
+              {/* Show premium overlay after 30 seconds for non-premium users */}
+              {shouldShowVideoPremiumOverlay && (
+                <>
+                  <BlurView
+                    style={styles.premiumBlur}
+                    blurType={'light'}
+                    blurAmount={10}
+                    overlayColor={Platform.OS === 'android' ? 'rgba(242,236,250,0.85)' : 'transparent'} // Purple theme
+                  />
+                  <View style={styles.premiumOverlay}>
+                    <MaterialCommunityIcons name="video-outline" size={40} color="#5B2E91" />
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 4 }]}>Unlock Full Video with Premium</Text>
+                    {/* <Text style={{ color: '#5B2E91', fontSize: 13, marginTop: 4, textAlign: 'center', fontWeight: '600' }}>
+                      Watch full video to unlock premium
+                    </Text> */}
+                    <Pressable style={[styles.premiumCtaButton, { marginTop: 8 }]} onPress={() => premiumSheetRef.current?.present()}>
+                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                    </Pressable>
+                    <Pressable
+                      style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
+                      onPress={() => {
+                        // Seek video to 0 seconds and restart 30-second preview
+                        videoRef.current?.seek(0);
+                        setVideoPlayedSeconds(0);
+                        setVideoPaused(false);
+                      }}
+                    >
+                      <MaterialCommunityIcons name="restart" size={16} color="#5B2E91" style={{ marginRight: 4 }} />
+                      <Text style={{ color: '#5B2E91', fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' }}>Restart Video</Text>
+                    </Pressable>
+
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Slide Deck PDF - Standalone Card (only show if available) */}
+        {caseData?.slidedeck ? (
+          <View style={[styles.insightCard, styles.insightCardOrange]}>
+            <View style={styles.insightHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
+                  <MaterialCommunityIcons name="file-presentation-box" size={16} color="#6E4A13" />
+                </View>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Slide Deck (PDF)</Text>
+              </View>
+              <Pressable
+                onPress={async () => {
+                  // Check if user is premium
+                  if (shouldShowPremiumBlur) {
+                    // Show premium purchase sheet for non-premium users
+                    premiumSheetRef.current?.present();
+                    return;
+                  }
+
+                  try {
+                    const { dirs } = ReactNativeBlobUtil.fs;
+                    const fileName = `SlideDeck_${Date.now()}.pdf`;
+
+                    // Show download started toast
+                    if (Platform.OS === 'android') {
+                      ToastAndroid.show('Downloading PDF...', ToastAndroid.SHORT);
+                    }
+
+                    if (Platform.OS === 'android') {
+                      // For Android, use Download Manager which automatically adds to Downloads
+                      const downloadPath = `${dirs.DownloadDir}/${fileName}`;
+
+                      await ReactNativeBlobUtil.config({
+                        addAndroidDownloads: {
+                          useDownloadManager: true,
+                          notification: true,
+                          title: fileName,
+                          description: 'Downloading slide deck PDF',
+                          path: downloadPath,
+                          mime: 'application/pdf',
+                          mediaScannable: true,
+                        },
+                      }).fetch('GET', caseData.slidedeck);
+
+                      ToastAndroid.show('PDF saved to Downloads!', ToastAndroid.LONG);
+                    } else {
+                      // For iOS
+                      const downloadPath = `${dirs.DocumentDir}/${fileName}`;
+                      const res = await ReactNativeBlobUtil.config({
+                        fileCache: true,
+                        path: downloadPath,
+                      }).fetch('GET', caseData.slidedeck);
+
+                      ReactNativeBlobUtil.ios.openDocument(res.path());
+                    }
+                  } catch (error) {
+                    console.error('Download error:', error);
+                    Alert.alert('Download Failed', 'Unable to download the PDF. Please try again.');
+                  }
+                }}
+                hitSlop={10}
+                style={{ padding: 4 }}
+              >
+                <MaterialCommunityIcons name="download" size={22} color="#6E4A13" />
+              </Pressable>
+            </View>
+            <View style={[styles.inlinePdfContainer, { position: 'relative' }]}>
+              {/* Render PDF with page limit for non-premium users */}
+              <Pdf
+                ref={pdfRef}
+                source={{ uri: caseData.slidedeck, cache: true }}
+                style={styles.inlinePdf}
+                horizontal={true}
+                enablePaging={true}
+                trustAllCerts={false}
+                onLoadComplete={(numberOfPages) => {
+                  setPdfTotalPages(numberOfPages);
+                  setPdfCurrentPage(1);
+                }}
+                onPageChanged={(page) => {
+                  // For non-premium users, don't allow going past page 4
+                  if (shouldShowPremiumBlur && page > 4) {
+                    pdfRef.current?.setPage(4);
+                    setPdfAttemptedPastLimit(true); // Trigger overlay
+                  } else {
+                    setPdfCurrentPage(page);
+                  }
+                }}
+              />
+
+              {/* Show premium overlay when non-premium user tries to go beyond slide 4 */}
+              {shouldShowPdfPremiumOverlay && (
+                <>
+                  <BlurView
+                    style={styles.premiumBlur}
+                    blurType={'light'}
+                    blurAmount={10}
+                    overlayColor={Platform.OS === 'android' ? 'rgba(246,239,228,0.85)' : 'transparent'} // Orange theme
+                  />
+                  <View style={styles.premiumOverlay} {...pdfOverlayPanResponder.panHandlers}>
+                    <MaterialCommunityIcons name="file-presentation-box" size={40} color="#6E4A13" />
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
+                    <Text style={{ color: '#6E4A13', fontSize: 13, marginTop: 4, textAlign: 'center' }}>
+                      {pdfTotalPages > 4 ? `${pdfTotalPages - 4} more slides available` : 'More content available'}
+                    </Text>
+                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
+            {/* Page indicator dots - show limited dots for non-premium users */}
+            {pdfTotalPages > 0 && (
+              <View style={styles.pdfDotsContainer}>
+                {Array.from({ length: shouldShowPremiumBlur ? Math.min(pdfTotalPages, 4) : pdfTotalPages }, (_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.pdfDot,
+                      !shouldShowPdfPremiumOverlay && pdfCurrentPage === i + 1 && { backgroundColor: '#FF8A00', width: 10, height: 10, borderRadius: 5 },
+                    ]}
+                  />
+                ))}
+                {/* Show locked indicator for non-premium users if more pages exist */}
+                {shouldShowPremiumBlur && pdfTotalPages > 4 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                    <MaterialCommunityIcons
+                      name="lock"
+                      size={14}
+                      color={shouldShowPdfPremiumOverlay ? '#FF8A00' : '#A0AEC0'}
+                    />
+                    <Text style={{
+                      fontSize: 12,
+                      color: shouldShowPdfPremiumOverlay ? '#FF8A00' : '#A0AEC0',
+                      marginLeft: 2,
+                      fontWeight: shouldShowPdfPremiumOverlay ? '900' : '500'
+                    }}>+{pdfTotalPages - 4}</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         ) : null}
 

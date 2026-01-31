@@ -32,7 +32,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 12,
     shadowColor: Colors.brand.darkPink,
     shadowOpacity: 0.2,
@@ -40,7 +41,7 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  primaryButtonText: { color: '#ffffff', fontWeight: '800' },
+  primaryButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
 });
 
 

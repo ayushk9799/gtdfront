@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { API_BASE } from '../../../constants/Api';
+import { submitGameplay } from './currentGameSlice';
 
 /**
  * Thunk: Fetch today's daily challenge leaderboard
@@ -88,6 +89,9 @@ const dailyChallengeLeaderboardSlice = createSlice({
             state.status = 'idle';
             state.error = null;
         },
+        setDailyLeaderboardIdle(state) {
+            state.status = 'idle';
+        },
         clearError(state) {
             state.error = null;
         },
@@ -137,11 +141,17 @@ const dailyChallengeLeaderboardSlice = createSlice({
                 state.error = action.payload || 'Failed to load leaderboard';
                 state.items = [];
                 state.me = null;
+            })
+            // Reset status to idle when a daily challenge is submitted
+            .addCase(submitGameplay.fulfilled, (state, action) => {
+                if (action.payload?.sourceType === 'dailyChallenge') {
+                    state.status = 'idle';
+                }
             });
     },
 });
 
-export const { clearDailyLeaderboard, clearError } = dailyChallengeLeaderboardSlice.actions;
+export const { clearDailyLeaderboard, clearError, setDailyLeaderboardIdle } = dailyChallengeLeaderboardSlice.actions;
 
 // Selectors
 export const selectDailyLeaderboardItems = (state) => state.dailyChallengeLeaderboard.items;

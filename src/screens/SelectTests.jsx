@@ -12,9 +12,15 @@ import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedTests as setSelectedTestsAction } from '../store/slices/currentGameSlice';
 import Sound from 'react-native-sound';
+import Markdown from 'react-native-markdown-display';
+import { BlurView } from '@react-native-community/blur';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
+import PremiumBottomSheet from '../components/PremiumBottomSheet';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
+
+// Default voice ID to use for daily challenges (which don't have a voiceId)
+const DEFAULT_VOICE_ID = 'dxtc3xhb9gtpusipntqx';
 
 
 
@@ -69,13 +75,21 @@ export default function SelectTests() {
   const dispatch = useDispatch();
   const selectedTestIds = useSelector((s) => s.currentGame.selectedTestIds);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
+  const sourceType = useSelector((s) => s.currentGame.sourceType);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
+
+  // Use default voice ID for daily challenges since they don't have a voiceId
+  const effectiveVoiceId = voiceId || (sourceType === 'dailyChallenge' ? DEFAULT_VOICE_ID : null);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
+  const scrollX = React.useRef(new Animated.Value(0)).current;
   const labSoundRef = useRef(null);
   const tapSoundRef = useRef(null);
   // Track if this screen is focused (to prevent audio from unfocused instances)
   const isFocusedRef = useRef(true);
   const quitSheetRef = useRef(null);
+  const premiumSheetRef = useRef(null);
+
+  const { isPremium } = useSelector((s) => s.user);
 
   const caseData = route?.params?.caseData || {};
 
@@ -176,7 +190,7 @@ export default function SelectTests() {
       return;
     }
 
-    if (!voiceId || audioPaused) {
+    if (!effectiveVoiceId || audioPaused) {
       return;
     }
 
@@ -191,7 +205,7 @@ export default function SelectTests() {
         return;
       }
 
-      const s = new Sound(`lab_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
+      const s = new Sound(`lab_${effectiveVoiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
         // Race condition guard: if user closed/navigated away while loading,
         // labSoundRef.current will be null or a different Sound instance
         if (labSoundRef.current !== s) {
@@ -224,7 +238,7 @@ export default function SelectTests() {
       clearTimeout(delayTimeout);
       stopLabAudio();
     };
-  }, [voiceId, audioPaused, stopLabAudio]);
+  }, [effectiveVoiceId, audioPaused, stopLabAudio]);
 
   // Clean up audio when screen loses focus
   useFocusEffect(
@@ -398,67 +412,59 @@ export default function SelectTests() {
           handleIndicatorStyle={{ backgroundColor: '#C8D1DA' }}
           backgroundStyle={{ backgroundColor: '#E8F2FF', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
         >
-          <BottomSheetView style={{ padding: 16 }}>
+          <BottomSheetView style={{ paddingVertical: 16 }}>
             {evaluatedResults && evaluatedResults.length > 0 ? (
               <>
-                <View style={styles.sheetHeaderRow}>
-                  <Text style={styles.sheetHeaderTitle}>Reports ({evaluatedResults.length})</Text>
+                <View style={[styles.sheetHeaderRow, { paddingHorizontal: 16 }]}>
+                  <Text style={styles.sheetHeaderTitle}>Test Reports</Text>
+                  <Text style={styles.sheetPaginationText}>
+                    {reportIndex + 1} / {evaluatedResults.length}
+                  </Text>
                 </View>
-                <View style={styles.chipsScrollWrapper}>
-                  <ScrollView
-                    ref={chipsScrollRef}
-                    style={styles.chipsScrollContainer}
-                    contentContainerStyle={styles.chipsRow}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled
-                  >
-                    {evaluatedResults.map((r, i) => {
-                      const testMeta = testsById.get(r.id);
-                      const label = testMeta?.testName || r.id;
-                      const shortLabel = (label && label.split('(')[0]) || label;
-                      const active = i === reportIndex;
-                      // Calculate approximate row position (assuming ~40px per chip row, ~3 chips per row)
-                      const rowIndex = Math.floor(i / 3);
-                      const scrollY = rowIndex * 48;
-                      return (
-                        <TouchableOpacity
-                          key={r.id}
-                          onPress={() => {
-                            const pageWidth = width - 32;
-                            reportsScrollRef.current?.scrollTo({ x: pageWidth * i, animated: true });
-                            // Scroll chips to bring the selected row into view
-                            chipsScrollRef.current?.scrollTo({ y: scrollY, animated: true });
-                            setReportIndex(i);
-                          }}
-                          style={[styles.chip, active && styles.chipActive]}
-                          accessibilityRole="button"
-                        >
-                          <Text style={[styles.chipText, active && styles.chipTextActive]}>{shortLabel}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                  {evaluatedResults.length > 4 && (
-                    <LinearGradient
-                      colors={['rgba(232, 242, 255, 0)', 'rgba(232, 242, 255, 0.9)', '#E8F2FF']}
-                      style={styles.chipsFadeGradient}
-                      pointerEvents="none"
-                    />
-                  )}
-                </View>
-                <GestureScrollView
+                {/* Test names chips - vertical scroll */}
+                <ScrollView
+                  ref={chipsScrollRef}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled
+                  style={{ maxHeight: 100, marginHorizontal: 16, marginBottom: 8 }}
+                  contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 8 }}
+                >
+                  {evaluatedResults.map((r, i) => {
+                    const isActive = i === reportIndex;
+                    return (
+                      <TouchableOpacity
+                        key={r.id}
+                        onPress={() => {
+                          setReportIndex(i);
+                          reportsScrollRef.current?.scrollTo({ x: i * width, animated: true });
+                        }}
+                        style={[styles.chip, isActive && styles.chipActive]}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.chipText, isActive && styles.chipTextActive]} numberOfLines={1}>
+                          {r.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+                <Animated.ScrollView
                   ref={reportsScrollRef}
                   horizontal
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
+                  onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                    { useNativeDriver: true }
+                  )}
+                  scrollEventThrottle={1}
                   onMomentumScrollEnd={(e) => {
                     const x = e?.nativeEvent?.contentOffset?.x || 0;
-                    const pageWidth = width - 32;
-                    const i = Math.round(x / pageWidth);
+                    const i = Math.round(x / width);
                     if (i !== reportIndex) setReportIndex(i);
                   }}
                   contentContainerStyle={{ alignItems: 'stretch' }}
-                  style={{ marginTop: 8 }}
+                  style={{ marginTop: 0, width: width }}
                   nestedScrollEnabled
                   directionalLockEnabled
                 >
@@ -466,17 +472,94 @@ export default function SelectTests() {
                     const meta = testsById.get(r.id);
                     const testName = meta?.testName || r.id;
                     return (
-                      <View key={r.id} style={{ width: width - 32, paddingRight: 16 }}>
+                      <View key={r.id} style={{ width: width, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16 }}>
                         <View style={styles.simpleReportCard}>
-                          <Text style={styles.reportValueText}>
+                          <Text style={styles.reportTitle}>{testName}</Text>
+                          {meta?.resultimage ? (
+                            <View style={styles.imageWrapper}>
+                              <Image source={{ uri: meta.resultimage }} style={styles.reportImage} />
+                              {!isPremium && (
+                                <>
+                                  <BlurView
+                                    style={styles.premiumBlur}
+                                    blurType="dark"
+                                    blurAmount={5}
+                                    overlayColor={Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.1)' : 'transparent'}
+                                  />
+                                  <View style={styles.premiumOverlay}>
+                                    <Text style={styles.premiumOverlayText}>Clinical image only available for Premium users</Text>
+                                    <TouchableOpacity
+                                      style={styles.premiumCtaButton}
+                                      onPress={() => premiumSheetRef.current?.present()}
+                                      activeOpacity={0.9}
+                                    >
+                                      <Text style={styles.premiumCtaButtonText}>Unlock Now</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </>
+                              )}
+                            </View>
+                          ) : null}
+                          <Markdown style={markdownStyles}>
                             {r?.value || 'Result not available for this test.'}
-                          </Text>
+                          </Markdown>
                         </View>
                       </View>
                     );
                   })}
-                </GestureScrollView>
-                <View style={styles.sheetActionsRow}>
+                </Animated.ScrollView>
+                <View style={[styles.sheetDotsContainer, { paddingHorizontal: 16 }]} pointerEvents="none">
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, position: 'relative' }}>
+                    {/* Background Static Dots */}
+                    {evaluatedResults.map((_, i) => (
+                      <View key={`bg-${i}`} style={styles.sheetDot} />
+                    ))}
+
+                    {/* Sliding Liquid Indicator */}
+                    <Animated.View
+                      style={[
+                        styles.sheetDot,
+                        {
+                          position: 'absolute',
+                          backgroundColor: '#3B82F6',
+                          width: 8,
+                          zIndex: 1,
+                          transform: [
+                            {
+                              // Calculate position: (dot width (8) + gap (8)) = 16px per step
+                              translateX: evaluatedResults.length > 1
+                                ? scrollX.interpolate({
+                                  inputRange: [0, width * (evaluatedResults.length - 1)],
+                                  outputRange: [0, 16 * (evaluatedResults.length - 1)],
+                                  extrapolate: 'clamp',
+                                })
+                                : 0,
+                            },
+                            {
+                              // Liquid stretch logic that repeats for ALL pages
+                              scaleX: evaluatedResults.length > 1
+                                ? scrollX.interpolate({
+                                  inputRange: evaluatedResults.reduce((acc, _, i) => {
+                                    acc.push(i * width);
+                                    if (i < evaluatedResults.length - 1) acc.push((i + 0.5) * width);
+                                    return acc;
+                                  }, []),
+                                  outputRange: evaluatedResults.reduce((acc, _, i) => {
+                                    acc.push(1);
+                                    if (i < evaluatedResults.length - 1) acc.push(2.5); // 2.5x stretch at midpoint
+                                    return acc;
+                                  }, []),
+                                  extrapolate: 'clamp',
+                                })
+                                : 1,
+                            },
+                          ],
+                        }
+                      ]}
+                    />
+                  </View>
+                </View>
+                <View style={[styles.sheetActionsRow, { paddingHorizontal: 16 }]}>
                   <TouchableOpacity
                     accessibilityRole="button"
                     onPress={() => reportsSheetRef.current?.dismiss()}
@@ -515,11 +598,6 @@ export default function SelectTests() {
                     <Text style={styles.primaryButtonText}>Give Diagnosis</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={styles.sheetDotsContainer} pointerEvents="none">
-                  {evaluatedResults.map((_, d) => (
-                    <View key={String(d)} style={[styles.sheetDot, d === reportIndex && styles.sheetDotActive]} />
-                  ))}
-                </View>
               </>
             ) : (
               <Text style={{ fontWeight: '800' }}>No tests selected.</Text>
@@ -535,10 +613,30 @@ export default function SelectTests() {
             dispatch(setSelectedTestsAction([]));
           }}
         />
+
+        <PremiumBottomSheet ref={premiumSheetRef} />
       </View>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
+
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A', // Slate 900
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  strong: {
+    fontWeight: 'bold',
+  },
+  paragraph: {
+    marginTop: 0,
+    marginBottom: 0,
+    flexWrap: 'wrap',
+  },
+};
 
 const styles = StyleSheet.create({
   headerButtons: {
@@ -691,7 +789,7 @@ const styles = StyleSheet.create({
   sheetDotsContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
   sheetDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
   sheetDotActive: { backgroundColor: Colors.brand.darkPink },
-  sheetActionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  sheetActionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 },
   secondaryButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)', backgroundColor: '#fff' },
   secondaryButtonText: { fontWeight: '800', color: Colors.brand.darkPink },
   sheetPrimaryInRow: { paddingHorizontal: 10 },
@@ -713,7 +811,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 8,
     paddingHorizontal: 8,
   },
   sheetHeaderTitle: {
@@ -721,6 +819,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B', // Slate 800
     letterSpacing: 0.5,
+  },
+  sheetPaginationText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#64748B', // Slate 500
+    backgroundColor: '#F1F5F9', // Slate 100
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
 
   // Chip Tabs Section
@@ -748,9 +856,9 @@ const styles = StyleSheet.create({
   },
   chip: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 24,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0', // Slate 200
     shadowColor: '#64748B',
@@ -765,7 +873,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     color: '#64748B', // Slate 500
   },
@@ -778,14 +886,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
-    minHeight: 140,
+    minHeight: 290,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#334155',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 8,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
@@ -805,13 +913,61 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 32,
   },
+  reportImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  imageWrapper: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  premiumBlur: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  premiumOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    zIndex: 2,
+  },
+  premiumOverlayText: {
+    color: '#fff',
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontSize: 18,
+  },
+  premiumCtaButton: {
+    backgroundColor: '#F472B6',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  premiumCtaButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
 
   // Action Buttons Section
   sheetActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 24,
+    marginTop: 12,
+    marginBottom: 20,
     gap: 12,
   },
   secondaryButton: {
@@ -869,14 +1025,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 10,
-    gap: 6,
+    marginBottom: 0,
+    gap: 8,
   },
   sheetDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#CBD5E1', // Slate 300
+    width: 8,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: '#CBD5E1', // Slate 200 (Grey)
   },
   sheetDotActive: {
     width: 24, // Elongated active dot

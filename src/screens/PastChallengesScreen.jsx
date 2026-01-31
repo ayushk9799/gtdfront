@@ -12,16 +12,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { MMKV } from 'react-native-mmkv';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import LinearGradient from 'react-native-linear-gradient';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
+import { Skeleton } from '../components/Skeleton';
 import { Colors } from '../../constants/Colors';
 import { API_BASE } from '../../constants/Api';
 import { setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } from '../store/slices/currentGameSlice';
+import CloudBottom from '../components/CloudBottom';
 import { styles } from './styles';
+
 
 const storage = new MMKV();
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -31,6 +34,7 @@ export default function PastChallengesScreen() {
     const themeColors = Colors.light;
     const navigation = useNavigation();
     const dispatch = useDispatch();
+    const { isPremium } = useSelector((state) => state.user);
 
     const [challenges, setChallenges] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -65,10 +69,11 @@ export default function PastChallengesScreen() {
 
     // Fetch past challenges (initial load)
     const fetchPastChallenges = useCallback(async () => {
+        if (!currentUserId) return;
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_BASE}/api/daily-challenge?limit=10&sort=-date`);
+            const res = await fetch(`${API_BASE}/api/daily-challenge?limit=10&sort=-date&userId=${currentUserId}`);
             if (!res.ok) throw new Error('Failed to load past challenges');
             const data = await res.json();
             setChallenges(data.challenges || []);
@@ -79,15 +84,15 @@ export default function PastChallengesScreen() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentUserId]);
 
     // Load more challenges (pagination)
     const loadMoreChallenges = useCallback(async () => {
-        if (!hasMore || loadingMore || !lastDate) return;
+        if (!hasMore || loadingMore || !lastDate || !currentUserId) return;
 
         setLoadingMore(true);
         try {
-            const res = await fetch(`${API_BASE}/api/daily-challenge?limit=10&sort=-date&lastDate=${lastDate}`);
+            const res = await fetch(`${API_BASE}/api/daily-challenge?limit=10&sort=-date&lastDate=${lastDate}&userId=${currentUserId}`);
             if (!res.ok) throw new Error('Failed to load more challenges');
             const data = await res.json();
 
@@ -99,15 +104,16 @@ export default function PastChallengesScreen() {
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, lastDate]);
+    }, [hasMore, loadingMore, lastDate, currentUserId]);
 
-    // Defer API call until after navigation animation completes
+    // Defer API call until after navigation animation completes and userId is available
     useEffect(() => {
+        if (!currentUserId) return;
         const task = InteractionManager.runAfterInteractions(() => {
             fetchPastChallenges();
         });
         return () => task.cancel();
-    }, [fetchPastChallenges]);
+    }, [fetchPastChallenges, currentUserId]);
 
     // Handle viewing insights for completed challenge
     const handleViewInsights = () => {
@@ -238,7 +244,12 @@ export default function PastChallengesScreen() {
             <View style={styles.cardContent}>
                 <View style={styles.rowCenterBetween}>
                     <View style={{ flex: 1, paddingRight: 12 }}>
-                        <Text style={{ fontSize: 13, color: themeColors.icon, marginBottom: 4 }}>{formatDate(item.date)}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                            <Text style={{ fontSize: 13, color: themeColors.icon }}>{formatDate(item.date)}</Text>
+                            {loadingChallenge === item.date && (
+                                <ActivityIndicator size={12} color={Colors.brand.darkPink} style={{ marginLeft: 8 }} />
+                            )}
+                        </View>
                         <Text style={[styles.cardTitle, { color: themeColors.text, fontSize: 16, marginBottom: 2 }]} numberOfLines={1}>
                             {item.metadata?.title || 'Daily Challenge'}
                         </Text>
@@ -247,49 +258,122 @@ export default function PastChallengesScreen() {
                         </Text>
                     </View>
                     {/* Thumbnail Image */}
-                    {item.metadata?.mainimage && (
-                        <Image
-                            source={{ uri: item.metadata.mainimage }}
-                            style={localStyles.thumbnail}
-                        />
-                    )}
-                    {loadingChallenge === item.date && (
-                        <ActivityIndicator size="small" color={Colors.brand.darkPink} style={{ marginLeft: 12 }} />
+                    {item.metadata?.mainimage ? (
+                        <View style={{ position: 'relative' }}>
+                            <Image
+                                source={{ uri: item.metadata.mainimage }}
+                                style={localStyles.thumbnail}
+                            />
+                            {item.isCompleted && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                    borderRadius: 12,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 'bold', opacity: 0.6 }}>Solved</Text>
+                                </View>
+                            )}
+                            {!isPremium && !item.isCompleted && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                    borderRadius: 12,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <MaterialCommunityIcons name="lock" size={20} color="#FFFFFF" />
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        <View style={[localStyles.thumbnail, { backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center' }]}>
+                            <MaterialCommunityIcons name="calendar" size={24} color="#BDC3C7" />
+                            {item.isCompleted && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                    borderRadius: 12,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 'bold', opacity: 0.6 }}>Solved</Text>
+                                </View>
+                            )}
+                            {!isPremium && !item.isCompleted && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                    borderRadius: 12,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <MaterialCommunityIcons name="lock" size={20} color="#FFFFFF" />
+                                </View>
+                            )}
+                        </View>
                     )}
                 </View>
             </View>
         </TouchableOpacity>
     );
 
-    // Footer component with Load More button
+    // Footer component with Load More button and decoration
     const renderFooter = () => {
-        if (!hasMore) return null;
-
         return (
-            <TouchableOpacity
-                style={[
-                    styles.primaryButton,
-                    {
-                        alignSelf: 'stretch',
-                        alignItems: 'center',
-                        marginTop: 4,
-                        marginBottom: 20,
-                        opacity: loadingMore ? 0.7 : 1,
-                    }
-                ]}
-                activeOpacity={0.8}
-                onPress={loadMoreChallenges}
-                disabled={loadingMore}
-            >
-                {loadingMore ? (
-                    <View style={styles.rowCenter}>
-                        <ActivityIndicator size="small" color="#FFF" />
-                        <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>Loading...</Text>
-                    </View>
-                ) : (
-                    <Text style={styles.primaryButtonText}>Load More Challenges</Text>
+            <View style={{ paddingBottom: 0 }}>
+                {hasMore && (
+                    <TouchableOpacity
+                        style={[
+                            styles.primaryButton,
+                            {
+                                alignSelf: 'stretch',
+                                alignItems: 'center',
+                                marginTop: 4,
+                                marginBottom: 20,
+                                opacity: loadingMore ? 0.7 : 1,
+                            }
+                        ]}
+                        activeOpacity={0.8}
+                        onPress={loadMoreChallenges}
+                        disabled={loadingMore}
+                    >
+                        {loadingMore ? (
+                            <View style={styles.rowCenter}>
+                                <ActivityIndicator size="small" color="#FFF" />
+                                <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>Loading...</Text>
+                            </View>
+                        ) : (
+                            <Text style={styles.primaryButtonText}>Load More Challenges</Text>
+                        )}
+                    </TouchableOpacity>
                 )}
-            </TouchableOpacity>
+                <View style={{ height: 40 }} />
+                <View style={{ marginHorizontal: -12, height: 160 }}>
+                    <CloudBottom
+                        height={160}
+                        color={"#FF407D"}
+                        style={{ opacity: 0.35, position: 'relative' }}
+                    />
+                </View>
+            </View>
         );
     };
 
@@ -323,10 +407,7 @@ export default function PastChallengesScreen() {
 
                 {/* Content */}
                 {loading ? (
-                    <View style={styles.centered}>
-                        <ActivityIndicator size="large" color={Colors.brand.darkPink} />
-                        <Text style={{ marginTop: 12, color: themeColors.icon }}>Loading past challenges...</Text>
-                    </View>
+                    <Skeleton.CasesList count={6} />
                 ) : error ? (
                     <View style={[styles.centered, { padding: 20 }]}>
                         <MaterialCommunityIcons name="alert-circle-outline" size={48} color={Colors.brand.darkPink} />
@@ -345,7 +426,7 @@ export default function PastChallengesScreen() {
                         data={pastChallenges}
                         keyExtractor={(item) => item.date}
                         renderItem={renderChallengeItem}
-                        contentContainerStyle={styles.screenScroll}
+                        contentContainerStyle={[styles.screenScroll, { paddingBottom: 0 }]}
                         showsVerticalScrollIndicator={false}
                         ListFooterComponent={renderFooter}
                     />

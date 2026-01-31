@@ -85,7 +85,10 @@ const userSlice = createSlice({
   initialState,
   reducers: {
     setCustomerInfo: (state, action) => {
-      state.isPremium = action.payload?.activeSubscriptions?.length > 0;
+      // Check both activeSubscriptions (for weekly/monthly) AND entitlements.active (for lifetime purchases)
+      const hasActiveSubscription = action.payload?.activeSubscriptions?.length > 0;
+      const hasActiveEntitlement = Object.keys(action.payload?.entitlements?.active || {}).length > 0;
+      state.isPremium = hasActiveSubscription || hasActiveEntitlement;
       if (state.isPremium) state.hearts = 100;
       state.customerInfo = action.payload || null;
     },
@@ -116,6 +119,12 @@ const userSlice = createSlice({
       .addCase(updateUser.fulfilled, (state, action) => {
         state.status = 'idle';
         state.userData = action.payload || null;
+        // For premium users, keep hearts at 100 (unlimited); otherwise use server response
+        if (state.isPremium) {
+          state.hearts = 100;
+        } else {
+          state.hearts = action.payload?.hearts ?? 0;
+        }
       })
       .addCase(updateUser.rejected, (state) => {
         state.status = 'idle';

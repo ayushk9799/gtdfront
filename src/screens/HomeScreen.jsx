@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -98,7 +99,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (categoriesLoading === 'idle') {
-      dispatch(fetchCategories()); 
+      dispatch(fetchCategories());
     }
   }, [dispatch]);
 
@@ -164,15 +165,39 @@ export default function HomeScreen() {
     }
 
     if (shouldShowSuggestedCase && progressStatus === 'succeeded' && Array.isArray(departmentProgress)) {
-      // Filter departments that have unsolved cases
-      const deptsWithCases = departmentProgress.filter(
+      // Step 1: Filter departments that have unsolved cases
+      const deptsWithAnyCases = departmentProgress.filter(
         dept => Array.isArray(dept.unsolvedCases) && dept.unsolvedCases.length > 0
       );
 
-      if (deptsWithCases.length > 0) {
-        // Pick a random department
-        const randomDept = deptsWithCases[Math.floor(Math.random() * deptsWithCases.length)];
-        const nextCase = randomDept.unsolvedCases[0];
+      if (deptsWithAnyCases.length > 0) {
+        // Step 2: Try to find free cases for non-premium users
+        let deptsWithSuggestions = deptsWithAnyCases;
+        let pickingPremiumFallback = false;
+
+        if (!isPremium) {
+          const deptsWithFreeCases = deptsWithAnyCases.filter(dept =>
+            dept.unsolvedCases.some(c => c.originalIndex < 2)
+          );
+
+          if (deptsWithFreeCases.length > 0) {
+            deptsWithSuggestions = deptsWithFreeCases;
+          } else {
+            // No free cases left in any department! Suggest a premium case instead
+            pickingPremiumFallback = true;
+          }
+        }
+
+        // Pick a random department from available suggestions
+        const randomDept = deptsWithSuggestions[Math.floor(Math.random() * deptsWithSuggestions.length)];
+
+        // Pick the case
+        let nextCase;
+        if (!isPremium && !pickingPremiumFallback) {
+          nextCase = randomDept.unsolvedCases.find(c => c.originalIndex < 2);
+        } else {
+          nextCase = randomDept.unsolvedCases[0];
+        }
 
         if (nextCase) {
           const newSuggestedCase = {
@@ -180,7 +205,8 @@ export default function HomeScreen() {
             caseTitle: nextCase.caseTitle || 'Medical Case',
             mainimage: nextCase.mainimage || null,
             departmentName: randomDept.name || 'Department',
-            savedAt: Date.now(), // Timestamp for 1-hour expiration
+            isPremiumCase: (!isPremium && (nextCase.originalIndex >= 2 || pickingPremiumFallback)),
+            savedAt: Date.now(), // Timestamp for expiration
           };
 
           setSuggestedNextCase(newSuggestedCase);
@@ -352,14 +378,32 @@ export default function HomeScreen() {
                 <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
               </View>
-              {isDailyChallengeCompleted && !isCheckingCompletion && (
-                <View style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 6,
-                  backgroundColor: '#2E7D32',
-                }}>
-                  <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }}>Already Played ✓</Text>
+              {!isCheckingCompletion && !isChallengeLoading && currentChallenge && (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {/* {isDailyChallengeCompleted && (
+                    <View style={{
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      backgroundColor: '#2E7D32',
+                      marginRight: 8,
+                    }}>
+                      <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }}>Played ✓</Text>
+                    </View>
+                  )} */}
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('PastChallenges')}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons name="history" size={20} color={Colors.brand.darkPink} />
+                    <Text style={{ marginLeft: 5, color: Colors.brand.darkPink, fontSize: 15, fontWeight: '700' }}>History</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -378,36 +422,68 @@ export default function HomeScreen() {
             {currentChallenge && !isChallengeLoading && !isCheckingCompletion && !hasChallengeError && (
               <>
                 {isDailyChallengeCompleted ? (
-                  <>
-                    <Text style={[styles.cardDesc, { marginTop: 8, fontSize: 15, color: '#2E7D32' }]}>
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={[styles.cardDesc, { fontSize: 15, color: '#2E7D32', marginTop: 0 }]}>
                       Your daily challenge is completed! 🎉
                     </Text>
                     <TouchableOpacity
-                      style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
-                      activeOpacity={0.9}
                       onPress={handleDailyChallengePress}
                       disabled={isDailyChallengeLoading}
+                      style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
                     >
                       {isDailyChallengeLoading ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                          <Text style={styles.primaryButtonText}>✨ Show Clinical Insight ✨</Text>
-                        </View>
+                        <ActivityIndicator size="small" color={Colors.brand.darkPink} />
                       ) : (
-                        <Text style={styles.primaryButtonText}>✨ Show Clinical Insight ✨</Text>
+                        <Text style={{ color: Colors.brand.darkPink, fontWeight: '800', fontSize: 15 }}>
+                          View Insights →
+                        </Text>
                       )}
                     </TouchableOpacity>
-                  </>
+                  </View>
                 ) : (
                   <>
-                    {currentChallenge?.caseData?.mainimage &&
-                      <View style={{ width: '100%', height: imageHeight, resizeMode: 'contain', backgroundColor: 'transparent', borderRadius: 16, overflow: 'hidden' }}>
-                        <Image source={{ uri: currentChallenge?.caseData?.mainimage }} style={{ width: '100%', height: "100%", resizeMode: 'cover', backgroundColor: 'transparent' }} />
+                    {currentChallenge?.caseData?.mainimage && (
+                      <View style={{ width: '100%', height: imageHeight, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F5F5F5' }}>
+                        <Image
+                          source={{ uri: currentChallenge?.caseData?.mainimage }}
+                          style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+                        />
+                        {/* Gradient overlay */}
+                        <LinearGradient
+                          colors={['transparent', 'rgba(0,0,0,0.85)']}
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: imageHeight * 0.6,
+                          }}
+                        />
+                        {/* Text positioned absolutely at bottom */}
+                        <View style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          paddingHorizontal: 16,
+                          paddingBottom: 14,
+                        }}>
+                          <Text style={{
+                            fontFamily: 'Artifika-Regular',
+                            fontSize: 18,
+                            color: 'white',
+                            fontWeight: '600',
+                          }} numberOfLines={2}>
+                            {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                          </Text>
+                        </View>
                       </View>
-                    }
-                    <Text style={[styles.cardDesc, { marginTop: 8, fontFamily: 'Artifika-Regular', fontSize: 18, color: "black" }]}>
-                      {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
-                    </Text>
+                    )}
+                    {!currentChallenge?.caseData?.mainimage && (
+                      <Text style={[styles.cardDesc, { marginTop: 8, fontFamily: 'Artifika-Regular', fontSize: 18, color: "black" }]}>
+                        {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                      </Text>
+                    )}
                     <TouchableOpacity
                       style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
                       activeOpacity={0.9}
@@ -417,10 +493,10 @@ export default function HomeScreen() {
                       {isDailyChallengeLoading ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <ActivityIndicator color="#FFFFFF" size="small" />
-                          <Text style={styles.primaryButtonText}>Solve Today's Challenge </Text>
+                          <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
                         </View>
                       ) : (
-                        <Text style={styles.primaryButtonText}>Solve Today's Challenge </Text>
+                        <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
                       )}
                     </TouchableOpacity>
                   </>
@@ -443,26 +519,13 @@ export default function HomeScreen() {
               </>
             )}
 
-            {/* Past Challenges Link - Always visible within Daily Challenge card */}
-            {!isChallengeLoading && !isCheckingCompletion && (
-              <TouchableOpacity
-                style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('PastChallenges')}
-              >
-                <MaterialCommunityIcons name="history" size={18} color={Colors.brand.darkPink} />
-                <Text style={{ marginLeft: 6, color: Colors.brand.darkPink, fontSize: 14, fontWeight: '600' }}>
-                  Play Past Challenges
-                </Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={Colors.brand.darkPink} />
-              </TouchableOpacity>
-            )}
+
           </View>
         </View>
 
         {/* Continue Solving Card - Shows when daily challenge is completed OR no challenge available */}
         {shouldShowSuggestedCase && suggestedNextCase && (
-          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, marginTop: 16 }]}>
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, marginTop: 5 }]}>
             <View style={styles.cardContent}>
               <View style={styles.rowCenterBetween}>
                 <View style={styles.rowCenter}>
@@ -484,25 +547,67 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              {suggestedNextCase.mainimage && (
+              {suggestedNextCase.mainimage ? (
                 <View style={{ width: '100%', height: imageHeight, backgroundColor: '#F5F5F5', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
                   <Image
                     source={{ uri: suggestedNextCase.mainimage }}
                     style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
                   />
+                  {/* Gradient overlay */}
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.85)']}
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: imageHeight * 0.6,
+                    }}
+                  />
+                  {/* Text positioned absolutely at bottom */}
+                  <View style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    paddingHorizontal: 16,
+                    paddingBottom: 14,
+                  }}>
+                    <Text style={{
+                      fontSize: 18,
+                      fontFamily: 'Artifika-Regular',
+                      color: 'white',
+                      fontWeight: '600',
+                    }} numberOfLines={2}>
+                      {suggestedNextCase.caseTitle}
+                    </Text>
+                  </View>
                 </View>
+              ) : (
+                <Text style={[styles.cardDesc, { marginTop: 12, fontSize: 18, fontFamily: 'Artifika-Regular', color: "black" }]} numberOfLines={2}>
+                  {suggestedNextCase.caseTitle}
+                </Text>
               )}
-
-              <Text style={[styles.cardDesc, { marginTop: 12, fontSize: 18, fontFamily: 'Artifika-Regular', color: "black" }]} numberOfLines={2}>
-                {suggestedNextCase.caseTitle}
-              </Text>
 
               <TouchableOpacity
                 style={styles.primaryButton}
                 activeOpacity={0.9}
-                onPress={() => openCaseById(suggestedNextCase.caseId)}
+                onPress={() => {
+                  if (suggestedNextCase.isPremiumCase) {
+                    premiumSheetRef.current?.present();
+                  } else {
+                    openCaseById(suggestedNextCase.caseId);
+                  }
+                }}
               >
-                <Text style={styles.primaryButtonText}>Start Case</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {suggestedNextCase.isPremiumCase && (
+                    <MaterialCommunityIcons name="lock" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  )}
+                  <Text style={styles.primaryButtonText}>
+                    {suggestedNextCase.isPremiumCase ? 'Unlock Premium Case' : 'Solve the Case'}
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>

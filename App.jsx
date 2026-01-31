@@ -31,6 +31,7 @@ import NotificationPermission from './src/screens/NotificationPermission';
 import HeartScreen from './src/screens/HeartScreen';
 import EditAccountScreen from './src/screens/EditAccountScreen';
 import PastChallengesScreen from './src/screens/PastChallengesScreen';
+import DepartmentCasesScreen from './src/screens/DepartmentCasesScreen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { getUser, updateUser } from './src/store/slices/userSlice';
 import RNBootSplash from 'react-native-bootsplash';
@@ -533,7 +534,7 @@ export default function App() {
                 name="NotificationPermission"
                 component={NotificationPermission}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -544,7 +545,7 @@ export default function App() {
                 name="ClinicalInfo"
                 component={ClinicalInfo}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -553,17 +554,17 @@ export default function App() {
                 name="ClinicalInsight"
                 component={ClinicalInsight}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
-                  gestureEnabled: false,
+                  // gestureEnabled: false,
                 }}
               />
               <Stack.Screen
                 name="SelectTests"
                 component={SelectTests}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -572,7 +573,7 @@ export default function App() {
                 name="SelectDiagnosis"
                 component={SelectDiagnosis}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -581,7 +582,7 @@ export default function App() {
                 name="SelectTreatment"
                 component={SelectTreatment}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -590,7 +591,7 @@ export default function App() {
                 name="Premium"
                 component={PremiumScreen}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -599,7 +600,7 @@ export default function App() {
                 name="Heart"
                 component={HeartScreen}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -608,7 +609,7 @@ export default function App() {
                 name="EditAccount"
                 component={EditAccountScreen}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}
@@ -617,7 +618,16 @@ export default function App() {
                 name="PastChallenges"
                 component={PastChallengesScreen}
                 options={{
-                  animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+                  animation: 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="DepartmentCases"
+                component={DepartmentCasesScreen}
+                options={{
+                  animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
                 }}

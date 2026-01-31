@@ -20,7 +20,7 @@ const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 10;
 
 export default function HeartScreen() {
   // Static, presentational values (no calculations)
-  const { hearts, userData } = useSelector(state => state.user);
+  const { hearts, userData, isPremium } = useSelector(state => state.user);
   const referralCode = userData?.referralCode || '';
   const navigation = useNavigation();
   const dispatch = useDispatch();
@@ -295,163 +295,184 @@ Join me 👉 https://diagnoseit.in`
 
               </Text>
 
-              <View style={styles.card}>
-                <View style={styles.heartsRow}>
-                  {Array.from({ length: MAX_HEARTS_DISPLAY }).map((_, idx) => {
-                    const filled = idx < heartsToShow;
-                    return (
-                      <Ionicons
-                        key={idx}
-                        name="heart"
-                        size={44}
-                        color={filled ? '#ff4d4f' : '#c8cbd0'}
-                        style={styles.heartIcon}
-                      />
-                    );
-                  })}
-                </View>
-                <View style={styles.cardMainTextContainer}>
-                  <Text style={styles.cardMainText}>
-                    Today's <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
-                  </Text>
-                </View>
-                <View style={styles.timerContainer}>
-                  <Ionicons name="time-outline" size={16} color="#65727E" style={{ marginRight: 6 }} />
-                  <Text style={styles.timerText}>
-                    Hearts reset in: <Text style={styles.timerTime}>{timeUntilReset}</Text>
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.subtitleSecondary}>You get 1 heart every 24 hour.</Text>
-
-              <View style={styles.cardAlt}>
-                <Text style={styles.cardAltTitle}>Want to play more today?</Text>
-
-                {/* Premium Option */}
-                <View style={styles.optionSection}>
-                  <View style={styles.optionHeader}>
-                    <View style={styles.optionIconContainer}>
-                      <Ionicons name="diamond" size={20} color="#667eea" />
-                    </View>
-                    <Text style={styles.optionTitle}>Get Premium</Text>
+              {isPremium ? (
+                <View style={styles.card}>
+                  <View style={styles.heartsRow}>
+                    <Ionicons name="diamond" size={44} color="#667eea" />
                   </View>
-
-                  <View style={styles.listRow}>
-                    <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
-                    <Text style={styles.listText}>
-                      Unlock <Text style={{ fontWeight: '700' }}>Unlimited Hearts</Text>
+                  <View style={styles.cardMainTextContainer}>
+                    <Text style={styles.cardMainText}>
+                      You are <Text style={[styles.cardMainTextNumber, { color: '#667eea' }]}>Premium</Text> Member
                     </Text>
                   </View>
-
-                  <View style={styles.listRow}>
-                    <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
-                    <Text style={styles.listText}>
-                      Access <Text style={{ fontWeight: '700' }}>Clinical Insight</Text>
+                  <View style={styles.timerContainer}>
+                    <Ionicons name="infinite" size={18} color="#667eea" style={{ marginRight: 6 }} />
+                    <Text style={styles.timerText}>
+                      <Text style={[styles.timerTime, { color: '#667eea' }]}>Unlimited Hearts</Text>
                     </Text>
                   </View>
-                    <View style={styles.listRow}>
-                    <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
-                    <Text style={styles.listText}>
-                      Access <Text style={{ fontWeight: '700' }}>Video analysis and Slide Decks</Text>
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
-                    <Text style={styles.ctaButtonText}>Get Premium →</Text>
-                  </TouchableOpacity>
                 </View>
-
-                {/* OR Divider */}
-                <View style={styles.orDividerContainer}>
-                  <View style={styles.orDividerLine} />
-                  <View style={styles.orDividerTextContainer}>
-                    <Text style={styles.orDividerText}>OR</Text>
-                  </View>
-                  <View style={styles.orDividerLine} />
-                </View>
-
-                {/* Referral Option */}
-                <View style={styles.optionSection}>
-                  <View style={styles.optionHeader}>
-                    <View style={[styles.optionIconContainer, { backgroundColor: '#FFF0F0' }]}>
-                      <Ionicons name="gift" size={20} color="#ff4d4f" />
-                    </View>
-                    <Text style={styles.optionTitle}>Get one more Heart</Text>
-                    <View style={styles.heartBadge}>
-                      <Ionicons name="heart" size={12} color="#ff4d4f" />
-                      <Text style={styles.heartBadgeText}>+1</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.referralDescriptionText}>
-                    Share your code with <Text style={{ fontWeight: '700', color:"black" }}>friends</Text>. When they enter it, you get a <Text style={{ fontWeight: '700', color:"black" }}>free heart!</Text>
-                  </Text>
-
-                  {/* Referral Code Display */}
-                  {referralCode ? (
-                    <View style={styles.referralCodeBox}>
-                      <Text style={styles.referralCodeLabel}>Your Referral Code</Text>
-                      <Text style={styles.referralCodeValue}>{referralCode}</Text>
-                    </View>
-                  ) : null}
-
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={onShareWithFriend}
-                    activeOpacity={0.9}
-                  >
-                    <Ionicons name="share-social" size={18} color="#2D3142" style={{ marginRight: 8 }} />
-                    <Text style={styles.secondaryButtonText}>Share Code</Text>
-                  </TouchableOpacity>
-
-                  {/* Enter Friend's Code Section */}
-                  {!codeApplied && (
-                    <View style={styles.enterCodeSection}>
-                      <View style={styles.enterCodeDivider} />
-                      <Text style={styles.enterCodeLabel}>Have a friend's code?</Text>
-                      <View style={styles.enterCodeInputRow}>
-                        <TextInput
-                          style={styles.enterCodeInput}
-                          placeholder="Enter code"
-                          placeholderTextColor="#9CA3AF"
-                          value={friendCode}
-                          onChangeText={setFriendCode}
-                          autoCapitalize="characters"
-                          autoCorrect={false}
-                          onFocus={() => {
-                            setTimeout(() => {
-                              scrollViewRef.current?.scrollToEnd({ animated: true });
-                            }, 300);
-                          }}
+              ) : (
+                <View style={styles.card}>
+                  <View style={styles.heartsRow}>
+                    {Array.from({ length: MAX_HEARTS_DISPLAY }).map((_, idx) => {
+                      const filled = idx < heartsToShow;
+                      return (
+                        <Ionicons
+                          key={idx}
+                          name="heart"
+                          size={44}
+                          color={filled ? '#ff4d4f' : '#c8cbd0'}
+                          style={styles.heartIcon}
                         />
-                        <TouchableOpacity
-                          style={[
-                            styles.applyCodeButton,
-                            (!friendCode.trim() || isApplying) && styles.applyCodeButtonDisabled
-                          ]}
-                          onPress={handleApplyFriendCode}
-                          disabled={!friendCode.trim() || isApplying}
-                          activeOpacity={0.8}
-                        >
-                          {isApplying ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                          ) : (
-                            <Text style={styles.applyCodeButtonText}>Apply</Text>
-                          )}
-                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <View style={styles.cardMainTextContainer}>
+                    <Text style={styles.cardMainText}>
+                      Today's <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
+                    </Text>
+                  </View>
+                  <View style={styles.timerContainer}>
+                    <Ionicons name="time-outline" size={16} color="#65727E" style={{ marginRight: 6 }} />
+                    <Text style={styles.timerText}>
+                      Hearts reset in: <Text style={styles.timerTime}>{timeUntilReset}</Text>
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <Text style={styles.subtitleSecondary}>{isPremium ? 'Enjoy unlimited access to all cases!' : 'You get 1 heart every 24 hour.'}</Text>
+
+              {!isPremium && (
+                <View style={styles.cardAlt}>
+                  <Text style={styles.cardAltTitle}>Want to play more today?</Text>
+
+                  {/* Premium Option */}
+                  <View style={styles.optionSection}>
+                    <View style={styles.optionHeader}>
+                      <View style={styles.optionIconContainer}>
+                        <Ionicons name="diamond" size={20} color="#667eea" />
+                      </View>
+                      <Text style={styles.optionTitle}>Get Premium</Text>
+                    </View>
+
+                    <View style={styles.listRow}>
+                      <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
+                      <Text style={styles.listText}>
+                        Unlock <Text style={{ fontWeight: '700' }}>Unlimited Hearts</Text>
+                      </Text>
+                    </View>
+
+                    <View style={styles.listRow}>
+                      <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
+                      <Text style={styles.listText}>
+                        Access <Text style={{ fontWeight: '700' }}>Clinical Insight</Text>
+                      </Text>
+                    </View>
+                    <View style={styles.listRow}>
+                      <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
+                      <Text style={styles.listText}>
+                        Access <Text style={{ fontWeight: '700' }}>Video analysis and Slide Decks</Text>
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
+                      <Text style={styles.ctaButtonText}>Get Premium →</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* OR Divider */}
+                  <View style={styles.orDividerContainer}>
+                    <View style={styles.orDividerLine} />
+                    <View style={styles.orDividerTextContainer}>
+                      <Text style={styles.orDividerText}>OR</Text>
+                    </View>
+                    <View style={styles.orDividerLine} />
+                  </View>
+
+                  {/* Referral Option */}
+                  <View style={styles.optionSection}>
+                    <View style={styles.optionHeader}>
+                      <View style={[styles.optionIconContainer, { backgroundColor: '#FFF0F0' }]}>
+                        <Ionicons name="gift" size={20} color="#ff4d4f" />
+                      </View>
+                      <Text style={styles.optionTitle}>Get one more Heart</Text>
+                      <View style={styles.heartBadge}>
+                        <Ionicons name="heart" size={12} color="#ff4d4f" />
+                        <Text style={styles.heartBadgeText}>+1</Text>
                       </View>
                     </View>
-                  )}
 
-                  {codeApplied && (
-                    <View style={styles.codeAppliedBadge}>
-                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                      <Text style={styles.codeAppliedText}>Friend's code applied!</Text>
-                    </View>
-                  )}
+                    <Text style={styles.referralDescriptionText}>
+                      Share your code with <Text style={{ fontWeight: '700', color: "black" }}>friends</Text>. When they enter it, you get a <Text style={{ fontWeight: '700', color: "black" }}>free heart!</Text>
+                    </Text>
+
+                    {/* Referral Code Display */}
+                    {referralCode ? (
+                      <View style={styles.referralCodeBox}>
+                        <Text style={styles.referralCodeLabel}>Your Referral Code</Text>
+                        <Text style={styles.referralCodeValue}>{referralCode}</Text>
+                      </View>
+                    ) : null}
+
+                    <TouchableOpacity
+                      style={styles.secondaryButton}
+                      onPress={onShareWithFriend}
+                      activeOpacity={0.9}
+                    >
+                      <Ionicons name="share-social" size={18} color="#2D3142" style={{ marginRight: 8 }} />
+                      <Text style={styles.secondaryButtonText}>Share Code</Text>
+                    </TouchableOpacity>
+
+                    {/* Enter Friend's Code Section */}
+                    {!codeApplied && (
+                      <View style={styles.enterCodeSection}>
+                        <View style={styles.enterCodeDivider} />
+                        <Text style={styles.enterCodeLabel}>Have a friend's code?</Text>
+                        <View style={styles.enterCodeInputRow}>
+                          <TextInput
+                            style={styles.enterCodeInput}
+                            placeholder="Enter code"
+                            placeholderTextColor="#9CA3AF"
+                            value={friendCode}
+                            onChangeText={setFriendCode}
+                            autoCapitalize="characters"
+                            autoCorrect={false}
+                            onFocus={() => {
+                              setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                              }, 300);
+                            }}
+                          />
+                          <TouchableOpacity
+                            style={[
+                              styles.applyCodeButton,
+                              (!friendCode.trim() || isApplying) && styles.applyCodeButtonDisabled
+                            ]}
+                            onPress={handleApplyFriendCode}
+                            disabled={!friendCode.trim() || isApplying}
+                            activeOpacity={0.8}
+                          >
+                            {isApplying ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <Text style={styles.applyCodeButtonText}>Apply</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
+                    {codeApplied && (
+                      <View style={styles.codeAppliedBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                        <Text style={styles.codeAppliedText}>Friend's code applied!</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
             <PremiumBottomSheet ref={premiumSheetRef} />
           </View>

@@ -809,16 +809,16 @@ export default function ClinicalInfo() {
                                 style={styles.premiumBlur}
                                 blurType={'dark'}
                                 blurAmount={5}
-                                overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0.1)' : 'transparent'}
+                                overlayColor={Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.1)' : 'transparent'}
                               />
                               <View style={styles.premiumOverlay}>
-                                <Text style={styles.premiumOverlayText}>Premium Feature</Text>
+                                <Text style={styles.premiumOverlayText}>Clinical image only available for Premium users</Text>
                                 <TouchableOpacity
                                   style={styles.premiumCtaButton}
                                   onPress={() => premiumSheetRef.current?.present()}
                                   activeOpacity={0.9}
                                 >
-                                  <Text style={styles.premiumCtaButtonText}>Subscribe Premium</Text>
+                                  <Text style={styles.premiumCtaButtonText}>Unlock Now</Text>
                                 </TouchableOpacity>
                               </View>
                             </>

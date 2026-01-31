@@ -225,7 +225,11 @@ export const submitGameplay = createAsyncThunk(
       throw new Error(text || `Failed to submit gameplay (${res.status})`);
     }
     const data = await res.json();
-    return { gameplayId: data?.gameplay?._id, updatedUser: data?.updatedUser || null };
+    return {
+      gameplayId: data?.gameplay?._id,
+      updatedUser: data?.updatedUser || null,
+      sourceType // Return sourceType to help other slices determine if they need to update
+    };
   }
 );
 

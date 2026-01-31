@@ -244,12 +244,12 @@ Join me 👉 https://diagnoseit.in`
             marginBottom: 12,
           }}>
             <Text style={{ fontSize: 36, fontWeight: '800', color: Colors.brand.darkPink }}>
-              {user?.name?.[0]?.toUpperCase?.() || user?.email?.[0]?.toUpperCase?.() || 'U'}
+              {userData?.name?.[0]?.toUpperCase?.() || user?.name?.[0]?.toUpperCase?.() || user?.email?.[0]?.toUpperCase?.() || 'U'}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={styles.title}>
-              {user?.name || 'User'}
+              {userData?.name || user?.name || 'User'}
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('EditAccount')}
@@ -266,8 +266,8 @@ Join me 👉 https://diagnoseit.in`
               <MaterialCommunityIcons name="pencil" size={16} color={Colors.brand.darkPink} />
             </TouchableOpacity>
           </View>
-          {!!user?.email && (
-            <Text style={styles.subtitle}>{user.email}</Text>
+          {!!(userData?.email || user?.email) && (
+            <Text style={styles.subtitle}>{userData?.email || user?.email}</Text>
           )}
 
           {/* Stats Section */}
@@ -382,9 +382,11 @@ Join me 👉 https://diagnoseit.in`
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>Renews/Expires</Text>
+                  <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>
+                    {String(premiumPlan).toLowerCase().includes('life') ? 'Status' : 'Renews/Expires'}
+                  </Text>
                   <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
-                    {formatDate(premiumExpiresAt)}
+                    {String(premiumPlan).toLowerCase().includes('life') ? 'Never expires ✨' : formatDate(premiumExpiresAt)}
                   </Text>
                 </View>
               </View>

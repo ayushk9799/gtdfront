@@ -19,6 +19,9 @@ import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
+// Default voice ID to use for daily challenges (which don't have a voiceId)
+const DEFAULT_VOICE_ID = 'dxtc3xhb9gtpusipntqx';
+
 function ECGUnderline({ color = Colors.brand.darkPink }) {
   return (
     <Svg width={160} height={14} viewBox="0 0 160 14" style={styles.ecgSvg}>
@@ -70,6 +73,9 @@ export default function SelectTreatment() {
   const { userId, caseId, selectedTreatmentIds, sourceType } = useSelector((s) => s.currentGame);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
+
+  // Use default voice ID for daily challenges since they don't have a voiceId
+  const effectiveVoiceId = voiceId || (sourceType === 'dailyChallenge' ? DEFAULT_VOICE_ID : null);
   const { isPremium } = useSelector(state => state.user);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
   const treatmentSoundRef = useRef(null);
@@ -180,7 +186,7 @@ export default function SelectTreatment() {
       return;
     }
 
-    if (!voiceId || audioPaused) {
+    if (!effectiveVoiceId || audioPaused) {
       return;
     }
 
@@ -196,7 +202,7 @@ export default function SelectTreatment() {
         return;
       }
 
-      const s = new Sound(`treatment_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
+      const s = new Sound(`treatment_${effectiveVoiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
         // Race condition guard
         if (treatmentSoundRef.current !== s) {
           try { s.release(); } catch (_) { }
@@ -228,7 +234,7 @@ export default function SelectTreatment() {
       clearTimeout(delayTimeout);
       stopTreatmentAudio();
     };
-  }, [voiceId, audioPaused, stopTreatmentAudio]);
+  }, [effectiveVoiceId, audioPaused, stopTreatmentAudio]);
 
   // Clean up audio when screen loses focus
   useFocusEffect(

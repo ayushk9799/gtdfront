@@ -3,12 +3,15 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/Colors';
 import { fetchDepartmentProgress } from '../store/slices/progressSlice';
 import { styles } from '../screens/styles';
+import { Skeleton } from './Skeleton';
 
 export default function DepartmentProgressList({ userId, themeColors, onStartCase }) {
   const dispatch = useDispatch();
+  const navigation = useNavigation();
   const { status, items, error } = useSelector((s) => s.progress);
 
   useEffect(() => {
@@ -16,12 +19,7 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
   }, [dispatch, userId]);
 
   if (status === 'loading') {
-    return (
-      <View style={[styles.rowCenter, { marginTop: 8 }]}> 
-        <ActivityIndicator color={Colors.brand.darkPink} />
-        <Text style={[styles.cardDesc, { marginLeft: 8 }]}>Loading progress…</Text>
-      </View>
-    );
+    return <Skeleton.DepartmentsList count={3} />;
   }
 
   if (error) {
@@ -33,7 +31,7 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
     : [];
 
   return (
-    <View style={{ marginTop: 8}}>
+    <View style={{ marginTop: 8 }}>
       {visibleItems.map((dept) => {
         const title = (dept.name || '').charAt(0).toUpperCase() + (dept.name || '').slice(1);
         const firstCase = (Array.isArray(dept.unsolvedCases) ? dept.unsolvedCases : [])[0];
@@ -47,17 +45,16 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
           <TouchableOpacity
             key={String(dept.categoryId)}
             activeOpacity={0.9}
-            onPress={() => nextCaseId && onStartCase && onStartCase(nextCaseId)}
-            disabled={!nextCaseId}
-            style={{ opacity: nextCaseId ? 1 : 0.7 }}
+            onPress={() => navigation.navigate('DepartmentCases', { categoryId: dept.categoryId, categoryName: dept.name, userId })}
+            style={{ opacity: 1 }}
           >
             <View
-              style={ {
+              style={{
                 borderRadius: 16,
                 overflow: 'hidden',
                 marginBottom: 16,
                 backgroundColor: "white",
-               }}
+              }}
             >
               <View style={styles.cardContent}>
                 <View style={[styles.rowCenterBetween, { marginBottom: 2 }]}>

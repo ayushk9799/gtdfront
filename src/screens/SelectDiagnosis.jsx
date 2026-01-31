@@ -14,6 +14,9 @@ import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
+// Default voice ID to use for daily challenges (which don't have a voiceId)
+const DEFAULT_VOICE_ID = 'dxtc3xhb9gtpusipntqx';
+
 // function ECGUnderline({ color = Colors.brand.darkPink }) {
 //   return (
 //     <Svg width={160} height={14} viewBox="0 0 160 14" style={styles.ecgSvg}>
@@ -102,7 +105,11 @@ export default function SelectDiagnosis() {
   const dispatch = useDispatch();
   const selectedDiagnosisId = useSelector((s) => s.currentGame.selectedDiagnosisId);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
+  const sourceType = useSelector((s) => s.currentGame.sourceType);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
+
+  // Use default voice ID for daily challenges since they don't have a voiceId
+  const effectiveVoiceId = voiceId || (sourceType === 'dailyChallenge' ? DEFAULT_VOICE_ID : null);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
   const diagnosisSoundRef = useRef(null);
   const tapSoundRef = useRef(null);
@@ -183,7 +190,7 @@ export default function SelectDiagnosis() {
       return;
     }
 
-    if (!voiceId || audioPaused) {
+    if (!effectiveVoiceId || audioPaused) {
       return;
     }
 
@@ -198,7 +205,7 @@ export default function SelectDiagnosis() {
         return;
       }
 
-      const s = new Sound(`diagnosis_${voiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
+      const s = new Sound(`diagnosis_${effectiveVoiceId?.toLowerCase()}.mp3`, Sound.MAIN_BUNDLE, (error) => {
         // Race condition guard
         if (diagnosisSoundRef.current !== s) {
           try { s.release(); } catch (_) { }
@@ -230,7 +237,7 @@ export default function SelectDiagnosis() {
       clearTimeout(delayTimeout);
       stopDiagnosisAudio();
     };
-  }, [voiceId, audioPaused, stopDiagnosisAudio]);
+  }, [effectiveVoiceId, audioPaused, stopDiagnosisAudio]);
 
   // Clean up audio when screen loses focus
   useFocusEffect(

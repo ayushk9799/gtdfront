@@ -366,6 +366,37 @@ export const SkeletonPodium = memo(({ style }) => (
 
 SkeletonPodium.displayName = 'SkeletonPodium';
 
+/**
+ * Case item skeleton - specific preset for DepartmentCasesScreen
+ */
+export const SkeletonCaseItem = memo(({ style }) => (
+    <View style={[skeletonStyles.caseItem, style]}>
+        <View style={skeletonStyles.caseItemContent}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <SkeletonBase width={60} height={16} borderRadius={4} />
+            </View>
+            <SkeletonTitle width="80%" style={{ marginBottom: 6 }} />
+            <SkeletonText lines={2} width="100%" />
+        </View>
+        <SkeletonBase width={84} height={64} borderRadius={12} style={{ marginLeft: 12 }} />
+    </View>
+));
+
+SkeletonCaseItem.displayName = 'SkeletonCaseItem';
+
+/**
+ * Cases list skeleton
+ */
+export const SkeletonCasesList = memo(({ count = 5, style }) => (
+    <View style={[{ padding: 16 }, style]}>
+        {Array.from({ length: count }).map((_, index) => (
+            <SkeletonCaseItem key={index} />
+        ))}
+    </View>
+));
+
+SkeletonCasesList.displayName = 'SkeletonCasesList';
+
 // ============================================================================
 // STYLES
 // ============================================================================
@@ -446,6 +477,19 @@ const skeletonStyles = StyleSheet.create({
         alignItems: 'center',
         marginHorizontal: 10,
     },
+
+    // Case item styles
+    caseItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5F5F5',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+    },
+    caseItemContent: {
+        flex: 1,
+    },
 });
 
 // ============================================================================
@@ -471,4 +515,6 @@ export const Skeleton = {
     DepartmentsList: SkeletonDepartmentsList,
     LeaderboardItem: SkeletonLeaderboardItem,
     Podium: SkeletonPodium,
+    CaseItem: SkeletonCaseItem,
+    CasesList: SkeletonCasesList,
 };
