@@ -22,6 +22,8 @@ import LearningScreen from './src/screens/LearningScreen';
 import LeagueScreen from './src/screens/LeagueScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import ClinicalInsight from './src/screens/ClinicalInsight';
+import QuizzScreen from './src/screens/QuizzScreen';
+import QuizzPlay from './src/screens/QuizzPlay';
 import SelectTests from './src/screens/SelectTests';
 import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
@@ -237,6 +239,7 @@ function RootTabs() {
         tabBarIcon: ({ color, size, focused }) => {
           let icon = 'circle-outline';
           if (route.name === 'Home') icon = focused ? 'home-variant' : 'home-outline';
+          if (route.name === 'Quizzes') icon = focused ? 'comment-question' : 'comment-question-outline';
           if (route.name === 'Learnings') icon = 'book-open-variant';
           if (route.name === 'Ranking') icon = focused ? 'trophy' : 'trophy-outline';
           if (route.name === 'Account') icon = focused ? 'account-heart' : 'account-heart-outline';
@@ -247,6 +250,7 @@ function RootTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Learnings" component={LearningScreen} />
+      <Tab.Screen name="Quizzes" component={QuizzScreen} />
       <Tab.Screen name="Ranking" component={LeagueScreen} />
       <Tab.Screen name="Account" component={AccountScreen} />
     </Tab.Navigator>
@@ -630,6 +634,16 @@ export default function App() {
                   animation: 'slide_from_right',
                   presentation: 'card',
                   contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
+              <Stack.Screen
+                name="QuizzPlay"
+                component={QuizzPlay}
+                options={{
+                  animation: 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                  headerShown: false,
                 }}
               />
             </Stack.Navigator>

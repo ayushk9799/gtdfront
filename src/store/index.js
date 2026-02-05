@@ -6,6 +6,7 @@ import userReducer from './slices/userSlice';
 import categoriesReducer from './slices/categoriesSlice';
 import leaderboardReducer from './slices/leaderboardSlice';
 import dailyChallengeLeaderboardReducer from './slices/dailyChallengeLeaderboardSlice';
+import quizzReducer from './slices/quizzSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     categories: categoriesReducer,
     leaderboard: leaderboardReducer,
     dailyChallengeLeaderboard: dailyChallengeLeaderboardReducer,
+    quizz: quizzReducer,
   },
 });
 
