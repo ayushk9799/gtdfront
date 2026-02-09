@@ -270,14 +270,14 @@ SkeletonListItem.displayName = 'SkeletonListItem';
  * Daily Challenge skeleton - specific preset for HomeScreen
  */
 export const SkeletonDailyChallenge = memo(({ imageHeight = 200, style }) => (
-    <View style={[{ marginTop: 8 }, style]}>
-        <SkeletonImage
-            height={imageHeight}
-            borderRadius={16}
-            style={{ marginBottom: 12 }}
-        />
-        <SkeletonTitle width="80%" style={{ marginBottom: 8 }} />
-        <SkeletonText width="60%" style={{ marginBottom: 16 }} />
+    <View style={[{ marginTop: 12 }, style]}>
+        <View style={{ height: imageHeight, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F5F5F5', marginBottom: 12 }}>
+            <SkeletonImage height={imageHeight} borderRadius={16} />
+            {/* Simulation of title overlay inside the image */}
+            <View style={{ position: 'absolute', bottom: 14, left: 16, right: 16 }}>
+                <SkeletonTitle width="80%" style={{ height: 18, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            </View>
+        </View>
         <SkeletonButton />
     </View>
 ));
@@ -289,11 +289,13 @@ SkeletonDailyChallenge.displayName = 'SkeletonDailyChallenge';
  */
 export const SkeletonDepartmentCard = memo(({ style }) => (
     <View style={[skeletonStyles.departmentCard, style]}>
-        <SkeletonAvatar size={48} circular={false} />
         <View style={skeletonStyles.departmentCardContent}>
-            <SkeletonTitle width="70%" style={{ marginBottom: 8 }} />
-            <SkeletonProgress style={{ marginBottom: 6 }} />
-            <SkeletonText width="40%" />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <SkeletonTitle width="60%" style={{ marginBottom: 0 }} />
+                <SkeletonBase width={40} height={16} borderRadius={4} />
+            </View>
+            <SkeletonText lines={1} width="85%" style={{ marginBottom: 12 }} />
+            <SkeletonProgress height={10} style={{ marginBottom: 2 }} />
         </View>
     </View>
 ));
@@ -373,10 +375,10 @@ export const SkeletonCaseItem = memo(({ style }) => (
     <View style={[skeletonStyles.caseItem, style]}>
         <View style={skeletonStyles.caseItemContent}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                <SkeletonBase width={60} height={16} borderRadius={4} />
+                <SkeletonBase width={60} height={14} borderRadius={4} />
             </View>
-            <SkeletonTitle width="80%" style={{ marginBottom: 6 }} />
-            <SkeletonText lines={2} width="100%" />
+            <SkeletonTitle width="85%" style={{ height: 18, marginBottom: 4 }} />
+            <SkeletonText lines={2} width="95%" />
         </View>
         <SkeletonBase width={84} height={64} borderRadius={12} style={{ marginLeft: 12 }} />
     </View>
@@ -439,16 +441,15 @@ const skeletonStyles = StyleSheet.create({
 
     // Department card styles
     departmentCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#ECEFF4',
     },
     departmentCardContent: {
         flex: 1,
-        marginLeft: 12,
     },
 
     // Leaderboard styles
@@ -482,10 +483,12 @@ const skeletonStyles = StyleSheet.create({
     caseItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#ECEFF4',
     },
     caseItemContent: {
         flex: 1,

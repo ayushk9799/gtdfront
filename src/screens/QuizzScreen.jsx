@@ -1,24 +1,23 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     FlatList,
     TouchableOpacity,
+    Pressable,
     ActivityIndicator,
     Dimensions,
     Animated,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-    fetchQuizzCategories,
-    selectQuizzCategories,
-    selectQuizzCategoriesStatus
-} from '../store/slices/quizzSlice';
+import { useSelector } from 'react-redux';
+import { API_BASE } from '../../constants/Api';
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { DepartmentIcons } from '../components/DepartmentIcons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -57,7 +56,8 @@ const CategorySkeleton = () => {
                     <View key={i} style={[styles.categoryCard, { minHeight: 140, justifyContent: 'center', alignItems: 'center' }]}>
                         <SkeletonBox style={{ width: 48, height: 48, borderRadius: 14, marginBottom: 10 }} />
                         <SkeletonBox style={{ width: '60%', height: 14, marginBottom: 6 }} />
-                        <SkeletonBox style={{ width: '40%', height: 10 }} />
+                        <SkeletonBox style={{ width: '40%', height: 10, marginBottom: 12 }} />
+                        <SkeletonBox style={{ width: '80%', height: 10, borderRadius: 999 }} />
                     </View>
                 ))}
             </View>
@@ -66,29 +66,50 @@ const CategorySkeleton = () => {
 };
 
 export default function QuizzScreen() {
-    const dispatch = useDispatch();
     const navigation = useNavigation();
-    const categories = useSelector(selectQuizzCategories);
-    const categoriesStatus = useSelector(selectQuizzCategoriesStatus);
     const userData = useSelector((state) => state.user.userData);
     const userId = userData?._id;
 
+    // Local state instead of Redux
+    const [categories, setCategories] = useState([]);
+    const [categoriesStatus, setCategoriesStatus] = useState('idle');
+
+    // Fetch categories directly
+    const fetchCategories = useCallback(async () => {
+        setCategoriesStatus('loading');
+        try {
+            const url = userId
+                ? `${API_BASE}/api/quizz/category?userId=${userId}`
+                : `${API_BASE}/api/quizz/category`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error('Failed to load categories');
+            }
+            const data = await res.json();
+            setCategories(data.data || []);
+            setCategoriesStatus('succeeded');
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            setCategoriesStatus('failed');
+        }
+    }, [userId]);
+
     useFocusEffect(
         useCallback(() => {
-            dispatch(fetchQuizzCategories(userId));
-        }, [dispatch, userId])
+            fetchCategories();
+        }, [fetchCategories])
     );
 
     const handleCategoryPress = (category) => {
         let initialAttemptedCount = 0;
         let totalQuizzCount = 0;
+        const globalAttemptedCount = categories.reduce((sum, cat) => sum + (cat.attemptedCount || 0), 0);
 
         if (category) {
             initialAttemptedCount = category.attemptedCount || 0;
             totalQuizzCount = category.quizzCount || 0;
         } else {
-            // All Quizzes: sum up counts from all categories
-            initialAttemptedCount = categories.reduce((sum, cat) => sum + (cat.attemptedCount || 0), 0);
+            initialAttemptedCount = globalAttemptedCount;
             totalQuizzCount = categories.reduce((sum, cat) => sum + (cat.quizzCount || 0), 0);
         }
 
@@ -96,11 +117,16 @@ export default function QuizzScreen() {
             categoryId: category?._id || null,
             categoryName: category ? category.name : 'All Quizzes',
             initialAttemptedCount,
+            globalAttemptedCount,
             totalQuizzCount
         });
     };
 
     const renderHeader = useCallback(() => {
+        const totalQuizzCount = categories.reduce((sum, cat) => sum + (cat.quizzCount || 0), 0);
+
+        if (totalQuizzCount === 0) return null;
+
         return (
             <TouchableOpacity
                 style={styles.allQuizzesCard}
@@ -110,18 +136,19 @@ export default function QuizzScreen() {
                 <View style={styles.allQuizzesGradient}>
                     <MaterialCommunityIcons name="all-inclusive" size={32} color="#fff" />
                     <Text style={styles.categoryCardName}>All Quizzes</Text>
+                    <Text style={styles.randomPlayText}>Click here to play 1000+ cases</Text>
                 </View>
             </TouchableOpacity>
         );
-    }, []);
+    }, [categories, handleCategoryPress]);
 
     const renderCategoryItem = useCallback(({ item }) => {
         const attemptedCount = item.attemptedCount || 0;
         const totalCount = item.quizzCount || 0;
-        const progress = totalCount > 0 ? attemptedCount / totalCount : 0;
+        const progress = totalCount > 0 ? (attemptedCount / totalCount) * 100 : 0;
 
         return (
-            <TouchableOpacity
+            <Pressable
                 style={styles.categoryCard}
                 onPress={() => handleCategoryPress(item)}
             >
@@ -130,17 +157,40 @@ export default function QuizzScreen() {
                         {attemptedCount}/{totalCount}
                     </Text>
                     <View style={styles.categoryIconContainer}>
-                        <MaterialCommunityIcons name="brain" size={24} color={Colors.brand.darkPink} />
+                        {(() => {
+                            const normalizedName = item.name.toLowerCase();
+                            const CustomIcon = DepartmentIcons[normalizedName];
+                            if (CustomIcon) return <CustomIcon size={68} color={Colors.brand.darkPink} />;
+                            return <MaterialCommunityIcons name="brain" size={24} color={Colors.brand.darkPink} />;
+                        })()}
                     </View>
                     <View style={styles.categoryTextContainer}>
                         <Text style={styles.categoryName} numberOfLines={1}>
                             {item.name.charAt(0).toUpperCase() + item.name.slice(1)}
                         </Text>
                     </View>
+
+                    {/* Integrated Progress Bar like DepartmentProgressList */}
+                    <View style={styles.progressContainer}>
+                        <View style={styles.progressBarWrapper}>
+                            <LinearGradient
+                                colors={["#FFC1D9", Colors.brand.darkPink]}
+                                start={{ x: 0, y: 0.5 }}
+                                end={{ x: 1, y: 0.5 }}
+                                style={[styles.progressBarFill, { width: `${progress}%` }]}
+                            />
+                            <View
+                                style={[
+                                    styles.progressDot,
+                                    { left: `${progress}%` }
+                                ]}
+                            />
+                        </View>
+                    </View>
                 </View>
-            </TouchableOpacity>
+            </Pressable>
         );
-    }, []);
+    }, [handleCategoryPress]);
 
     const keyExtractor = useCallback((item) => item._id, []);
 
@@ -155,7 +205,7 @@ export default function QuizzScreen() {
 
     if (categoriesStatus === 'loading') {
         return (
-            <View style={{ flex: 1, backgroundColor: '#FFF0F5' }}>
+            <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
                 <SafeAreaView style={styles.container}>
                     <CategorySkeleton />
                 </SafeAreaView>
@@ -163,11 +213,13 @@ export default function QuizzScreen() {
         );
     }
 
+    const filteredCategories = categories.filter(cat => (cat.quizzCount || 0) > 0);
+
     return (
-        <View style={{ flex: 1, backgroundColor: '#FFF0F5' }}>
+        <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
             <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
                 <FlatList
-                    data={categories}
+                    data={filteredCategories}
                     renderItem={renderCategoryItem}
                     keyExtractor={keyExtractor}
                     ListHeaderComponent={renderHeader}
@@ -269,10 +321,10 @@ const styles = StyleSheet.create({
         height: 140,
     },
     categoryIconContainer: {
-        width: 48,
-        height: 48,
+        width: 68,
+        height: 68,
         borderRadius: 14,
-        backgroundColor: '#FFF0F5',
+        // backgroundColor: '#F1F5F9',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 10,
@@ -292,13 +344,34 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginTop: 4,
     },
-    progressBarContainer: {
+    progressContainer: {
         width: '100%',
-        height: 6,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 3,
         marginTop: 12,
+    },
+    progressBarWrapper: {
+        height: 10,
+        backgroundColor: '#ECEFF4',
+        borderRadius: 999,
         overflow: 'hidden',
+        position: 'relative',
+    },
+    progressBarFill: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        borderRadius: 999,
+    },
+    progressDot: {
+        position: 'absolute',
+        top: -1,
+        transform: [{ translateX: -6 }],
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: Colors.brand.darkPink,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
     },
     progressText: {
         position: 'absolute',
@@ -306,6 +379,14 @@ const styles = StyleSheet.create({
         right: 12,
         fontSize: 10,
         fontWeight: '700',
-        color: '#9CA3AF', // Subtle gray
+        color: '#9CA3AF',
+    },
+
+    randomPlayText: {
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontWeight: '600',
+        marginTop: 4,
+        textDecorationLine: 'underline',
     },
 });

@@ -378,19 +378,8 @@ export default function HomeScreen() {
                 <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
                 <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
               </View>
-              {!isCheckingCompletion && !isChallengeLoading && currentChallenge && (
+              {!isCheckingCompletion && !isChallengeLoading && (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {/* {isDailyChallengeCompleted && (
-                    <View style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 6,
-                      backgroundColor: '#2E7D32',
-                      marginRight: 8,
-                    }}>
-                      <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#ffffff' }}>Played ✓</Text>
-                    </View>
-                  )} */}
                   <TouchableOpacity
                     onPress={() => navigation.navigate('PastChallenges')}
                     style={{

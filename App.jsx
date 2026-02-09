@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert } from 'react-native';
+import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert, Text } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import { MMKV } from 'react-native-mmkv';
@@ -191,6 +191,17 @@ function RootTabs() {
   const insets = useSafeAreaInsets();
   const bottomExtra = Platform.OS === 'android' ? (insets.bottom || 0) : 0;
   const isAndroid12Plus = Platform.OS === 'android' && Number(Platform.Version) >= 31;
+
+  const [showQuizBadge, setShowQuizBadge] = useState(() => {
+    return !storage.getBoolean('quizBadgeHidden');
+  });
+
+  const hideQuizBadge = () => {
+    if (showQuizBadge) {
+      storage.set('quizBadgeHidden', true);
+      setShowQuizBadge(false);
+    }
+  };
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -243,14 +254,30 @@ function RootTabs() {
           if (route.name === 'Learnings') icon = 'book-open-variant';
           if (route.name === 'Ranking') icon = focused ? 'trophy' : 'trophy-outline';
           if (route.name === 'Account') icon = focused ? 'account-heart' : 'account-heart-outline';
-          return <MaterialCommunityIcons name={icon} size={size} color={color} />;
+          return (
+            <View style={{ width: size, height: size }}>
+              <MaterialCommunityIcons name={icon} size={size} color={color} />
+              {route.name === 'Quizzes' && showQuizBadge && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeText}>New</Text>
+                </View>
+              )}
+            </View>
+          );
         },
         sceneStyle: { backgroundColor: 'transparent', },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Learnings" component={LearningScreen} />
-      <Tab.Screen name="Quizzes" component={QuizzScreen} />
+      <Tab.Screen
+        name="Quizzes"
+        component={QuizzScreen}
+        listeners={{
+          tabPress: () => hideQuizBadge(),
+          focus: () => hideQuizBadge(),
+        }}
+      />
       <Tab.Screen name="Ranking" component={LeagueScreen} />
       <Tab.Screen name="Account" component={AccountScreen} />
     </Tab.Navigator>
@@ -674,5 +701,31 @@ export default function App() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  badgeContainer: {
+    position: 'absolute',
+    right: -10,
+    top: -8,
+    backgroundColor: Colors.brand.darkPink,
+    borderRadius: 8,
+    paddingHorizontal: 1,
+    paddingVertical: 1,
+    borderWidth: 1.5,
+    borderColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+    minWidth: 26,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 7,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+});
 
 /* styles for screens are in src/screens/styles */
