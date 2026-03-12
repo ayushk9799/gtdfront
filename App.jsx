@@ -53,6 +53,7 @@ import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { setCustomerInfo } from './src/store/slices/userSlice';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import { loadCaseById } from './src/store/slices/currentGameSlice';
+import LifetimeOfferBanner from './src/components/LifetimeOfferBanner';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -288,9 +289,12 @@ function RootTabs() {
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showLifetimeOffer, setShowLifetimeOffer] = useState(false);
+  const [offerStartTime, setOfferStartTime] = useState(null);
+  const [isHomeActive, setIsHomeActive] = useState(false);
   const themeColors = Colors.light;
   const dispatch = useDispatch();
-  const { userData } = useSelector(state => state.user);
+  const { userData, isPremium } = useSelector(state => state.user);
   const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
 
   // Ensure Purchases SDK is configured exactly once per app launch
@@ -505,7 +509,89 @@ export default function App() {
     };
   }, [dispatch]);
 
+  // Show lifetime offer banner for non-premium users, once per 24 hours
+  // The offer has a 2-hour validity window from when it first appears
+  // UPDATED: Now waits until user is on Home screen for 5 seconds
+  useEffect(() => {
+    if (!user || isPremium || !isHomeActive) return;
 
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const OFFER_DELAY = 3000; // 5 seconds on Home screen
+    const now = Date.now();
+
+    const triggerOffer = async (startTimeValue) => {
+      try {
+        const offerings = await Purchases.getOfferings();
+        if (!offerings.all['lifetime_offer']) return;
+
+        setOfferStartTime(startTimeValue);
+        setShowLifetimeOffer(true);
+      } catch (e) {}
+    };
+
+    // Check if there's an active offer from a previous app session
+    const existingStart = storage.getNumber('lifetimeOfferStartTime') || 0;
+    if (existingStart > 0) {
+      const elapsed = now - existingStart;
+      if (elapsed < TWO_HOURS) {
+        const wasDismissed = storage.getBoolean('lifetimeOfferDismissed');
+        if (!wasDismissed) {
+          const timer = setTimeout(() => triggerOffer(existingStart), OFFER_DELAY);
+          return () => clearTimeout(timer);
+        }
+        return;
+      }
+      storage.delete('lifetimeOfferStartTime');
+      storage.delete('lifetimeOfferDismissed');
+    }
+
+    // Check 24h cooldown from last offer event
+    const lastEventTime = storage.getNumber('lifetimeOfferLastEvent') || 0;
+    if (now - lastEventTime < TWENTY_FOUR_HOURS) return;
+
+    // Start a new offer event
+    const timer = setTimeout(async () => {
+      try {
+        const offerings = await Purchases.getOfferings();
+        if (!offerings.all['lifetime_offer']) return;
+
+        const startTime = Date.now();
+        storage.set('lifetimeOfferStartTime', startTime);
+        storage.set('lifetimeOfferLastEvent', startTime);
+        storage.delete('lifetimeOfferDismissed');
+        setOfferStartTime(startTime);
+        setShowLifetimeOffer(true);
+      } catch (e) {}
+    }, OFFER_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [user, isPremium, isHomeActive]);
+
+  const handleDismissLifetimeOffer = () => {
+    setShowLifetimeOffer(false);
+    storage.set('lifetimeOfferDismissed', true);
+  };
+
+  const handleOfferExpired = () => {
+    setShowLifetimeOffer(false);
+    setOfferStartTime(null);
+    storage.delete('lifetimeOfferStartTime');
+    storage.delete('lifetimeOfferDismissed');
+  };
+
+  // Listen for the card tap to re-open the banner
+  useEffect(() => {
+    const listener = storage.addOnValueChangedListener((changedKey) => {
+      if (changedKey !== 'lifetimeOfferDismissed') return;
+      const dismissed = storage.getBoolean('lifetimeOfferDismissed');
+      if (dismissed === false) {
+        // Card was tapped — re-show the modal
+        setShowLifetimeOffer(true);
+      }
+    });
+    return () => { try { listener?.remove?.(); } catch {} };
+  }, []);
 
   // Do not return a JS splash; native bootsplash covers until we hide it.
 
@@ -544,6 +630,16 @@ export default function App() {
             try {
               RNBootSplash.hide({ fade: true });
             } catch { }
+
+            // Check initial home status
+            const route = navigationRef.getCurrentRoute();
+            setIsHomeActive(route?.name === 'Home');
+          }}
+          onStateChange={() => {
+            const route = navigationRef.getCurrentRoute();
+            // We check for "Home" screen specifically. 
+            // Since Home is a tab, we check if route name is "Home"
+            setIsHomeActive(route?.name === 'Home');
           }}
           theme={mergedTheme}
         >
@@ -697,6 +793,13 @@ export default function App() {
             </Stack.Navigator>
           )}
         </NavigationContainer>
+        {user && (
+          <LifetimeOfferBanner
+            visible={showLifetimeOffer}
+            onDismiss={handleDismissLifetimeOffer}
+            offerStartTime={offerStartTime}
+          />
+        )}
       </BottomSheetModalProvider>
     </View>
   );

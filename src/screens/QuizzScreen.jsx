@@ -129,15 +129,27 @@ export default function QuizzScreen() {
 
         return (
             <TouchableOpacity
-                style={styles.allQuizzesCard}
+                style={styles.allQuizzesBtnWrapper}
                 onPress={() => handleCategoryPress(null)}
-                activeOpacity={0.9}
+                activeOpacity={0.8}
             >
-                <View style={styles.allQuizzesGradient}>
-                    <MaterialCommunityIcons name="all-inclusive" size={32} color="#fff" />
-                    <Text style={styles.categoryCardName}>All Quizzes</Text>
-                    <Text style={styles.randomPlayText}>Click here to play 1000+ cases</Text>
-                </View>
+                <LinearGradient
+                    colors={['#FF407D', '#FF1A5E']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.allQuizzesGradientBtn}
+                >
+                    <View style={styles.allQuizzesContent}>
+                        <View style={styles.allQuizzesIconCircle}>
+                            <MaterialCommunityIcons name="play" size={24} color="#FF407D" />
+                        </View>
+                        <View style={styles.allQuizzesTextGroup}>
+                            <Text style={styles.allQuizzesTitle}>Play All Quizzes</Text>
+                            <Text style={styles.allQuizzesSubtitle}>Mix of 1000+ clinical cases</Text>
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.5)" />
+                    </View>
+                </LinearGradient>
             </TouchableOpacity>
         );
     }, [categories, handleCategoryPress]);
@@ -287,32 +299,53 @@ const styles = StyleSheet.create({
         height: 120,
         width: (screenWidth - 36) / 2, // Approximate for "All Quizzes" if it's in the grid
     },
-    allQuizzesCard: {
-        width: screenWidth - 24, // 12 padding on each side of list
-        marginBottom: 16,
+    allQuizzesBtnWrapper: {
+        width: screenWidth - 24,
+        marginBottom: 20,
+        borderRadius: 16,
         backgroundColor: '#fff',
-        borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        elevation: 3,
-        overflow: 'hidden', // Ensure gradient child clips to borderRadius
+        shadowColor: '#FF407D',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 6,
+        overflow: 'hidden',
     },
-    allQuizzesGradient: {
+    allQuizzesGradientBtn: {
         width: '100%',
-        padding: 24,
+    },
+    allQuizzesContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+    },
+    allQuizzesIconCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 130,
-        backgroundColor: '#FF6B8A', // Solid pink color instead of gradient
+        marginRight: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
-    categoryCardName: {
+    allQuizzesTextGroup: {
+        flex: 1,
+    },
+    allQuizzesTitle: {
         color: '#fff',
         fontSize: 18,
         fontWeight: '900',
-        marginTop: 8,
-        textAlign: 'center',
+        marginBottom: 2,
+    },
+    allQuizzesSubtitle: {
+        color: 'rgba(255,255,255,0.85)',
+        fontSize: 13,
+        fontWeight: '600',
     },
     categoryCardContent: {
         alignItems: 'center',
@@ -382,11 +415,5 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
     },
 
-    randomPlayText: {
-        fontSize: 13,
-        color: 'rgba(255, 255, 255, 0.9)',
-        fontWeight: '600',
-        marginTop: 4,
-        textDecorationLine: 'underline',
-    },
+
 });

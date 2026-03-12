@@ -21,6 +21,7 @@ import { API_BASE } from '../../constants/Api';
 import CloudBottom from '../components/CloudBottom';
 import { useResponsive } from '../hooks/useResponsive';
 import { Skeleton } from '../components/Skeleton';
+import LifetimeOfferCard from '../components/LifetimeOfferCard';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -34,6 +35,45 @@ export default function HomeScreen() {
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
   const [isCheckingCompletion, setIsCheckingCompletion] = useState(true); // Start as true to show skeleton initially
+
+  // Lifetime offer card state — read from MMKV
+  const [offerStartTime, setOfferStartTime] = useState(() => {
+    try {
+      const mmkv = new MMKV();
+      const TWO_HOURS = 2 * 60 * 60 * 1000;
+      const startTime = mmkv.getNumber('lifetimeOfferStartTime') || 0;
+      const wasDismissed = mmkv.getBoolean('lifetimeOfferDismissed');
+      if (startTime > 0 && wasDismissed && (Date.now() - startTime < TWO_HOURS)) {
+        return startTime;
+      }
+      return null;
+    } catch { return null; }
+  });
+
+  // Listen for MMKV changes so the card appears instantly when the modal is dismissed
+  useEffect(() => {
+    const listener = storage.addOnValueChangedListener((changedKey) => {
+      if (changedKey !== 'lifetimeOfferDismissed') return;
+      try {
+        const TWO_HOURS = 2 * 60 * 60 * 1000;
+        const startTime = storage.getNumber('lifetimeOfferStartTime') || 0;
+        const wasDismissed = storage.getBoolean('lifetimeOfferDismissed');
+        // Only react when modal is dismissed (show card), don't hide when banner reopens
+        if (startTime > 0 && wasDismissed && (Date.now() - startTime < TWO_HOURS)) {
+          setOfferStartTime(startTime);
+        }
+      } catch {}
+    });
+    return () => { try { listener?.remove?.(); } catch {} };
+  }, [storage]);
+
+  const handleOfferExpired = useCallback(() => {
+    setOfferStartTime(null);
+    try {
+      storage.delete('lifetimeOfferStartTime');
+      storage.delete('lifetimeOfferDismissed');
+    } catch {}
+  }, [storage]);
 
   // Responsive image height: 300 for iPad/tablet, 200 for iPhone/mobile
   const imageHeight = isTablet ? 350 : 200;
@@ -262,6 +302,22 @@ export default function HomeScreen() {
     }, [suggestedNextCase?.caseId, currentUserId, clearSuggestedCase])
   );
 
+  // Refresh lifetime offer card visibility on focus
+  useFocusEffect(
+    useCallback(() => {
+      try {
+        const TWO_HOURS = 2 * 60 * 60 * 1000;
+        const startTime = storage.getNumber('lifetimeOfferStartTime') || 0;
+        const wasDismissed = storage.getBoolean('lifetimeOfferDismissed');
+        if (startTime > 0 && wasDismissed && (Date.now() - startTime < TWO_HOURS)) {
+          setOfferStartTime(startTime);
+        } else {
+          setOfferStartTime(null);
+        }
+      } catch {}
+    }, [storage])
+  );
+
   const openCaseById = async (caseId) => {
     try {
       if (!isPremium && hearts <= 0) {
@@ -371,6 +427,13 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       <LeagueHeader onPressPro={() => { }} />
       <ScrollView contentContainerStyle={styles.screenScroll} showsVerticalScrollIndicator={false}>
+        {/* Lifetime offer card — shown after modal is dismissed, while 2h window is active */}
+        {!isPremium && offerStartTime && (
+          <LifetimeOfferCard
+            offerStartTime={offerStartTime}
+            onOfferExpired={handleOfferExpired}
+          />
+        )}
         <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
           <View style={styles.cardContent}>
             <View style={styles.rowCenterBetween}>
