@@ -73,8 +73,8 @@ const SkeletonCard = () => {
                     <View style={styles.optionsContainer}>
                         {[1, 2, 3, 4].map((i) => (
                             <View key={i} style={styles.skeletonOptionRow}>
-                                <SkeletonBox style={{ width: 32, height: 32, borderRadius: 16 }} />
-                                <SkeletonBox style={{ flex: 1, height: 16, borderRadius: 4 }} />
+                                <SkeletonBox style={{ width: 28, height: 28, borderRadius: 14 }} />
+                                <SkeletonBox style={{ flex: 1, height: 14, borderRadius: 4 }} />
                             </View>
                         ))}
                     </View>
@@ -705,9 +705,7 @@ export default function QuizzPlay({ route, navigation }) {
     const [hasMore, setHasMore] = useState(false);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-    // Two-array approach for solved quizzes (avoids index shifting on pagination)
-    const [olderSolvedQuizzes, setOlderSolvedQuizzes] = useState([]);  // Older solved quizzes (appended)
-    const [recentSolvedQuizzes, setRecentSolvedQuizzes] = useState([]); // Recent solved quizzes (initial load)
+    const [solvedQuizzes, setSolvedQuizzes] = useState([]);
     const [solvedStatus, setSolvedStatus] = useState('idle');
     const [solvedHasMore, setSolvedHasMore] = useState(false);
     const [solvedTotal, setSolvedTotal] = useState(0);
@@ -717,11 +715,6 @@ export default function QuizzPlay({ route, navigation }) {
     const pageRef = useRef(1);
     const solvedPageRef = useRef(1);
     const selectedCategoryIdRef = useRef(categoryId);
-
-    // Combined solved quizzes for display (older first, then recent)
-    const solvedQuizzes = useMemo(() => {
-        return [...olderSolvedQuizzes, ...recentSolvedQuizzes];
-    }, [olderSolvedQuizzes, recentSolvedQuizzes]);
 
     const [selections, setSelections] = useState({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -795,11 +788,10 @@ export default function QuizzPlay({ route, navigation }) {
         }
     }, [hasMore, isFetchingMore, userId]);
 
-    // API: Fetch solved quizzes (initial load - these become "recent" solved quizzes)
+    // API: Fetch solved quizzes (initial load)
     const fetchSolvedQuizzesApi = useCallback(async () => {
         setSolvedStatus('loading');
         solvedPageRef.current = 1;
-        setOlderSolvedQuizzes([]);  // Reset older quizzes
 
         try {
             let url = categoryId
@@ -813,9 +805,7 @@ export default function QuizzPlay({ route, navigation }) {
                 throw new Error('Failed to load solved quizzes');
             }
             const data = await res.json();
-            // Reverse to show in chronological order
-            const reversedQuizzes = [...(data.data || [])].reverse();
-            setRecentSolvedQuizzes(reversedQuizzes);
+            setSolvedQuizzes(data.data || []);
             setSolvedHasMore(data.hasMore || false);
             setSolvedTotal(data.total || 0);
             setSolvedStatus('succeeded');
@@ -825,7 +815,7 @@ export default function QuizzPlay({ route, navigation }) {
         }
     }, [categoryId, userId]);
 
-    // API: Fetch more solved quizzes (pagination - APPEND to olderSolvedQuizzes)
+    // API: Fetch more solved quizzes (pagination)
     const fetchMoreSolvedQuizzesApi = useCallback(async () => {
         if (!solvedHasMore || isFetchingMoreSolved) return;
 
@@ -844,12 +834,10 @@ export default function QuizzPlay({ route, navigation }) {
                 throw new Error('Failed to load more solved quizzes');
             }
             const data = await res.json();
-            // Reverse and APPEND to olderSolvedQuizzes (no index shift needed!)
-            const reversedQuizzes = [...(data.data || [])].reverse();
-            setOlderSolvedQuizzes(prev => {
-                const existingIds = new Set([...prev, ...recentSolvedQuizzes].map(q => q._id));
-                const newQuizzes = reversedQuizzes.filter(q => !existingIds.has(q._id));
-                return [...newQuizzes, ...prev];  // Prepend to older array (these are chronologically earlier)
+            setSolvedQuizzes(prev => {
+                const existingIds = new Set(prev.map(q => q._id));
+                const newQuizzes = (data.data || []).filter(q => !existingIds.has(q._id));
+                return [...prev, ...newQuizzes];  // Append to the end!
             });
             setSolvedHasMore(data.hasMore || false);
             solvedPageRef.current = nextPage;
@@ -858,7 +846,7 @@ export default function QuizzPlay({ route, navigation }) {
         } finally {
             setIsFetchingMoreSolved(false);
         }
-    }, [categoryId, userId, solvedHasMore, isFetchingMoreSolved, recentSolvedQuizzes]);
+    }, [categoryId, userId, solvedHasMore, isFetchingMoreSolved]);
 
     // API: Submit quiz attempt (fire-and-forget)
     const submitQuizzAttemptApi = useCallback(async (quizzId, selectedOption, isCorrect) => {
@@ -906,19 +894,19 @@ export default function QuizzPlay({ route, navigation }) {
             const allowedUnsolved = quizzes.slice(0, maxNewCases);
 
             if (showSolved) {
-                list = [...solvedQuizzes, ...allowedUnsolved];
+                list = [...solvedQuizzes];
             } else {
                 list = [...allowedUnsolved];
             }
 
             // If there are more quizzes than allowed, show the limit card
-            if (quizzes.length > maxNewCases) {
+            if (!showSolved && quizzes.length > maxNewCases) {
                 list.push({ _id: 'limit-reached', isLimit: true });
             }
         } else {
             // Premium users get everything
             if (showSolved) {
-                list = [...solvedQuizzes, ...quizzes];
+                list = [...solvedQuizzes];
             } else {
                 list = [...quizzes];
             }
@@ -950,28 +938,20 @@ export default function QuizzPlay({ route, navigation }) {
             }).start();
         }
 
-        // Pagination for unsolved quizzes (when near the end)
         if (showSolved) {
-            // In showSolved mode, unsolved quizzes start after solvedQuizzes
-            const unsolvedStartIndex = solvedQuizzes.length;
-            const unsolvedPosition = position - unsolvedStartIndex;
-            const threshold = quizzes.length - 4;
-            if (hasMore && !isFetchingMore && unsolvedPosition >= threshold && threshold >= 0) {
-                fetchMoreQuizzesApi();
+            // Pagination for solved quizzes (when near the end)
+            const threshold = solvedQuizzes.length - 4;
+            if (position >= threshold && threshold >= 0 && solvedHasMore && !isFetchingMoreSolved) {
+                fetchMoreSolvedQuizzesApi();
             }
         } else {
+            // Pagination for unsolved quizzes (when near the end)
             const threshold = quizzes.length - 4;
             if (hasMore && !isFetchingMore && position >= threshold && threshold >= 0) {
                 fetchMoreQuizzesApi();
             }
         }
-
-        // Pagination for solved quizzes (when near the beginning)
-        // When user is viewing solved quizzes and gets close to the oldest one (index 5 or less)
-        if (showSolved && position < solvedQuizzes.length && position <= 4 && solvedHasMore && !isFetchingMoreSolved) {
-            fetchMoreSolvedQuizzesApi();
-        }
-    }, [hasMore, isFetchingMore, quizzes.length, showSolvedButton, solvedButtonAnim, showSolved, solvedQuizzes.length, solvedHasMore, isFetchingMoreSolved, fetchMoreQuizzesApi, fetchMoreSolvedQuizzesApi]);
+    }, [hasMore, isFetchingMore, quizzes.length, solvedQuizzes.length, showSolvedButton, solvedButtonAnim, showSolved, solvedHasMore, isFetchingMoreSolved, fetchMoreQuizzesApi, fetchMoreSolvedQuizzesApi]);
 
     // Track scroll state to detect overscroll attempt at page 0
     const handlePageScrollStateChanged = useCallback((e) => {
@@ -998,7 +978,20 @@ export default function QuizzPlay({ route, navigation }) {
         }
     }, [currentQuestionIndex, showSolved, initialAttemptedCount, showSolvedButton, solvedButtonAnim]);
 
-    const handleBack = () => navigation.goBack();
+    const handleBack = () => {
+        if (showSolved) {
+            setShowSolved(false);
+            setSolvedStatus('idle');
+            setCurrentQuestionIndex(0);
+            setTimeout(() => {
+                if (pagerRef.current) {
+                    pagerRef.current.setPageWithoutAnimation(0);
+                }
+            }, 50);
+        } else {
+            navigation.goBack();
+        }
+    };
 
     const handleShowSolved = useCallback(() => {
         // Fetch solved quizzes - button will show "Loading..." while fetching
@@ -1011,47 +1004,16 @@ export default function QuizzPlay({ route, navigation }) {
 
     useEffect(() => {
         if (solvedStatus === 'succeeded' && solvedQuizzes.length > 0 && !showSolved) {
-            // Data loaded! Calculate the new index FIRST
-            // The unsolved cases will start at index solvedQuizzes.length
-            const newIndex = solvedQuizzes.length;
-
-            // Set the index immediately to prevent flicker
-            setCurrentQuestionIndex(newIndex);
-
-            // Hide button and show solved cases
-            setShowSolvedButton(false);
-            solvedButtonAnim.setValue(-150);
-
-            // Adjust the native pager position without animation to stay on the same quiz
-            if (pagerRef.current) {
-                pagerRef.current.setPageWithoutAnimation(newIndex);
-            }
             setShowSolved(true);
-        }
-    }, [solvedStatus, solvedQuizzes.length, showSolved, solvedButtonAnim]);
-
-    // NOTE: With two-array approach, index adjustment is only needed when olderSolvedQuizzes grows.
-    // But since recentSolvedQuizzes doesn't change after initial load, the user's position relative
-    // to recentSolvedQuizzes items stays the same. Only need to add olderSolvedQuizzes.length offset.
-    const prevOlderLengthRef = useRef(0);
-    useEffect(() => {
-        const currentOlderLength = olderSolvedQuizzes.length;
-        const previousOlderLength = prevOlderLengthRef.current;
-
-        if (showSolved && currentOlderLength > previousOlderLength && previousOlderLength >= 0) {
-            const addedCount = currentOlderLength - previousOlderLength;
-
-            setCurrentQuestionIndex(prevIndex => {
-                const newIndex = prevIndex + addedCount;
+            setCurrentQuestionIndex(0);
+            
+            setTimeout(() => {
                 if (pagerRef.current) {
-                    pagerRef.current.setPageWithoutAnimation(newIndex);
+                    pagerRef.current.setPageWithoutAnimation(0);
                 }
-                return newIndex;
-            });
+            }, 50);
         }
-
-        prevOlderLengthRef.current = currentOlderLength;
-    }, [olderSolvedQuizzes.length, showSolved]);
+    }, [solvedStatus, solvedQuizzes.length, showSolved]);
 
     const onOptionPress = useCallback((quizId, index) => {
         setSelections(prev => {
@@ -1123,85 +1085,60 @@ export default function QuizzPlay({ route, navigation }) {
             <LinearGradient colors={SUBTLE_PINK_GRADIENT} style={StyleSheet.absoluteFill} />
             <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
                 <View style={styles.headerRow}>
-                    <TouchableOpacity onPress={handleBack} style={styles.floatingBackButton}>
-                        <MaterialCommunityIcons name="chevron-left" size={24} color="#333" />
+                    <TouchableOpacity onPress={handleBack} style={[styles.floatingBackButton, { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }]}>
+                        <MaterialCommunityIcons name={showSolved ? "close" : "chevron-left"} size={24} color="#333" />
                     </TouchableOpacity>
-                    {quizzes.length > 0 && (
-                        <View style={styles.questionCounter}>
-                            {(() => {
-                                const totalLoaded = displayList.filter(i => !i.isLimit).length;
-                                const hasPlus = hasMore;
-                                const currentItem = displayList[currentQuestionIndex];
+                    
+                    <View style={styles.questionCounter}>
+                        {(() => {
+                            const totalLoaded = displayList.filter(i => !i.isLimit).length;
+                            if (totalLoaded === 0) return <Text style={styles.questionCounterText}>0/0</Text>;
+                            const hasPlus = showSolved ? solvedHasMore : hasMore;
+                            const currentItem = displayList[currentQuestionIndex];
 
-                                // Hide counter on limit card
-                                if (currentItem?.isLimit) return null;
+                            // Hide counter on limit card
+                            if (currentItem?.isLimit) return null;
 
-                                let content = '';
-                                if (totalQuizzCount > 0) {
-                                    if (showSolved) {
-                                        // In showSolved mode: [solved..., unsolved...]
-                                        const displaySolvedTotal = solvedTotal > 0 ? solvedTotal : initialAttemptedCount;
-                                        const solvedStartIndex = displaySolvedTotal - solvedQuizzes.length;
-                                        const currentAvailableTotal = solvedStartIndex + totalLoaded;
-
-                                        if (currentQuestionIndex < solvedQuizzes.length) {
-                                            // Viewing a solved quiz
-                                            content = `${solvedStartIndex + currentQuestionIndex + 1}/${currentAvailableTotal}`;
-                                        } else {
-                                            // Viewing an unsolved quiz
-                                            const unsolvedIndex = currentQuestionIndex - solvedQuizzes.length;
-                                            content = `${displaySolvedTotal + unsolvedIndex + 1}/${currentAvailableTotal}`;
-                                        }
-                                    } else {
-                                        // Not in showSolved mode
-                                        const currentAvailableTotal = initialAttemptedCount + totalLoaded;
-                                        content = `${initialAttemptedCount + currentQuestionIndex + 1}/${currentAvailableTotal}`;
-                                    }
+                            let content = '';
+                            if (totalQuizzCount > 0) {
+                                if (showSolved) {
+                                    const displaySolvedTotal = solvedTotal > 0 ? solvedTotal : initialAttemptedCount;
+                                    content = `${displaySolvedTotal - currentQuestionIndex}/${displaySolvedTotal}`;
                                 } else {
-                                    content = `${currentQuestionIndex + 1}/${totalLoaded}`;
+                                    const currentAvailableTotal = initialAttemptedCount + totalLoaded;
+                                    content = `${initialAttemptedCount + currentQuestionIndex + 1}/${currentAvailableTotal}`;
                                 }
+                            } else {
+                                content = `${currentQuestionIndex + 1}/${totalLoaded}`;
+                            }
 
-                                return (
-                                    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                                        <Text style={styles.questionCounterText}>{content}</Text>
-                                        {hasPlus && (
-                                            <Text style={[styles.questionCounterText, { fontSize: 10, lineHeight: 14, marginTop: -2 }]}>+</Text>
-                                        )}
-                                    </View>
-                                );
-                            })()}
-                        </View>
-                    )}
-                </View>
+                            return (
+                                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                                    <Text style={styles.questionCounterText}>{content}</Text>
+                                    {hasPlus && (
+                                        <Text style={[styles.questionCounterText, { fontSize: 10, lineHeight: 14, marginTop: -2 }]}>+</Text>
+                                    )}
+                                </View>
+                            );
+                        })()}
+                    </View>
 
-                {/* Floating "View Solved Cases" button - animates in when user swipes down from first page */}
-                {!showSolved && initialAttemptedCount > 0 && (
-                    <Animated.View
-                        pointerEvents="box-none"
-                        style={[
-                            styles.viewSolvedButtonContainer,
-                            { transform: [{ translateY: solvedButtonAnim }] }
-                        ]}
-                    >
-                        <TouchableOpacity
-                            style={styles.viewSolvedButton}
-                            onPress={handleShowSolved}
+                    {!showSolved && initialAttemptedCount > 0 ? (
+                        <TouchableOpacity 
+                            onPress={handleShowSolved} 
+                            style={[styles.floatingBackButton, { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }]} 
                             disabled={solvedStatus === 'loading'}
                         >
                             {solvedStatus === 'loading' ? (
-                                <>
-                                    <ActivityIndicator size="small" color="#fff" />
-                                    <Text style={styles.viewSolvedButtonText}>Loading...</Text>
-                                </>
+                                <ActivityIndicator size="small" color={Colors.brand.darkPink} />
                             ) : (
-                                <>
-                                    <MaterialCommunityIcons name="history" size={18} color="#fff" />
-                                    <Text style={styles.viewSolvedButtonText}>View {initialAttemptedCount} Solved Cases</Text>
-                                </>
+                                <MaterialCommunityIcons name="history" size={24} color={Colors.brand.darkPink} />
                             )}
                         </TouchableOpacity>
-                    </Animated.View>
-                )}
+                    ) : (
+                        <View style={{ width: 40, height: 40 }} />
+                    )}
+                </View>
 
                 {displayList.length === 0 ? (
                     <View style={[styles.centered, { marginTop: 100 }]}>
@@ -1219,10 +1156,7 @@ export default function QuizzPlay({ route, navigation }) {
                         offscreenPageLimit={1}
                     >
                         {displayList.map((item, idx) => {
-                            // Always render solved quizzes fully (no skeleton) to avoid flicker during pagination
-                            const isVisible = (showSolved && idx < solvedQuizzes.length)
-                                ? true
-                                : Math.abs(idx - currentQuestionIndex) <= CONTENT_WINDOW;
+                            const isVisible = Math.abs(idx - currentQuestionIndex) <= CONTENT_WINDOW;
                             const isCurrent = idx === currentQuestionIndex;
 
 
@@ -1517,31 +1451,33 @@ const styles = StyleSheet.create({
     skeletonOptionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 10,
-        borderRadius: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#F3F4F6',
-        minHeight: 56,
-        gap: 12,
+        minHeight: 46,
+        gap: 10,
     },
     complainText: {
-        fontSize: 16,
+        fontSize: 15,
         color: '#333',
         lineHeight: 24,
         fontWeight: '600',
     },
     optionsContainer: {
-        gap: 10,
-        marginTop: 8,
+        gap: 8,
+        marginTop: 6,
     },
     optionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 10,
-        borderRadius: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 10,
         borderWidth: 1,
-        minHeight: 56,
-        gap: 12,
+        minHeight: 46,
+        gap: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04,
@@ -1549,9 +1485,9 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     optionLabel: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
@@ -1563,7 +1499,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F44336',
     },
     optionLabelText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '700',
         color: '#666',
     },
@@ -1571,7 +1507,7 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     optionText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '600',
         flex: 1,
     },
