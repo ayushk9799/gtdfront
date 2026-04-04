@@ -54,6 +54,7 @@ import { setCustomerInfo } from './src/store/slices/userSlice';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import { loadCaseById } from './src/store/slices/currentGameSlice';
 import LifetimeOfferBanner from './src/components/LifetimeOfferBanner';
+import { getGamesPlayedCount } from './src/services/ratingService';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -513,7 +514,7 @@ export default function App() {
   // The offer has a 2-hour validity window from when it first appears
   // UPDATED: Now waits until user is on Home screen for 5 seconds
   useEffect(() => {
-    if (!user || isPremium || !isHomeActive) return;
+    if (!user || isPremium || !isHomeActive || getGamesPlayedCount() < 1) return;
 
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     const TWO_HOURS = 2 * 60 * 60 * 1000;

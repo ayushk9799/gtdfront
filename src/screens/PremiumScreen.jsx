@@ -53,8 +53,8 @@ export default function PremiumScreen() {
 
   const features = useMemo(
     () => [
-      { label: 'Unlimited Cases', free: false, pro: true },
-      { label: 'Daily Challenges', free: true, pro: true },
+      { label: 'Unlimited Cases', free: '2', pro: true },
+      { label: 'Daily Challenges', free: '2', pro: true },
       { label: 'Past Daily Challenges', free: false, pro: true },
       { label: 'Video Overview', free: false, pro: true },
       { label: 'Clinical images', free: false, pro: true },
@@ -467,7 +467,9 @@ export default function PremiumScreen() {
                       <Text style={{ color: '#24323D', fontSize: 14, fontWeight: '700' }}>{f.label}</Text>
                     </View>
                     <View style={{ width: 56, alignItems: 'center', justifyContent: 'center' }}>
-                      {f.free ? (
+                      {typeof f.free === 'string' ? (
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#1E1E1E' }}>{f.free}</Text>
+                      ) : f.free ? (
                         <MaterialCommunityIcons name="check" size={20} color="#4CAF50" />
                       ) : (
                         <MaterialCommunityIcons name="minus" size={20} color="#B0B7BF" />

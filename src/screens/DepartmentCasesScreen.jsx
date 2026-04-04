@@ -304,7 +304,7 @@ export default function DepartmentCasesScreen() {
                 points={[
                     'Unlock all department cases',
                     'Access premium features',
-                    'No ads & priority support'
+                    'Full Quizzes access'
                 ]}
             />
         </View>

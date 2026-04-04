@@ -22,6 +22,7 @@ import CloudBottom from '../components/CloudBottom';
 import { useResponsive } from '../hooks/useResponsive';
 import { Skeleton } from '../components/Skeleton';
 import LifetimeOfferCard from '../components/LifetimeOfferCard';
+import { getGamesPlayedCount } from '../services/ratingService';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -344,6 +345,12 @@ export default function HomeScreen() {
       return;
     }
 
+    // Check hearts before starting (will be skipped for already-completed challenges below)
+    if (!isPremium && hearts <= 0) {
+      navigation.navigate('Heart');
+      return;
+    }
+
     setIsDailyChallengeLoading(true);
 
     try {
@@ -427,8 +434,8 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       <LeagueHeader onPressPro={() => { }} />
       <ScrollView contentContainerStyle={styles.screenScroll} showsVerticalScrollIndicator={false}>
-        {/* Lifetime offer card — shown after modal is dismissed, while 2h window is active */}
-        {!isPremium && offerStartTime && (
+        {/* Lifetime offer card — shown after playing at least 1 case, after modal is dismissed, while 2h window is active */}
+        {!isPremium && offerStartTime && getGamesPlayedCount() >= 1 && (
           <LifetimeOfferCard
             offerStartTime={offerStartTime}
             onOfferExpired={handleOfferExpired}

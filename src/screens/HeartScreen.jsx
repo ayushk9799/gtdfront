@@ -25,9 +25,9 @@ export default function HeartScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
-  const MAX_HEARTS_DISPLAY = 1;
+  const MAX_HEARTS_DISPLAY = 2;
   const heartsToShow = Math.min(hearts, MAX_HEARTS_DISPLAY);
-  const [timeUntilReset, setTimeUntilReset] = useState('');
+
   const [friendCode, setFriendCode] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const [codeApplied, setCodeApplied] = useState(false);
@@ -63,40 +63,7 @@ export default function HeartScreen() {
     [scrollY],
   );
 
-  // Calculate time until next reset (midnight 12:00 AM)
-  useEffect(() => {
-    const calculateTimeUntilReset = () => {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0); // Set to 12:00 AM
 
-      const diff = tomorrow.getTime() - now.getTime();
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      return {
-        hours: hours.toString().padStart(2, '0'),
-        minutes: minutes.toString().padStart(2, '0'),
-        seconds: seconds.toString().padStart(2, '0'),
-        formatted: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
-      };
-    };
-
-    // Update immediately
-    const updateTimer = () => {
-      const time = calculateTimeUntilReset();
-      setTimeUntilReset(time.formatted);
-    };
-
-    updateTimer();
-
-    // Update every second
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Check if user has already applied a referral code
   useEffect(() => {
@@ -123,9 +90,7 @@ export default function HeartScreen() {
   }, []);
 
   const onGoPro = () => {
-    // navigation.navigate('Premium');
-    // dispatch(useHeart());
-    premiumSheetRef.current?.present();
+    navigation.navigate('Premium');
   };
 
   const onShareWithFriend = async () => {
@@ -330,23 +295,17 @@ Join me 👉 https://diagnoseit.in`
                   </View>
                   <View style={styles.cardMainTextContainer}>
                     <Text style={styles.cardMainText}>
-                      Today's <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
-                    </Text>
-                  </View>
-                  <View style={styles.timerContainer}>
-                    <Ionicons name="time-outline" size={16} color="#65727E" style={{ marginRight: 6 }} />
-                    <Text style={styles.timerText}>
-                      Hearts reset in: <Text style={styles.timerTime}>{timeUntilReset}</Text>
+                      <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
                     </Text>
                   </View>
                 </View>
               )}
 
-              <Text style={styles.subtitleSecondary}>{isPremium ? 'Enjoy unlimited access to all cases!' : 'You get 1 heart every 24 hour.'}</Text>
+              <Text style={styles.subtitleSecondary}>{isPremium ? 'Enjoy unlimited access to all cases!' : 'You started with 2 hearts. Get more by sharing!'}</Text>
 
               {!isPremium && (
                 <View style={styles.cardAlt}>
-                  <Text style={styles.cardAltTitle}>Want to play more today?</Text>
+                  <Text style={styles.cardAltTitle}>Want to play more?</Text>
 
                   {/* Premium Option */}
                   <View style={styles.optionSection}>
@@ -373,7 +332,7 @@ Join me 👉 https://diagnoseit.in`
                     <View style={styles.listRow}>
                       <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
                       <Text style={styles.listText}>
-                        Access <Text style={{ fontWeight: '700' }}>Video analysis and Slide Decks</Text>
+                        Access <Text style={{ fontWeight: '700' }}>Unlimited Quizz</Text>
                       </Text>
                     </View>
 

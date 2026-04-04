@@ -382,7 +382,7 @@ export default function SelectTreatment() {
               await dispatch(submitGameplay());
               checkAndRequestReview();
             } catch (e) { }
-            if (!isPremium && sourceType === 'case') {
+            if (!isPremium) {
               dispatch(useHeart());
             }
           }}

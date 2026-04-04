@@ -94,7 +94,6 @@ const PREMIUM_FEATURES = [
   { label: 'Video Overview', free: false, pro: true },
   { label: 'Clinical images', free: false, pro: true },
   { label: 'Deep Dive explanations', free: false, pro: true },
-  { label: 'No ads', free: false, pro: true },
 ];
 
 // Local animated number to avoid re-rendering the whole screen each frame
@@ -320,9 +319,9 @@ export default function ClinicalInsight() {
   // Get current case ID for comparison - MUST be after caseData is defined
   const currentCaseId = caseData?.caseId || caseData?._id || null;
 
-  // First played case should always be viewable without blur
-  const isFirstPlayedCase = currentCaseId && firstPlayedCaseId && String(currentCaseId) === String(firstPlayedCaseId);
-  const shouldShowPremiumBlur = !isPremium && !isFirstPlayedCase; // Show blur for non-premium users, except first case
+  // First 2 played cases should always be viewable without blur (matches 2 free hearts)
+  const isWithinFreeCases = gamesPlayed <= 2;
+  const shouldShowPremiumBlur = !isPremium && !isWithinFreeCases; // Show blur for non-premium users, except first 2 cases
 
   // Video preview state - allow 30 seconds preview for non-premium users
   const [videoPlayedSeconds, setVideoPlayedSeconds] = React.useState(0);

@@ -6,9 +6,7 @@ export const getUser = createAsyncThunk(
   'user/getUser',
   async (userId, { rejectWithValue }) => {
     try {
-      // Get device timezone to send to server
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
       const res = await fetch(`${API_BASE}/api/users/${userId}?timezone=${encodeURIComponent(timezone)}`);
       const data = await res.json();
 
