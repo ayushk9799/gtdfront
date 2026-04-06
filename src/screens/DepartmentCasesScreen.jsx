@@ -18,7 +18,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../../constants/Colors';
 import { fetchCategoryCases } from '../store/slices/progressSlice';
 import { API_BASE } from '../../constants/Api';
-import { loadCaseById, clearCurrentGame, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } from '../store/slices/currentGameSlice';
+import { loadCaseById, clearCurrentGame, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setGameplay } from '../store/slices/currentGameSlice';
 import CloudBottom from '../components/CloudBottom';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { Skeleton } from '../components/Skeleton';
@@ -111,6 +111,7 @@ export default function DepartmentCasesScreen() {
                             dispatch(setSelectedTests(selectedTestIds));
                             dispatch(setSelectedDiagnosis(selectedDiagnosisId));
                             dispatch(setSelectedTreatments(selectedTreatmentIds));
+                            dispatch(setGameplay(completedGameplay));
 
                             // Navigate to ClinicalInsight
                             navigation.navigate('ClinicalInsight', { caseData, from: 'DepartmentCases' });

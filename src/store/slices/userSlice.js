@@ -133,7 +133,11 @@ const userSlice = createSlice({
       })
       // Update user data when gameplay is submitted successfully
       .addCase(submitGameplay.fulfilled, (state, action) => {
-        const updatedUser = action.payload?.updatedUser;
+        const { updatedUser, isReattempt } = action.payload || {};
+        
+        // Skip updates if this was a reattempt (original score stands)
+        if (isReattempt) return;
+
         if (updatedUser && state.userData) {
           // Update cumulative points
           if (updatedUser.cumulativePoints) {

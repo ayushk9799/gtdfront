@@ -1,5 +1,5 @@
 import React from 'react';
-import { useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, PanResponder, UIManager, Alert, ToastAndroid, InteractionManager } from 'react-native';
+import { useWindowDimensions, View, Text, Image, StyleSheet, Pressable, ScrollView, Platform, Animated, Easing, BackHandler, PanResponder, UIManager, Alert, ToastAndroid, InteractionManager, Modal } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import ReAnimated, { useSharedValue, useAnimatedStyle, withTiming, Easing as ReEasing, cancelAnimation } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -9,8 +9,10 @@ import { TabView, TabBar } from 'react-native-tab-view';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Line } from 'react-native-svg';
 import { Colors } from '../../constants/Colors';
+import { API_BASE } from '../../constants/Api';
 import { BlurView } from '@react-native-community/blur';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { loadCaseById, setCaseData, setIsReattempt, clearCurrentGame } from '../store/slices/currentGameSlice';
 import { computeGameplayScoreNormalized } from '../services/scoring';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import Sound from 'react-native-sound';
@@ -296,13 +298,145 @@ export default function ClinicalInsight() {
   );
 
   const {
+    caseId: storeCaseId,
+    dailyChallengeId: storeDailyChallengeId,
     caseData: caseDataFromStore,
-    selectedTestIds,
-    selectedDiagnosisId,
-    selectedTreatmentIds,
+    selectedTestIds: reduxSelectedTestIds,
+    selectedDiagnosisId: reduxSelectedDiagnosisId,
+    selectedTreatmentIds: reduxSelectedTreatmentIds,
+    gameplay,
   } = useSelector((s) => s.currentGame);
 
   const { isPremium } = useSelector(state => state.user);
+  const dispatch = useDispatch();
+  const caseData = caseDataFromRoute || caseDataFromStore || {};
+
+  const [viewedAttemptIndex, setViewedAttemptIndex] = React.useState(0); // 0 = First Attempt (Default)
+
+  // When opened from a fresh submission (treatment screen), auto-select the latest attempt tab
+  React.useEffect(() => {
+    if (openedFromTreatment && gameplay?.attempts?.length > 0) {
+      setViewedAttemptIndex(gameplay.attempts.length); // last attempt = attempts.length (0=original, 1=attempts[0], etc.)
+    }
+  }, [openedFromTreatment, gameplay?.attempts?.length]);
+
+  const { effectiveTestIds, effectiveDiagnosisId, effectiveTreatmentIds } = React.useMemo(() => {
+    // If not overriding, or gameplay is missing, use Redux state directly
+    if (viewedAttemptIndex === -1 || !gameplay) {
+      return { 
+        effectiveTestIds: reduxSelectedTestIds, 
+        effectiveDiagnosisId: reduxSelectedDiagnosisId, 
+        effectiveTreatmentIds: reduxSelectedTreatmentIds 
+      };
+    }
+
+    // Extract selections: 0 is Original (Main gameplay doc), 1 is Attempts[0], etc.
+    const selections = viewedAttemptIndex === 0 
+      ? gameplay.selections 
+      : gameplay.attempts?.[viewedAttemptIndex - 1]?.selections;
+      
+    if (!selections) {
+       return { 
+        effectiveTestIds: reduxSelectedTestIds, 
+        effectiveDiagnosisId: reduxSelectedDiagnosisId, 
+        effectiveTreatmentIds: reduxSelectedTreatmentIds 
+      };
+    }
+
+    const tests = caseData?.steps?.[1]?.data?.availableTests || [];
+    const derivedTestIds = (selections.testIndices || []).map(idx => tests[idx]?.testId).filter(Boolean);
+
+    const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
+    const derivedDiagId = selections.diagnosisIndex != null ? diags[selections.diagnosisIndex]?.diagnosisId : null;
+
+    const step4 = caseData?.steps?.[3]?.data || {};
+    const flatTreatments = [
+      ...(step4.treatmentOptions?.medications || []),
+      ...(step4.treatmentOptions?.surgicalInterventional || []),
+      ...(step4.treatmentOptions?.nonSurgical || []),
+      ...(step4.treatmentOptions?.psychiatric || []),
+    ];
+    const derivedTxIds = (selections.treatmentIndices || []).map(idx => flatTreatments[idx]?.treatmentId).filter(Boolean);
+
+    return {
+      effectiveTestIds: derivedTestIds,
+      effectiveDiagnosisId: derivedDiagId,
+      effectiveTreatmentIds: derivedTxIds,
+    };
+  }, [viewedAttemptIndex, reduxSelectedTestIds, reduxSelectedDiagnosisId, reduxSelectedTreatmentIds, gameplay, caseData]);
+
+  const selectedTestIds = effectiveTestIds;
+  const selectedDiagnosisId = effectiveDiagnosisId;
+  const selectedTreatmentIds = effectiveTreatmentIds;
+
+  const [showReattemptDialog, setShowReattemptDialog] = React.useState(false);
+  const reattemptDialogAnim = React.useRef(new Animated.Value(0)).current;
+
+  const openReattemptDialog = React.useCallback(() => {
+    if (!isPremium) return;
+    setShowReattemptDialog(true);
+    Animated.spring(reattemptDialogAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 9,
+    }).start();
+  }, [isPremium, reattemptDialogAnim]);
+
+  const closeReattemptDialog = React.useCallback(() => {
+    Animated.timing(reattemptDialogAnim, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => setShowReattemptDialog(false));
+  }, [reattemptDialogAnim]);
+
+  const executeReattempt = React.useCallback(async () => {
+    closeReattemptDialog();
+    // give dialog time to close
+    await new Promise(r => setTimeout(r, 220));
+
+    const currentSourceType = gameplay?.sourceType || 'case';
+    const effectiveDailyChallengeId = storeDailyChallengeId || gameplay?.dailyChallengeId || null;
+
+    // Daily challenge reattempt — use setCaseData path (no loadCaseById)
+    if (currentSourceType === 'dailyChallenge' && effectiveDailyChallengeId) {
+      dispatch(clearCurrentGame());
+      dispatch(setCaseData({
+        dailyChallengeId: effectiveDailyChallengeId,
+        caseData: caseData,
+        sourceType: 'dailyChallenge',
+      }));
+      dispatch(setIsReattempt(true));
+      navigation.navigate('ClinicalInfo');
+      return;
+    }
+
+    // Regular case reattempt — resolve MongoDB Case _id
+    let effectiveCaseId = storeCaseId || gameplay?.caseId || null;
+    if (!effectiveCaseId && currentSourceType === 'case') {
+      effectiveCaseId = caseData?._id || null;
+    }
+    if (!effectiveCaseId && caseData?.caseId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/cases/casewise/${encodeURIComponent(caseData.caseId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          effectiveCaseId = data?.caseItem?._id || null;
+        }
+      } catch (_) {}
+    }
+
+    if (effectiveCaseId) {
+      dispatch(clearCurrentGame());
+      navigation.navigate('ClinicalInfo');
+      await dispatch(loadCaseById(effectiveCaseId));
+      dispatch(setIsReattempt(true));
+    }
+  }, [closeReattemptDialog, dispatch, caseData, storeCaseId, storeDailyChallengeId, gameplay, navigation]);
+
+  const handleReattempt = openReattemptDialog;
 
   // Get games played count and first played case ID - re-read when screen comes into focus
   const [gamesPlayed, setGamesPlayed] = React.useState(0);
@@ -313,8 +447,6 @@ export default function ClinicalInsight() {
       setFirstPlayedCaseIdState(getFirstPlayedCaseId());
     }, [])
   );
-
-  const caseData = caseDataFromRoute || caseDataFromStore || {};
 
   // Get current case ID for comparison - MUST be after caseData is defined
   const currentCaseId = caseData?.caseId || caseData?._id || null;
@@ -491,7 +623,7 @@ export default function ClinicalInsight() {
       });
     }
     if (correctDiagnosis) {
-      sec.diagnosis.push({ kind: 'info', title: 'Correct Diagnosis', items: [correctDiagnosis.diagnosisName] });
+      sec.diagnosis.push({ kind: 'success', title: 'Correct Diagnosis', items: [correctDiagnosis.diagnosisName] });
     }
 
     // Treatment (step 4 / index 3)
@@ -570,13 +702,30 @@ export default function ClinicalInsight() {
         maxToRenderPerBatch={5}
         windowSize={5}
       >
-        <Pressable
-          onPress={handleBackPress}
-          style={styles.backBtnInline}
-          hitSlop={10}
-        >
-          <MaterialCommunityIcons name="chevron-left" size={26} color="#ffffff" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, marginTop: 10 }}>
+          <Pressable
+            onPress={handleBackPress}
+            style={styles.backBtnInline}
+            hitSlop={10}
+          >
+            <MaterialCommunityIcons name="chevron-left" size={26} color="#ffffff" />
+          </Pressable>
+
+          {isPremium && (
+            <Pressable
+              onPress={handleReattempt}
+              style={({ pressed }) => [
+                styles.reattemptTopBtn,
+                pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
+              ]}
+            >
+              <View style={styles.reattemptTopContent}>
+                <MaterialCommunityIcons name="refresh" size={16} color="#FF8A00" />
+                <Text style={styles.reattemptTopBtnText}>Reattempt</Text>
+              </View>
+            </Pressable>
+          )}
+        </View>
         <View style={styles.scoreSection}>
           <AnimatedNumber
             style={styles.scoreBoardText}
@@ -591,6 +740,7 @@ export default function ClinicalInsight() {
               <Markdown style={{ ...markdownStyles, body: { ...styles.dxPillText, ...styles.dxPillTextCorrect } }}>{headerDx.correct}</Markdown>
             </View>
           ) : null}
+
         </View>
         <View style={styles.topWrap}>
           {headerDx.mine && headerDx.mine !== headerDx.correct ? (
@@ -600,7 +750,73 @@ export default function ClinicalInsight() {
             </View>
           ) : null}
         </View>
-        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, borderTopWidth: 0, marginTop: -14 }]}>
+        {/* Attempt History Chrome-like Tabs */}
+        {gameplay?.attempts && gameplay.attempts.length > 0 && (
+          <View style={{ marginTop: 16, zIndex: 2 }}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'flex-end' }}
+            >
+              {/* Attempt 1 (Original) Tab */}
+              <Pressable 
+                onPress={() => setViewedAttemptIndex(0)}
+                style={({pressed}) => [
+                  { 
+                    marginRight: 4, 
+                    paddingHorizontal: 16, 
+                    paddingVertical: 10, 
+                    borderTopLeftRadius: 10, 
+                    borderTopRightRadius: 10, 
+                    borderWidth: 1, 
+                    borderBottomWidth: 1,
+                    borderColor: viewedAttemptIndex === 0 ? themeColors.border : 'rgba(0,0,0,0.08)', 
+                    borderBottomColor: viewedAttemptIndex === 0 ? themeColors.card : themeColors.border,
+                    backgroundColor: viewedAttemptIndex === 0 ? themeColors.card : 'rgba(0,0,0,0.03)', 
+                    opacity: pressed ? 0.8 : 1,
+                    transform: [{ translateY: viewedAttemptIndex === 0 ? 1 : 0 }], // Pull active tab down 1px to overlap border
+                    zIndex: viewedAttemptIndex === 0 ? 10 : 1
+                  }
+                ]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: viewedAttemptIndex === 0 ? '700' : '500', color: viewedAttemptIndex === 0 ? themeColors.primary : themeColors.textSecondary }}>
+                  Attempt 1
+                </Text>
+              </Pressable>
+              
+              {/* Reattempts */}
+              {gameplay.attempts.map((att, i) => (
+                <Pressable
+                  key={i} 
+                  onPress={() => setViewedAttemptIndex(i + 1)}
+                  style={({pressed}) => [
+                    { 
+                      marginRight: 4, 
+                      paddingHorizontal: 16, 
+                      paddingVertical: 10, 
+                      borderTopLeftRadius: 10, 
+                      borderTopRightRadius: 10, 
+                      borderWidth: 1, 
+                      borderBottomWidth: 1,
+                      borderColor: viewedAttemptIndex === i + 1 ? themeColors.border : 'rgba(0,0,0,0.08)', 
+                      borderBottomColor: viewedAttemptIndex === i + 1 ? themeColors.card : themeColors.border,
+                      backgroundColor: viewedAttemptIndex === i + 1 ? themeColors.card : 'rgba(0,0,0,0.03)', 
+                      opacity: pressed ? 0.8 : 1,
+                      transform: [{ translateY: viewedAttemptIndex === i + 1 ? 1 : 0 }], // Pull active tab down 1px to overlap border
+                      zIndex: viewedAttemptIndex === i + 1 ? 10 : 1
+                    }
+                  ]}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: viewedAttemptIndex === i + 1 ? '700' : '500', color: viewedAttemptIndex === i + 1 ? themeColors.primary : themeColors.textSecondary }}>
+                    Attempt {i + 2}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, borderTopWidth: gameplay?.attempts?.length > 0 ? 1 : 0, marginTop: gameplay?.attempts?.length > 0 ? 0 : -14, zIndex: 1 }]}>
           <View style={styles.caseHeader}>
             <View style={styles.caseIconWrap}>
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
@@ -1211,6 +1427,7 @@ export default function ClinicalInsight() {
           </View>
         ) : null}
 
+
       </ScrollView>
 
       {/* Floating scroll-to-insights button */}
@@ -1238,7 +1455,101 @@ export default function ClinicalInsight() {
         <MaterialCommunityIcons name="chevron-down" size={48} color="#FFFFFF" />
       </Pressable>
       <PremiumBottomSheet ref={premiumSheetRef} />
+
+      {/* Reattempt Confirmation Dialog */}
+      <Modal
+        transparent
+        visible={showReattemptDialog}
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={closeReattemptDialog}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.65)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}
+          onPress={closeReattemptDialog}
+        >
+          <Pressable onPress={() => {}} style={{ width: '100%', maxWidth: 340 }}>
+            <Animated.View
+              style={{
+                transform: [
+                  { scale: reattemptDialogAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+                  { translateY: reattemptDialogAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }
+                ],
+                opacity: reattemptDialogAnim,
+                borderRadius: 28,
+                backgroundColor: '#FFFFFF',
+                overflow: 'hidden',
+                shadowColor: '#000',
+                shadowOpacity: 0.25,
+                shadowRadius: 20,
+                shadowOffset: { width: 0, height: 10 },
+                elevation: 12,
+              }}
+            >
+              {/* Top Accent Strip */}
+              <View style={{ height: 6, backgroundColor: Colors.brand.darkPink }} />
+
+              <View style={{ paddingHorizontal: 28, paddingTop: 32, paddingBottom: 24 }}>
+                <Text style={{ fontSize: 22, fontWeight: '900', color: '#0F172A', textAlign: 'center', letterSpacing: -0.5 }}>
+                  Reattempt Case
+                </Text>
+                
+                <View style={{ height: 1.5, width: 40, backgroundColor: '#F1F5F9', alignSelf: 'center', marginVertical: 16 }} />
+
+                <Text style={{ fontSize: 15, color: '#475569', textAlign: 'center', lineHeight: 22, fontWeight: '500' }}>
+                  Ready to try again? Your previous score will be saved in your journey history.
+                </Text>
+                
+                <View style={{ marginTop: 12, backgroundColor: '#FFF1F2', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, alignSelf: 'center' }}>
+                  <Text style={{ fontSize: 12, color: Colors.brand.darkPink, fontWeight: '700', textAlign: 'center' }}>
+                    Note: Points won't be re-added
+                  </Text>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={{ paddingHorizontal: 24, paddingBottom: 28, gap: 10 }}>
+                <Pressable
+                  onPress={executeReattempt}
+                  style={({ pressed }) => ({
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    paddingVertical: 16,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: Colors.brand.darkPink, // Fallback for stability
+                    elevation: pressed ? 2 : 4,
+                  })}
+                >
+                  <LinearGradient
+                    colors={[Colors.brand.darkPink, '#FB7185']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>Start Reattempt</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={closeReattemptDialog}
+                  style={({ pressed }) => ({
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    backgroundColor: pressed ? '#F8FAFC' : 'transparent',
+                    borderWidth: 1.5,
+                    borderColor: '#F1F5F9',
+                  })}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#64748B' }}>Maybe Later</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView >
+
   );
 }
 
@@ -1511,9 +1822,10 @@ function DashedDivider() {
 }
 
 const InsightSection = React.memo(({ title, bullets }) => {
+  const isCorrectDiagnosis = title === 'Correct Diagnosis';
   return (
     <View style={{ paddingTop: 8 }}>
-      <Markdown style={{ ...markdownStyles, body: styles.insightTitle }}>{title}</Markdown>
+      <Markdown style={{ ...markdownStyles, body: { ...styles.insightTitle, color: isCorrectDiagnosis ? SUCCESS_COLOR : styles.insightTitle.color } }}>{title}</Markdown>
       {bullets.map((b, i) => (
         <View key={i} style={{ flexDirection: 'row', marginBottom: 0, alignItems: 'flex-start' }}>
           <Text style={[styles.insightBullet, { marginTop: Platform.OS === 'ios' ? 0 : 2 }]}>{`\u2022 `}</Text>
@@ -2086,5 +2398,47 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  reattemptButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#FF8A00',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  reattemptGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  reattemptButtonText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  reattemptTopBtn: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#FF8A00',
+    backgroundColor: 'transparent',
+  },
+  reattemptTopContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  reattemptTopBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#FF8A00',
   },
 });

@@ -21,7 +21,7 @@ import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { Skeleton } from '../components/Skeleton';
 import { Colors } from '../../constants/Colors';
 import { API_BASE } from '../../constants/Api';
-import { setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments } from '../store/slices/currentGameSlice';
+import { setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setGameplay } from '../store/slices/currentGameSlice';
 import CloudBottom from '../components/CloudBottom';
 import { styles } from './styles';
 
@@ -155,6 +155,7 @@ export default function PastChallengesScreen() {
             ];
             const selectedTreatmentIds = (selections.treatmentIndices || []).map(idx => flatTreatments[idx]?.treatmentId).filter(Boolean);
             dispatch(setSelectedTreatments(selectedTreatmentIds));
+            dispatch(setGameplay(completedGameplayData));
         }
 
         navigation.navigate('ClinicalInsight', {

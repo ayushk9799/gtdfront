@@ -13,7 +13,9 @@ export const loadCaseById = createAsyncThunk(
     }
     const data = await res.json();
     const caseDoc = data?.case;
-    return { caseId: caseDoc?._id, caseData: caseDoc?.caseData, voiceId: caseDoc?.voiceId, sourceType: 'case' };
+    // Embed MongoDB _id into caseData so it travels through navigation params
+    const caseDataWithId = caseDoc?.caseData ? { ...caseDoc.caseData, _id: caseDoc._id } : null;
+    return { caseId: caseDoc?._id, caseData: caseDataWithId, voiceId: caseDoc?.voiceId, sourceType: 'case' };
   }
 );
 
@@ -27,6 +29,8 @@ const initialState = {
   voiceId: null,
   audioPaused: false,
   isBackdatePlay: false, // For premium users playing past challenges (no points counted)
+  isReattempt: false, // For premium users replaying a completed case
+  gameplay: null, // Full gameplay data from server
   selectedTestIds: [],
   selectedDiagnosisId: null,
   selectedTreatmentIds: [],
@@ -40,6 +44,13 @@ const currentGameSlice = createSlice({
   reducers: {
     setUserId(state, action) {
       state.userId = action.payload || null;
+    },
+    setIsReattempt(state, action) {
+      state.isReattempt = !!action.payload;
+    },
+    // Set already fetched gameplay from server
+    setGameplay(state, action) {
+      state.gameplay = action.payload || null;
     },
     // setCaseData now supports both case and dailyChallenge
     // For case: { caseId, caseData, sourceType: 'case', voiceId?: string }
@@ -56,11 +67,15 @@ const currentGameSlice = createSlice({
         state.caseId = null;
         state.voiceId = null; // Daily challenges don't have voiceId
         state.isBackdatePlay = isBackdatePlay === true; // Track backdate plays for premium users
+        state.isReattempt = false;
+        state.gameplay = null; // New load clears old gameplay
       } else {
         state.caseId = caseId || null;
         state.dailyChallengeId = null;
         state.voiceId = voiceId || null; // Set voiceId if provided
         state.isBackdatePlay = false; // Cases are never backdate plays
+        state.isReattempt = false;
+        state.gameplay = null; // New load clears old gameplay
       }
 
       state.caseData = caseData || null;
@@ -92,7 +107,8 @@ const currentGameSlice = createSlice({
       state.voiceId = null;
       state.audioPaused = false;
       state.isBackdatePlay = false;
-      state.gameplayId = null;
+      state.isReattempt = false;
+      state.gameplay = null;
       state.selectedTestIds = [];
       state.selectedDiagnosisId = null;
       state.selectedTreatmentIds = [];
@@ -114,6 +130,8 @@ const currentGameSlice = createSlice({
         state.caseData = action.payload.caseData || null;
         state.voiceId = action.payload.voiceId || null;
         state.audioPaused = false; // Reset audio pause state for new case
+        state.isReattempt = false; // Default for new case load
+        state.gameplay = null; // New case load clears current gameplay
 
         // IMPORTANT: Clear previous selections when loading a new case
         state.selectedTestIds = [];
@@ -123,6 +141,10 @@ const currentGameSlice = createSlice({
       .addCase(loadCaseById.rejected, (state, action) => {
         state.status = 'idle';
         state.error = action.error?.message || 'Failed to load case';
+      })
+      .addCase(submitGameplay.fulfilled, (state, action) => {
+        // Store gameplay object after successful submission
+        state.gameplay = action.payload.gameplay || null;
       });
   }
 });
@@ -140,15 +162,20 @@ export const submitGameplay = createAsyncThunk(
       dailyChallengeId,
       caseData,
       isBackdatePlay,
+      isReattempt,
       selectedTestIds,
       selectedDiagnosisId,
       selectedTreatmentIds
     } = state.currentGame;
 
+    // Resolve caseId: prefer store value, fall back to _id embedded in caseData
+    const effectiveCaseId = caseId || caseData?._id || null;
+    const effectiveDailyChallengeId = dailyChallengeId;
+
     // Validate based on source type
     if (!userId) throw new Error('Missing userId');
-    if (sourceType === 'case' && !caseId) throw new Error('Missing caseId');
-    if (sourceType === 'dailyChallenge' && !dailyChallengeId) throw new Error('Missing dailyChallengeId');
+    if (sourceType === 'case' && !effectiveCaseId) throw new Error('Missing caseId');
+    if (sourceType === 'dailyChallenge' && !effectiveDailyChallengeId) throw new Error('Missing dailyChallengeId');
     if (!caseData) throw new Error('Missing case data');
 
     // Map tests to indices
@@ -205,13 +232,13 @@ export const submitGameplay = createAsyncThunk(
 
     // Add the appropriate ID based on source type
     if (sourceType === 'dailyChallenge') {
-      requestBody.dailyChallengeId = dailyChallengeId;
+      requestBody.dailyChallengeId = effectiveDailyChallengeId;
       // For backdate plays (premium practice mode), include the flag
       if (isBackdatePlay) {
         requestBody.isBackdatePlay = true;
       }
     } else {
-      requestBody.caseId = caseId;
+      requestBody.caseId = effectiveCaseId;
     }
 
     const res = await fetch(`${API_BASE}/api/gameplays/submit`, {
@@ -226,12 +253,13 @@ export const submitGameplay = createAsyncThunk(
     }
     const data = await res.json();
     return {
-      gameplayId: data?.gameplay?._id,
+      gameplay: data?.gameplay || null,
       updatedUser: data?.updatedUser || null,
-      sourceType // Return sourceType to help other slices determine if they need to update
+      sourceType, // Return sourceType to help other slices determine if they need to update
+      isReattempt // Pass flag to fulfilled handlers
     };
   }
 );
 
-export const { setUserId, setCaseData, clearCurrentGame, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setAudioPaused } = currentGameSlice.actions;
+export const { setUserId, setIsReattempt, setGameplay, setCaseData, clearCurrentGame, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setAudioPaused } = currentGameSlice.actions;
 export default currentGameSlice.reducer;

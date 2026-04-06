@@ -439,7 +439,7 @@ const PremiumLimitCard = ({ onBack }) => {
                         >
                             <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Premium Limit Reached</Text>
                             <Text style={{ fontSize: 14, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
-                                Free users can play up to 10 cases. Subscribe to continue!
+                                Free users can play up to 20 cases. Subscribe to continue!
                             </Text>
                         </View>
                     </View>
@@ -691,7 +691,8 @@ export default function QuizzPlay({ route, navigation }) {
         categoryName,
         initialAttemptedCount = 0,
         globalAttemptedCount = 0,
-        totalQuizzCount = 0
+        totalQuizzCount = 0,
+        startWithSolved = false,
     } = route.params || {};
 
     const dispatch = useDispatch(); // Still needed for userSlice (premium purchases)
@@ -864,6 +865,9 @@ export default function QuizzPlay({ route, navigation }) {
     // Initial load
     useEffect(() => {
         fetchQuizzesByCategoryApi();
+        if (startWithSolved) {
+            fetchSolvedQuizzesApi();
+        }
     }, [fetchQuizzesByCategoryApi]);
 
     // Populate selections from backend attempt data (for both solved and unsolved)
@@ -890,7 +894,7 @@ export default function QuizzPlay({ route, navigation }) {
         if (!isPremium) {
             // Calculate how many NEW quizzes they can still play
             // globalAttemptedCount is passed from QuizzScreen as total quizzes attempted by user across all categories
-            const maxNewCases = Math.max(0, 10 - globalAttemptedCount);
+            const maxNewCases = Math.max(0, 20 - globalAttemptedCount);
             const allowedUnsolved = quizzes.slice(0, maxNewCases);
 
             if (showSolved) {
@@ -979,7 +983,7 @@ export default function QuizzPlay({ route, navigation }) {
     }, [currentQuestionIndex, showSolved, initialAttemptedCount, showSolvedButton, solvedButtonAnim]);
 
     const handleBack = () => {
-        if (showSolved) {
+        if (showSolved && !startWithSolved) {
             setShowSolved(false);
             setSolvedStatus('idle');
             setCurrentQuestionIndex(0);
@@ -1093,7 +1097,7 @@ export default function QuizzPlay({ route, navigation }) {
                         {(() => {
                             const totalLoaded = displayList.filter(i => !i.isLimit).length;
                             if (totalLoaded === 0) return <Text style={styles.questionCounterText}>0/0</Text>;
-                            const hasPlus = showSolved ? solvedHasMore : hasMore;
+                            let hasPlus = showSolved ? solvedHasMore : hasMore;
                             const currentItem = displayList[currentQuestionIndex];
 
                             // Hide counter on limit card
@@ -1105,8 +1109,8 @@ export default function QuizzPlay({ route, navigation }) {
                                     const displaySolvedTotal = solvedTotal > 0 ? solvedTotal : initialAttemptedCount;
                                     content = `${displaySolvedTotal - currentQuestionIndex}/${displaySolvedTotal}`;
                                 } else {
-                                    const currentAvailableTotal = initialAttemptedCount + totalLoaded;
-                                    content = `${initialAttemptedCount + currentQuestionIndex + 1}/${currentAvailableTotal}`;
+                                    content = `${initialAttemptedCount + currentQuestionIndex + 1}/${totalQuizzCount}`;
+                                    hasPlus = false; // We show the absolute total now, no need for the plus sign
                                 }
                             } else {
                                 content = `${currentQuestionIndex + 1}/${totalLoaded}`;

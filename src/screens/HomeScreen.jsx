@@ -11,7 +11,7 @@ import LeagueHeader from './LeagueHeader';
 import DepartmentProgressList from '../components/DepartmentProgressList';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch, useSelector } from 'react-redux';
-import { loadCaseById, setUserId, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, clearCurrentGame } from '../store/slices/currentGameSlice';
+import { loadCaseById, setUserId, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, clearCurrentGame, setGameplay } from '../store/slices/currentGameSlice';
 import { loadTodaysChallenge, selectCurrentChallenge, selectIsChallengeLoading, selectHasChallengeError, selectChallengeError } from '../store/slices/dailyChallengeSlice';
 import { fetchCategories } from '../store/slices/categoriesSlice';
 import departmentIcon from '../../constants/department.png';
@@ -402,6 +402,7 @@ export default function HomeScreen() {
         dispatch(setSelectedTests(selectedTestIds));
         dispatch(setSelectedDiagnosis(selectedDiagnosisId));
         dispatch(setSelectedTreatments(selectedTreatmentIds));
+        dispatch(setGameplay(completedGameplay));
 
         // Navigate to ClinicalInsight to review the completed case
         navigation.navigate('ClinicalInsight', { caseData, from: 'HomeScreen' });

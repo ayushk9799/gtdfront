@@ -9,6 +9,8 @@ import {
     ActivityIndicator,
     Dimensions,
     Animated,
+    Image,
+    ImageBackground,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +20,7 @@ import { API_BASE } from '../../constants/Api';
 import { Colors } from '../../constants/Colors';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DepartmentIcons } from '../components/DepartmentIcons';
+import Video from 'react-native-video';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -73,6 +76,7 @@ export default function QuizzScreen() {
     // Local state instead of Redux
     const [categories, setCategories] = useState([]);
     const [categoriesStatus, setCategoriesStatus] = useState('idle');
+    const [nextPreview, setNextPreview] = useState(null);
 
     // Fetch categories directly
     const fetchCategories = useCallback(async () => {
@@ -94,10 +98,27 @@ export default function QuizzScreen() {
         }
     }, [userId]);
 
+    // Fetch next unsolved quiz preview
+    const fetchNextPreview = useCallback(async () => {
+        try {
+            const url = userId
+                ? `${API_BASE}/api/quizz/next-preview?userId=${userId}`
+                : `${API_BASE}/api/quizz/next-preview`;
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                setNextPreview(data.data || null);
+            }
+        } catch (error) {
+            console.error('Error fetching next preview:', error);
+        }
+    }, [userId]);
+
     useFocusEffect(
         useCallback(() => {
             fetchCategories();
-        }, [fetchCategories])
+            fetchNextPreview();
+        }, [fetchCategories, fetchNextPreview])
     );
 
     const handleCategoryPress = (category) => {
@@ -127,32 +148,90 @@ export default function QuizzScreen() {
 
         if (totalQuizzCount === 0) return null;
 
+        const hasPreviewImage = nextPreview?.previewImage;
+        const isVideo = hasPreviewImage && /\.(mp4|mov|webm|avi|mkv)$/i.test(nextPreview.previewImage);
+
         return (
+            <>
             <TouchableOpacity
                 style={styles.allQuizzesBtnWrapper}
                 onPress={() => handleCategoryPress(null)}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
             >
-                <LinearGradient
-                    colors={['#FF407D', '#FF1A5E']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.allQuizzesGradientBtn}
-                >
-                    <View style={styles.allQuizzesContent}>
-                        <View style={styles.allQuizzesIconCircle}>
-                            <MaterialCommunityIcons name="play" size={24} color="#FF407D" />
+                {hasPreviewImage ? (
+                    <View style={styles.previewImageBg}>
+                        {isVideo ? (
+                            <Video
+                                source={{ uri: nextPreview.previewImage }}
+                                style={{ width: '100%', height: '100%' }}
+                                resizeMode="cover"
+                                repeat={true}
+                                muted={true}
+                                paused={false}
+                            />
+                        ) : (
+                            <Image
+                                source={{ uri: nextPreview.previewImage }}
+                                style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+                            />
+                        )}
+                        {/* Gradient overlay - absolutely positioned */}
+                        <LinearGradient
+                            colors={['transparent', 'rgba(0,0,0,0.85)']}
+                            style={styles.previewGradientOverlay}
+                        />
+                        {/* n/N count - top right corner */}
+                        <View style={styles.previewCountBadge}>
+                            <Text style={styles.previewCountBadgeText}>
+                                {categories.reduce((sum, cat) => sum + (cat.attemptedCount || 0), 0)}/{categories.reduce((sum, cat) => sum + (cat.quizzCount || 0), 0)}
+                            </Text>
                         </View>
-                        <View style={styles.allQuizzesTextGroup}>
-                            <Text style={styles.allQuizzesTitle}>Play All Quizzes</Text>
-                            <Text style={styles.allQuizzesSubtitle}>Mix of 1000+ clinical cases</Text>
+                        {/* Text content - absolutely positioned at bottom */}
+                        <View style={styles.previewTextOverlay}>
+                            <View style={styles.previewPlayRow}>
+                                <View style={styles.previewPlayCircle}>
+                                    <MaterialCommunityIcons name={isVideo ? "play" : "stethoscope"} size={18} color="#FF407D" />
+                                </View>
+                                <Text style={styles.previewPlayText}>Solve This Case</Text>
+                                {nextPreview.department && (
+                                    <View style={styles.previewDeptBadge}>
+                                        <Text style={styles.previewDeptText}>
+                                            {nextPreview.department.charAt(0).toUpperCase() + nextPreview.department.slice(1)}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                            {nextPreview.complain && (
+                                <Text style={styles.previewComplainText} numberOfLines={2}>
+                                    {nextPreview.complain}
+                                </Text>
+                            )}
                         </View>
-                        <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.5)" />
                     </View>
-                </LinearGradient>
+                ) : (
+                    <LinearGradient
+                        colors={['#FF407D', '#FF1A5E']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.allQuizzesGradientBtn}
+                    >
+                        <View style={styles.allQuizzesContent}>
+                            <View style={styles.allQuizzesIconCircle}>
+                                <MaterialCommunityIcons name="play" size={24} color="#FF407D" />
+                            </View>
+                            <View style={styles.allQuizzesTextGroup}>
+                                <Text style={styles.allQuizzesTitle}>Play All Quizzes</Text>
+                                <Text style={styles.allQuizzesSubtitle}>Mix of 1000+ clinical cases</Text>
+                            </View>
+                            <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.5)" />
+                        </View>
+                    </LinearGradient>
+                )}
             </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Category</Text>
+            </>
         );
-    }, [categories, handleCategoryPress]);
+    }, [categories, nextPreview, handleCategoryPress]);
 
     const renderCategoryItem = useCallback(({ item }) => {
         const attemptedCount = item.attemptedCount || 0;
@@ -217,7 +296,7 @@ export default function QuizzScreen() {
 
     if (categoriesStatus === 'loading') {
         return (
-            <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <View style={{ flex: 1 }}>
                 <SafeAreaView style={styles.container}>
                     <CategorySkeleton />
                 </SafeAreaView>
@@ -225,11 +304,35 @@ export default function QuizzScreen() {
         );
     }
 
-    const filteredCategories = categories.filter(cat => (cat.quizzCount || 0) > 0);
+    const filteredCategories = categories
+        .filter(cat => (cat.quizzCount || 0) > 0)
+        .sort((a, b) => (b.quizzCount || 0) - (a.quizzCount || 0));
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <View style={{ flex: 1 }}>
             <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+                <View style={styles.screenTitleRow}>
+                    <Text style={styles.screenTitle}>Quizzes</Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            const globalAttemptedCount = categories.reduce((sum, cat) => sum + (cat.attemptedCount || 0), 0);
+                            const totalQuizzCount = categories.reduce((sum, cat) => sum + (cat.quizzCount || 0), 0);
+                            navigation.navigate('QuizzPlay', {
+                                categoryId: null,
+                                categoryName: 'All Quizzes',
+                                initialAttemptedCount: globalAttemptedCount,
+                                globalAttemptedCount,
+                                totalQuizzCount,
+                                startWithSolved: true,
+                            });
+                        }}
+                        style={styles.historyButton}
+                        activeOpacity={0.7}
+                    >
+                        <MaterialCommunityIcons name="history" size={22} color={Colors.brand.darkPink} />
+                        <Text style={styles.historyButtonText}>History</Text>
+                    </TouchableOpacity>
+                </View>
                 <FlatList
                     data={filteredCategories}
                     renderItem={renderCategoryItem}
@@ -254,6 +357,38 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    screenTitle: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: '#1E1E1E',
+    },
+    screenTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 4,
+    },
+    historyButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    historyButtonText: {
+        marginLeft: 5,
+        color: Colors.brand.darkPink,
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#1E1E1E',
+        marginTop: 16,
+        marginBottom: 4,
+    },
     centered: {
         flex: 1,
         justifyContent: 'center',
@@ -275,7 +410,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: 12,
-        paddingTop: 40,
+        paddingTop: 12,
         paddingBottom: 100,
     },
     categoryRow: {
@@ -346,6 +481,89 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.85)',
         fontSize: 13,
         fontWeight: '600',
+    },
+    // Preview card styles
+    previewImageBg: {
+        width: '100%',
+        height: 300,
+        borderRadius: 16,
+        overflow: 'hidden',
+        backgroundColor: '#F5F5F5',
+    },
+    previewGradientOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 300 * 0.7,
+    },
+    previewCountBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    previewCountBadgeText: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    previewTextOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 16,
+        paddingBottom: 14,
+    },
+    previewDeptBadge: {
+        backgroundColor: 'rgba(255, 64, 125, 0.85)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+    },
+    previewDeptText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+    },
+    previewComplainText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+        marginTop: 8,
+        lineHeight: 20,
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+    previewPlayRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    previewPlayCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+    },
+    previewPlayText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '800',
+        flex: 1,
+    },
+    previewCountText: {
+        color: 'rgba(255,255,255,0.85)',
+        fontSize: 14,
+        fontWeight: '800',
     },
     categoryCardContent: {
         alignItems: 'center',

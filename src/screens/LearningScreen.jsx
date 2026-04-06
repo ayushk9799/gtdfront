@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { API_BASE } from '../../constants/Api';
 import { MMKV } from 'react-native-mmkv';
 import { useDispatch } from 'react-redux';
-import { setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setUserId } from '../store/slices/currentGameSlice';
+import { setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setUserId, setGameplay, setCaseData } from '../store/slices/currentGameSlice';
 import CloudBottom from '../components/CloudBottom';
 
 // Skeleton Loader Component
@@ -215,15 +215,32 @@ export default function LearningScreen() {
       // Handle both case and dailyChallenge gameplays
       const sourceType = gp?.sourceType || 'case';
       let caseData;
+      let mongoId = null;
 
       if (sourceType === 'dailyChallenge') {
         // For daily challenges, caseData is embedded in the dailyChallengeId document
         const challengeDoc = gp?.dailyChallengeId || {};
         caseData = challengeDoc?.caseData || {};
+        mongoId = challengeDoc?._id || null;
+        // Embed _id for reattempt flow
+        if (mongoId) caseData = { ...caseData, _id: mongoId };
+        dispatch(setCaseData({
+          dailyChallengeId: mongoId,
+          caseData,
+          sourceType: 'dailyChallenge',
+        }));
       } else {
         // For regular cases
         const caseDoc = gp?.caseId || {};
         caseData = caseDoc?.caseData || {};
+        mongoId = caseDoc?._id || null;
+        // Embed _id for reattempt flow
+        if (mongoId) caseData = { ...caseData, _id: mongoId };
+        dispatch(setCaseData({
+          caseId: mongoId,
+          caseData,
+          sourceType: 'case',
+        }));
       }
 
       // Map indices -> IDs
@@ -251,6 +268,7 @@ export default function LearningScreen() {
       dispatch(setSelectedTests(selectedTestIds));
       dispatch(setSelectedDiagnosis(selectedDiagnosisId));
       dispatch(setSelectedTreatments(selectedTreatmentIds));
+      dispatch(setGameplay(gp));
 
       navigation.navigate('ClinicalInsight', { caseData });
     } catch (_) { }
