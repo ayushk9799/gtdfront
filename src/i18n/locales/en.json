@@ -134,7 +134,9 @@
     "nextQuestion": "Next Question",
     "noQuizzesAvailable": "No quizzes available",
     "completed": "Completed",
-    "solvedCount": "{{solved}} / {{total}} solved"
+    "solvedCount": "{{solved}} / {{total}} solved",
+    "category": "Category",
+    "playAllSubtitle": "Mix of 1000+ clinical cases"
   },
   "premium": {
     "title": "Premium",
@@ -145,6 +147,7 @@
     "dailyChallenge": "Daily Challenge",
     "pastDailyChallenge": "Past Daily Challenge",
     "videoOverview": "Video Overview",
+    "unlimitedQuizzes": "Unlimited Quizzes",
     "clinicalImages": "Clinical images",
     "deepDiveExplanations": "Deep Dive explanations",
     "clinicalInsights": "Clinical Insights",
@@ -178,7 +181,10 @@
     "mostPopular": "Most Popular",
     "bestValue": "Best Value",
     "subscribe": "Subscribe",
-    "continueBtn": "Continue"
+    "continueBtn": "Continue",
+    "premiumPoint1": "Unlock all department cases",
+    "premiumPoint2": "Access premium features",
+    "premiumPoint3": "Full Quizzes access"
   },
   "heart": {
     "title": "Hearts",
@@ -187,7 +193,35 @@
     "getPremium": "Get Premium for unlimited hearts",
     "referForHearts": "Refer a friend for +1 ❤️",
     "watchAdForHeart": "Watch ad for +1 ❤️",
-    "unlimitedWithPremium": "Unlimited hearts with Premium"
+    "unlimitedWithPremium": "Unlimited hearts with Premium",
+    "caseEquality": "1 Heart = 1 Case",
+    "premiumHeading": "You are Premium Member",
+    "unlimitedHearts": "Unlimited Hearts",
+    "heartCount_one": "{{count}} Heart Left",
+    "heartCount_other": "{{count}} Hearts Left",
+    "unlimitedAccess": "Enjoy unlimited access to all cases!",
+    "startedWith": "You started with 2 hearts. Get more by sharing!",
+    "wantMore": "Want to play more?",
+    "unlockUnlimited": "Unlock Unlimited Hearts",
+    "accessClinical": "Access Clinical Insight",
+    "accessQuizzes": "Access Unlimited Quizzes",
+    "or": "OR",
+    "getOneMore": "Get one more Heart",
+    "referralDesc": "Share your code with friends. When they enter it, you get a free heart!",
+    "yourCode": "Your Referral Code",
+    "shareCode": "Share Code",
+    "haveFriendsCode": "Have a friend's code?",
+    "enterCode": "Enter code",
+    "apply": "Apply",
+    "applied": "Friend's code applied!",
+    "inviteTitle": "Invite to Diagnose It",
+    "shareMsgWithCode": "🩺 Learning medicine the real way!\nDiagnose It lets you treat patients step-by-step like real OPD cases.\nUse my referral code {{code}} while signing up ❤️\nJoin me 👉 https://diagnoseit.in",
+    "shareMsgNoCode": "🎯 Hey! I'm solving real clinical cases with Diagnose It! It is real and fun - you can treat patients like a real doctor. Join here: https://diagnoseit.in",
+    "success": "Success!",
+    "appliedSuccess": "Referral code applied. Your friend received a heart!",
+    "oops": "Oops!",
+    "invalidCode": "Invalid or already used code.",
+    "applyError": "Could not apply the code. Please try again."
   },
   "account": {
     "casesSolved": "Cases Solved",
@@ -224,7 +258,12 @@
     "save": "Save",
     "saving": "Saving...",
     "saved": "Profile updated!",
-    "nameRequired": "Name is required"
+    "nameRequired": "Name is required",
+    "enterName": "Enter your name",
+    "yourEmail": "Your email",
+    "emailNoChange": "Email cannot be changed",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDesc": "Actions here are irreversible. Please proceed with caution."
   },
   "league": {
     "title": "Ranking",
@@ -237,7 +276,16 @@
     "dailyChallenge": "Daily Challenge",
     "noRankings": "No Rankings Yet",
     "you": "You",
-    "challengeFriends": "Challenge Friends"
+    "challengeFriends": "Challenge Friends",
+    "rank": "RANK",
+    "player": "PLAYER",
+    "score": "SCORE",
+    "beTheFirst": "🎉 You're the first to complete today's challenge!",
+    "challengeToBeat": "Challenge your friends to beat your score",
+    "noParticipants": "No one has completed today's challenge yet. Be the first!",
+    "participants_one": "{{count}} participant",
+    "participants_other": "{{count}} participants",
+    "inactiveMessage": "Solve a case to reactivate your overall ranking! You haven't played since last 7 days."
   },
   "learning": {
     "title": "Learnings",
@@ -252,9 +300,32 @@
     "noHistory": "No past challenges found",
     "premiumOnly": "Past challenges are only available for Premium users"
   },
+  "departmentNames": {
+    "cardiology": "Cardiology",
+    "dermatology": "Dermatology",
+    "emergency medicine": "Emergency Medicine",
+    "general surgery": "General Surgery",
+    "gynecology": "Gynecology",
+    "obstetrics & gynecology": "Obstetrics & Gynecology",
+    "internal medicine": "Internal Medicine",
+    "neurology": "Neurology",
+    "ophthalmology": "Ophthalmology",
+    "orthopedics": "Orthopedics",
+    "pediatrics": "Pediatrics",
+    "psychiatry": "Psychiatry",
+    "pulmonology": "Pulmonology",
+    "otolaryngology": "Otolaryngology"
+  },
   "departmentCases": {
     "cases": "Cases",
-    "noCases": "No cases in this department"
+    "noCases": "No cases in this department",
+    "solved": "SOLVED",
+    "unsolved": "UNSOLVED",
+    "medicalCase": "Medical Case",
+    "department": "Department",
+    "premiumCases": "Premium Cases",
+    "noHearts": "You have no hearts left",
+    "loadFailed": "Failed to load case"
   },
   "onboarding": {
     "skip": "Skip",
@@ -265,13 +336,28 @@
     "slide2Title": "Diagnose & Treat",
     "slide2Desc": "Order tests, make diagnoses, and prescribe treatments",
     "slide3Title": "Track Your Progress",
-    "slide3Desc": "Compete with peers and climb the leaderboard"
+    "slide3Desc": "Compete with peers and climb the leaderboard",
+    "line1": "You are a doctor.",
+    "line2": "A patient walks in — pale, sweating, clutching his chest.",
+    "line3": "He’s 42. His pulse is weak. His ECG monitor screams for help.",
+    "line4": "You have seconds.",
+    "optionTitle": "What will you do?",
+    "option1": "Call for an ECG?",
+    "option2": "Order Troponin?",
+    "option3": "Ask for history?",
+    "option4": "Wait and observe?",
+    "line5": "Every choice matters.",
+    "line6": "Can you save him?"
   },
   "notification": {
     "title": "Don't miss case of the day",
     "description": "We'll remind you once a day to keep your clinical skills sharp.",
     "enable": "Allow notifications",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "whyEnable": "Why enable notifications?",
+    "benefit1": "Daily reminder",
+    "benefit2": "Turn on/off anytime from Account → Settings",
+    "finePrint": "You can change this anytime in Settings. One reminder per day — no spam."
   },
   "login": {
     "title": "Diagnose It",
@@ -281,7 +367,8 @@
     "termsPrefix": "By signing in, you agree to our",
     "termsLink": "Terms of Service",
     "and": "and",
-    "privacyLink": "Privacy Policy"
+    "privacyLink": "Privacy Policy",
+    "thoughtText": "The more you diagnose, the better you become."
   },
   "quit": {
     "title": "Quit Case?",

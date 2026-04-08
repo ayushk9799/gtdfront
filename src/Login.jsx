@@ -173,7 +173,7 @@ function Login({ onLogin }) {
         <Image source={senior} style={styles.heroImage} />
         <View style={styles.thoughtContainer} pointerEvents="none">
           <View style={styles.thoughtBubble}>
-            <Text style={styles.thoughtText}>The more you diagnose, the better you become.</Text>
+            <Text style={styles.thoughtText}>{t('login.thoughtText')}</Text>
           </View>
           <View style={styles.thoughtTrail}>
             <View style={styles.trailDot1} />

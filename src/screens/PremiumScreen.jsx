@@ -25,7 +25,7 @@ export default function PremiumScreen() {
 
   const [loading, setLoading] = useState(false);
   const theme = Colors.light;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const scrollY = useRef(new Animated.Value(0)).current;
   const heroOpacity = useMemo(
     () =>
@@ -57,8 +57,7 @@ export default function PremiumScreen() {
     () => [
       { label: t('premium.unlimitedCases'), free: '2', pro: true },
       { label: t('premium.dailyChallenge'), free: '2', pro: true },
-      { label: t('premium.pastDailyChallenge'), free: false, pro: true },
-      { label: t('premium.videoOverview'), free: false, pro: true },
+      { label: t('premium.unlimitedQuizzes'), free: false, pro: true },
       { label: t('premium.clinicalImages'), free: false, pro: true },
       { label: t('premium.clinicalInsights'), free: false, pro: true },
     ],
@@ -214,15 +213,20 @@ export default function PremiumScreen() {
     try {
       if (!price || !currencyCode) return '';
       const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
-      return new Intl.NumberFormat(undefined, {
+      // Use i18n.language for locale or undefined for device default
+      // narrowSymbol: use "$" instead of "US$", "₹" instead of "INR", etc.
+      return new Intl.NumberFormat(i18n.language || undefined, {
         style: 'currency',
         currency: currencyCode,
-        minimumFractionDigits: 2,
+        currencyDisplay: 'narrowSymbol',
+        minimumFractionDigits: finalPrice % 1 === 0 ? 0 : 2, // No decimals if whole number
         maximumFractionDigits: 2,
       }).format(finalPrice);
     } catch {
       const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
-      return `${currencyCode} ${finalPrice.toFixed(2)}`;
+      // Better looking fallback
+      const fmtPrice = finalPrice.toFixed(finalPrice % 1 === 0 ? 0 : 2);
+      return `${currencyCode} ${fmtPrice}`;
     }
   };
 

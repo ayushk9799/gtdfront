@@ -134,7 +134,9 @@
     "nextQuestion": "Nächste Frage",
     "noQuizzesAvailable": "Keine Quiz verfügbar",
     "completed": "Abgeschlossen",
-    "solvedCount": "{{solved}} / {{total}} gelöst"
+    "solvedCount": "{{solved}} / {{total}} gelöst",
+    "category": "Kategorie",
+    "playAllSubtitle": "Mix aus über 1000 klinischen Fällen"
   },
   "premium": {
     "title": "Premium",
@@ -145,6 +147,7 @@
     "dailyChallenge": "Tägliche Herausforderung",
     "pastDailyChallenge": "Vergangene Herausforderungen",
     "videoOverview": "Videoüberblick",
+    "unlimitedQuizzes": "Unbegrenzte Quiz",
     "clinicalImages": "Klinische Bilder",
     "deepDiveExplanations": "Tiefgehende Erklärungen",
     "clinicalInsights": "Klinische Einblicke",
@@ -178,16 +181,47 @@
     "mostPopular": "Am beliebtesten",
     "bestValue": "Bester Wert",
     "subscribe": "Abonnieren",
-    "continueBtn": "Weiter"
+    "continueBtn": "Weiter",
+    "premiumPoint1": "Alle Abteilungsfälle freischalten",
+    "premiumPoint2": "Premium-Funktionen nutzen",
+    "premiumPoint3": "Vollständiger Quiz-Zugang"
   },
   "heart": {
     "title": "Herzen",
     "heartsRemaining": "Verbleibende Herzen",
     "refillIn": "Auffüllung in {{time}}",
-    "getPremium": "Hol dir Premium für unbegrenzte Herzen",
+    "getPremium": "Premium freischalten",
     "referForHearts": "Freund empfehlen für +1 ❤️",
     "watchAdForHeart": "Werbung ansehen für +1 ❤️",
-    "unlimitedWithPremium": "Unbegrenzte Herzen mit Premium"
+    "unlimitedWithPremium": "Unbegrenzte Herzen mit Premium",
+    "caseEquality": "1 Herz = 1 Fall",
+    "premiumHeading": "Du bist Premium-Mitglied",
+    "unlimitedHearts": "Unbegrenzte Herzen",
+    "heartCount_one": "{{count}} Herz übrig",
+    "heartCount_other": "{{count}} Herzen übrig",
+    "unlimitedAccess": "Genieße unbegrenzten Zugang zu allen Fällen!",
+    "startedWith": "Du hast mit 2 Herzen angefangen. Hol dir mehr durch Teilen!",
+    "wantMore": "Willst du mehr spielen?",
+    "unlockUnlimited": "Unbegrenzte Herzen freischalten",
+    "accessClinical": "Klinische Einblicke",
+    "accessQuizzes": "Unbegrenzte Quizze",
+    "or": "ODER",
+    "getOneMore": "Hol dir noch ein Herz",
+    "referralDesc": "Teile deinen Code mit Freunden. Wenn sie ihn eingeben, erhältst du ein kostenloses Herz!",
+    "yourCode": "Dein Empfehlungscode",
+    "shareCode": "Code teilen",
+    "haveFriendsCode": "Hast du einen Code von einem Freund?",
+    "enterCode": "Code eingeben",
+    "apply": "Anwenden",
+    "applied": "Code des Freundes angewendet!",
+    "inviteTitle": "Zu Diagnose It einladen",
+    "shareMsgWithCode": "🩺 Medizin auf echte Weise lernen!\nDiagnose It lässt dich Patienten Schritt für Schritt wie in echten OPD-Fällen behandeln.\nNutze meinen Empfehlungscode {{code}} bei der Anmeldung ❤️\nMach mit 👉 https://diagnoseit.in",
+    "shareMsgNoCode": "🎯 Hey! Ich löse echte klinische Fälle mit Diagnose It! Es ist real und macht Spaß - du kannst Patienten wie ein echter Arzt behandeln. Mach mit: https://diagnoseit.in",
+    "success": "Erfolg!",
+    "appliedSuccess": "Empfehlungscode angewendet. Dein Freund hat ein Herz erhalten!",
+    "oops": "Hoppla!",
+    "invalidCode": "Ungültiger oder bereits verwendeter Code.",
+    "applyError": "Code konnte nicht angewendet werden. Bitte versuche es erneut."
   },
   "account": {
     "casesSolved": "Fälle gelöst",
@@ -224,7 +258,12 @@
     "save": "Speichern",
     "saving": "Speichern...",
     "saved": "Profil aktualisiert!",
-    "nameRequired": "Name ist erforderlich"
+    "nameRequired": "Name ist erforderlich",
+    "enterName": "Gib deinen Namen ein",
+    "yourEmail": "Deine E-Mail",
+    "emailNoChange": "E-Mail kann nicht geändert werden",
+    "dangerZone": "Gefahrenbereich",
+    "dangerZoneDesc": "Aktionen hier sind unwiderruflich. Bitte gehen Sie mit Vorsicht vor."
   },
   "league": {
     "title": "Rangliste",
@@ -237,7 +276,16 @@
     "dailyChallenge": "Heute Challenge",
     "noRankings": "Noch keine Rangliste",
     "you": "Du",
-    "challengeFriends": "Freunde herausfordern"
+    "challengeFriends": "Freunde herausfordern",
+    "rank": "RANG",
+    "player": "SPIELER",
+    "score": "PUNKTE",
+    "beTheFirst": "🎉 Du bist der Erste, der die heutige Herausforderung abgeschlossen hat!",
+    "challengeToBeat": "Fordere deine Freunde heraus, deine Punktzahl zu schlagen",
+    "noParticipants": "Noch niemand hat die heutige Herausforderung abgeschlossen. Sei der Erste!",
+    "participants_one": "{{count}} Teilnehmer",
+    "participants_other": "{{count}} Teilnehmer",
+    "inactiveMessage": "Löse einen Fall, um dein Gesamtranking zu reaktivieren! Du hast seit 7 Tagen nicht gespielt."
   },
   "learning": {
     "title": "Lernen",
@@ -252,9 +300,32 @@
     "noHistory": "Keine vergangenen Herausforderungen gefunden",
     "premiumOnly": "Vergangene Herausforderungen sind nur für Premium-Nutzer verfügbar"
   },
+  "departmentNames": {
+    "cardiology": "Kardiologie",
+    "dermatology": "Dermatologie",
+    "emergency medicine": "Notfallmedizin",
+    "general surgery": "Allgemeinchirurgie",
+    "gynecology": "Gynäkologie",
+    "obstetrics & gynecology": "Geburtshilfe & Gynäkologie",
+    "internal medicine": "Innere Medizin",
+    "neurology": "Neurologie",
+    "ophthalmology": "Augenheilkunde",
+    "orthopedics": "Orthopädie",
+    "pediatrics": "Pädiatrie",
+    "psychiatry": "Psychiatrie",
+    "pulmonology": "Pneumologie",
+    "otolaryngology": "Hals-Nasen-Ohren-Heilkunde"
+  },
   "departmentCases": {
     "cases": "Fälle",
-    "noCases": "Keine Fälle in dieser Abteilung"
+    "noCases": "Keine Fälle in dieser Abteilung",
+    "solved": "GELÖST",
+    "unsolved": "UNGELÖST",
+    "medicalCase": "Medizinischer Fall",
+    "department": "Abteilung",
+    "premiumCases": "Premium-Fälle",
+    "noHearts": "Du hast keine Herzen mehr",
+    "loadFailed": "Fall konnte nicht geladen werden"
   },
   "onboarding": {
     "skip": "Überspringen",
@@ -265,13 +336,28 @@
     "slide2Title": "Diagnostizieren & Behandeln",
     "slide2Desc": "Ordne Tests an, stelle Diagnosen und verschreibe Behandlungen",
     "slide3Title": "Verfolge deinen Fortschritt",
-    "slide3Desc": "Tritt gegen andere an und steige in der Bestenliste auf"
+    "slide3Desc": "Tritt gegen andere an und steige in der Bestenliste auf",
+    "line1": "Du bist ein Arzt.",
+    "line2": "Ein Patient kommt herein – blass, schwitzend, greift sich an die Brust.",
+    "line3": "Er ist 42. Sein Puls ist schwach. Sein EKG-Monitor schreit um Hilfe.",
+    "line4": "Du hast Sekunden.",
+    "optionTitle": "Was wirst du tun?",
+    "option1": "Ein EKG anfordern?",
+    "option2": "Troponin bestellen?",
+    "option3": "Anamnese erheben?",
+    "option4": "Abwarten und beobachten?",
+    "line5": "Jede Entscheidung zählt.",
+    "line6": "Kannst du ihn retten?"
   },
   "notification": {
     "title": "Verpasse keinen Fall des Tages",
     "description": "Wir erinnern dich einmal täglich, um deine klinischen Fähigkeiten zu schärfen.",
     "enable": "Benachrichtigungen erlauben",
-    "notNow": "Nicht jetzt"
+    "notNow": "Nicht jetzt",
+    "whyEnable": "Warum Benachrichtigungen aktivieren?",
+    "benefit1": "Tägliche Erinnerung",
+    "benefit2": "Jederzeit an-/ausschaltbar unter Konto → Einstellungen",
+    "finePrint": "Du kannst dies jederzeit in den Einstellungen ändern. Eine Erinnerung pro Tag – kein Spam."
   },
   "login": {
     "title": "Diagnose It",
@@ -281,7 +367,8 @@
     "termsPrefix": "Durch die Anmeldung stimmst du unseren",
     "termsLink": "Nutzungsbedingungen",
     "and": "und",
-    "privacyLink": "Datenschutzrichtlinie"
+    "privacyLink": "Datenschutzrichtlinie",
+    "thoughtText": "Je mehr du diagnostizierst, desto besser wirst du."
   },
   "quit": {
     "title": "Fall beenden?",

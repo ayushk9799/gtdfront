@@ -109,15 +109,15 @@ export default function NotificationPermission() {
       </View>
 
       <View style={[styles.infoCard, styles.cardShadow]}>
-        <Text style={styles.sectionTitle}>Why enable notifications?</Text>
+        <Text style={styles.sectionTitle}>{t('notification.whyEnable')}</Text>
         <View style={styles.benefits}>
           <View style={styles.benefitRow}>
             <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
-            <Text style={styles.benefitText}>Daily reminder</Text>
+            <Text style={styles.benefitText}>{t('notification.benefit1')}</Text>
           </View>
           <View style={styles.benefitRow}>
             <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
-            <Text style={styles.benefitText}>Turn on/off anytime from Account → Settings</Text>
+            <Text style={styles.benefitText}>{t('notification.benefit2')}</Text>
           </View>
           {/* <View style={styles.benefitRow}>
             <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
@@ -138,7 +138,7 @@ export default function NotificationPermission() {
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
           <MaterialCommunityIcons name="shield-lock-outline" size={14} color="#6B7280" />
-          <Text style={styles.finePrint}>  You can change this anytime in Settings. One reminder per day — no spam.</Text>
+          <Text style={styles.finePrint}>  {t('notification.finePrint')}</Text>
         </View>
       </View>
 

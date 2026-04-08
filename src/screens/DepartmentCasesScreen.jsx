@@ -61,7 +61,7 @@ export default function DepartmentCasesScreen() {
 
         try {
             if (!isPremium && hearts <= 0) {
-                ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);
+                ToastAndroid.show(t('departmentCases.noHearts'), ToastAndroid.SHORT);
                 navigation.navigate('Heart');
                 return;
             }
@@ -126,11 +126,11 @@ export default function DepartmentCasesScreen() {
                 // If not completed or gameplay fetch failed, go to ClinicalInfo
                 navigation.navigate('ClinicalInfo');
             } else {
-                ToastAndroid.show('Failed to load case', ToastAndroid.SHORT);
+                ToastAndroid.show(t('departmentCases.loadFailed'), ToastAndroid.SHORT);
             }
         } catch (error) {
             console.warn('Error starting case:', error);
-            ToastAndroid.show('Something went wrong', ToastAndroid.SHORT);
+            ToastAndroid.show(t('common.error'), ToastAndroid.SHORT);
         } finally {
             setLoadingCaseId(null);
         }
@@ -165,13 +165,13 @@ export default function DepartmentCasesScreen() {
                                     fontWeight: '800',
                                     color: item.status === 'completed' ? '#2E7D32' : '#757575'
                                 }}>
-                                    {item.status === 'completed' ? 'SOLVED' : 'UNSOLVED'}
+                                    {item.status === 'completed' ? t('departmentCases.solved') : t('departmentCases.unsolved')}
                                 </Text>
                             </View>
                             {loadingCaseId === item.caseId && <ActivityIndicator size={14} color={Colors.brand.darkPink} />}
                         </View>
                         <Text style={[styles.cardTitle, { color: themeColors.text, fontSize: 16, marginBottom: 2 }]} numberOfLines={1}>
-                            {item.caseTitle || 'Medical Case'}
+                            {item.caseTitle || t('departmentCases.medicalCase')}
                         </Text>
                         <Text style={styles.cardDesc} numberOfLines={2}>
                             {item.chiefComplaint}
@@ -197,7 +197,7 @@ export default function DepartmentCasesScreen() {
                                     justifyContent: 'center',
                                 }}>
                                     {/* <MaterialCommunityIcons name="check-circle" size={32} color="#FFFFFF" /> */}
-                                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 'bold', opacity: 0.6 }}>Solved</Text>
+                                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 'bold', opacity: 0.6 }}>{t('departmentCases.solved')}</Text>
                                 </View>
                             )}
                             {!isPremium && index >= 2 && item.status !== 'completed' && (
@@ -256,7 +256,7 @@ export default function DepartmentCasesScreen() {
                         <MaterialCommunityIcons name="arrow-left" size={24} color={themeColors.text} />
                     </TouchableOpacity>
                     <Text style={[styles.cardTitle, { color: themeColors.text, fontSize: 20, marginBottom: 0 }]}>
-                        {(categoryName || 'Department').charAt(0).toUpperCase() + (categoryName || 'Department').slice(1)}
+                        {(categoryName || t('departmentCases.department')).charAt(0).toUpperCase() + (categoryName || t('departmentCases.department')).slice(1)}
                     </Text>
                 </View>
 
@@ -291,7 +291,7 @@ export default function DepartmentCasesScreen() {
                                 {index === 1 && departmentCases.cases.length > 2 && (
                                     <View style={localStyles.premiumDivider}>
                                         <View style={localStyles.dividerLine} />
-                                        <Text style={localStyles.premiumDividerText}>Premium Cases</Text>
+                                        <Text style={localStyles.premiumDividerText}>{t('departmentCases.premiumCases')}</Text>
                                         <View style={localStyles.dividerLine} />
                                     </View>
                                 )}
@@ -305,9 +305,9 @@ export default function DepartmentCasesScreen() {
             <PremiumBottomSheet
                 ref={premiumSheetRef}
                 points={[
-                    'Unlock all department cases',
-                    'Access premium features',
-                    'Full Quizzes access'
+                    t('premium.premiumPoint1'),
+                    t('premium.premiumPoint2'),
+                    t('premium.premiumPoint3')
                 ]}
             />
         </View>

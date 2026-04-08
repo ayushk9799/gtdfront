@@ -98,15 +98,12 @@ export default function HeartScreen() {
   const onShareWithFriend = async () => {
     try {
       const shareMessage = referralCode
-        ? `🩺 Learning medicine the real way!
-Diagnose It lets you treat patients step-by-step like real OPD cases.
-Use my referral code ${referralCode} while signing up ❤️
-Join me 👉 https://diagnoseit.in`
-        : '🎯 Hey! I\'m solving real clinical cases with Diagnose It! It is real and fun - you can treat patients like a real doctor. Join here: https://diagnoseit.in';
+        ? t('heart.shareMsgWithCode', { code: referralCode })
+        : t('heart.shareMsgNoCode');
 
       await Share.share({
         message: shareMessage,
-        title: 'Invite to Diagnose It',
+        title: t('heart.inviteTitle'),
       });
     } catch (error) {
     }
@@ -134,12 +131,12 @@ Join me 👉 https://diagnoseit.in`
       if (response.ok && data.success) {
         setCodeApplied(true);
         setFriendCode('');
-        Alert.alert('Success!', 'Referral code applied. Your friend received a heart!');
+        Alert.alert(t('heart.success'), t('heart.appliedSuccess'));
       } else {
-        Alert.alert('Oops!', data.message || 'Invalid or already used code.');
+        Alert.alert(t('heart.oops'), data.message || t('heart.invalidCode'));
       }
     } catch (error) {
-      Alert.alert('Error', 'Could not apply the code. Please try again.');
+      Alert.alert(t('heart.error'), t('heart.applyError'));
     } finally {
       setIsApplying(false);
     }
@@ -258,8 +255,7 @@ Join me 👉 https://diagnoseit.in`
           >
             <View style={{ paddingHorizontal: 16 }}>
               <Text style={styles.subtitle}>
-                <Text style={styles.boldText}>1 Heart = 1 Case</Text>
-
+                <Text style={styles.boldText}>{t('heart.caseEquality')}</Text>
               </Text>
 
               {isPremium ? (
@@ -269,13 +265,13 @@ Join me 👉 https://diagnoseit.in`
                   </View>
                   <View style={styles.cardMainTextContainer}>
                     <Text style={styles.cardMainText}>
-                      You are <Text style={[styles.cardMainTextNumber, { color: '#667eea' }]}>Premium</Text> Member
+                      {t('heart.premiumHeading')}
                     </Text>
                   </View>
                   <View style={styles.timerContainer}>
                     <Ionicons name="infinite" size={18} color="#667eea" style={{ marginRight: 6 }} />
                     <Text style={styles.timerText}>
-                      <Text style={[styles.timerTime, { color: '#667eea' }]}>Unlimited Hearts</Text>
+                      <Text style={[styles.timerTime, { color: '#667eea' }]}>{t('heart.unlimitedHearts')}</Text>
                     </Text>
                   </View>
                 </View>
@@ -297,17 +293,17 @@ Join me 👉 https://diagnoseit.in`
                   </View>
                   <View style={styles.cardMainTextContainer}>
                     <Text style={styles.cardMainText}>
-                      <Text style={styles.cardMainTextNumber}>{hearts}</Text> {hearts === 1 ? 'Heart' : 'Hearts'} Left
+                      {t('heart.heartCount', { count: hearts })}
                     </Text>
                   </View>
                 </View>
               )}
 
-              <Text style={styles.subtitleSecondary}>{isPremium ? 'Enjoy unlimited access to all cases!' : 'You started with 2 hearts. Get more by sharing!'}</Text>
+              <Text style={styles.subtitleSecondary}>{isPremium ? t('heart.unlimitedAccess') : t('heart.startedWith')}</Text>
 
               {!isPremium && (
                 <View style={styles.cardAlt}>
-                  <Text style={styles.cardAltTitle}>Want to play more?</Text>
+                  <Text style={styles.cardAltTitle}>{t('heart.wantMore')}</Text>
 
                   {/* Premium Option */}
                   <View style={styles.optionSection}>
@@ -321,20 +317,20 @@ Join me 👉 https://diagnoseit.in`
                     <View style={styles.listRow}>
                       <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
                       <Text style={styles.listText}>
-                        Unlock <Text style={{ fontWeight: '700' }}>Unlimited Hearts</Text>
+                        {t('heart.unlockUnlimited')}
                       </Text>
                     </View>
 
                     <View style={styles.listRow}>
                       <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
                       <Text style={styles.listText}>
-                        Access <Text style={{ fontWeight: '700' }}>Clinical Insight</Text>
+                        {t('heart.accessClinical')}
                       </Text>
                     </View>
                     <View style={styles.listRow}>
                       <Ionicons name="checkmark-circle" size={18} color="#02b3a4" style={{ marginRight: 8 }} />
                       <Text style={styles.listText}>
-                        Access <Text style={{ fontWeight: '700' }}>Unlimited Quizz</Text>
+                        {t('heart.accessQuizzes')}
                       </Text>
                     </View>
 
@@ -347,7 +343,7 @@ Join me 👉 https://diagnoseit.in`
                   <View style={styles.orDividerContainer}>
                     <View style={styles.orDividerLine} />
                     <View style={styles.orDividerTextContainer}>
-                      <Text style={styles.orDividerText}>OR</Text>
+                      <Text style={styles.orDividerText}>{t('heart.or')}</Text>
                     </View>
                     <View style={styles.orDividerLine} />
                   </View>
@@ -358,7 +354,7 @@ Join me 👉 https://diagnoseit.in`
                       <View style={[styles.optionIconContainer, { backgroundColor: '#FFF0F0' }]}>
                         <Ionicons name="gift" size={20} color="#ff4d4f" />
                       </View>
-                      <Text style={styles.optionTitle}>Get one more Heart</Text>
+                      <Text style={styles.optionTitle}>{t('heart.getOneMore')}</Text>
                       <View style={styles.heartBadge}>
                         <Ionicons name="heart" size={12} color="#ff4d4f" />
                         <Text style={styles.heartBadgeText}>+1</Text>
@@ -366,13 +362,13 @@ Join me 👉 https://diagnoseit.in`
                     </View>
 
                     <Text style={styles.referralDescriptionText}>
-                      Share your code with <Text style={{ fontWeight: '700', color: "black" }}>friends</Text>. When they enter it, you get a <Text style={{ fontWeight: '700', color: "black" }}>free heart!</Text>
+                      {t('heart.referralDesc')}
                     </Text>
 
                     {/* Referral Code Display */}
                     {referralCode ? (
                       <View style={styles.referralCodeBox}>
-                        <Text style={styles.referralCodeLabel}>Your Referral Code</Text>
+                        <Text style={styles.referralCodeLabel}>{t('heart.yourCode')}</Text>
                         <Text style={styles.referralCodeValue}>{referralCode}</Text>
                       </View>
                     ) : null}
@@ -383,18 +379,18 @@ Join me 👉 https://diagnoseit.in`
                       activeOpacity={0.9}
                     >
                       <Ionicons name="share-social" size={18} color="#2D3142" style={{ marginRight: 8 }} />
-                      <Text style={styles.secondaryButtonText}>Share Code</Text>
+                      <Text style={styles.secondaryButtonText}>{t('heart.shareCode')}</Text>
                     </TouchableOpacity>
 
                     {/* Enter Friend's Code Section */}
                     {!codeApplied && (
                       <View style={styles.enterCodeSection}>
                         <View style={styles.enterCodeDivider} />
-                        <Text style={styles.enterCodeLabel}>Have a friend's code?</Text>
+                        <Text style={styles.enterCodeLabel}>{t('heart.haveFriendsCode')}</Text>
                         <View style={styles.enterCodeInputRow}>
                           <TextInput
                             style={styles.enterCodeInput}
-                            placeholder="Enter code"
+                            placeholder={t('heart.enterCode')}
                             placeholderTextColor="#9CA3AF"
                             value={friendCode}
                             onChangeText={setFriendCode}
@@ -418,7 +414,7 @@ Join me 👉 https://diagnoseit.in`
                             {isApplying ? (
                               <ActivityIndicator size="small" color="#fff" />
                             ) : (
-                              <Text style={styles.applyCodeButtonText}>Apply</Text>
+                              <Text style={styles.applyCodeButtonText}>{t('heart.apply')}</Text>
                             )}
                           </TouchableOpacity>
                         </View>
@@ -428,7 +424,7 @@ Join me 👉 https://diagnoseit.in`
                     {codeApplied && (
                       <View style={styles.codeAppliedBadge}>
                         <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                        <Text style={styles.codeAppliedText}>Friend's code applied!</Text>
+                        <Text style={styles.codeAppliedText}>{t('heart.applied')}</Text>
                       </View>
                     )}
                   </View>

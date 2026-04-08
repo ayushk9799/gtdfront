@@ -32,13 +32,13 @@ export default function OnboardingScreen() {
   const storage = useMemo(() => new MMKV(), []);
 
   const script = useMemo(() => ([
-    { type: 'line', text: 'You are a doctor.', duration: 200, pause: 600, flicker: false },
-    { type: 'line', text: 'A patient walks in — pale, sweating, clutching his chest.', duration: 3900, pause: 0 },
-    { type: 'line', text: 'He’s 42. His pulse is weak. His ECG monitor screams for help.', duration: 5200, pause: 0 },
-    { type: 'line', text: 'You have seconds.', duration: 320, pause: 0, flicker: true },
-    { type: 'options', lines: ['What will you do?', 'Call for an ECG?', 'Order Troponin?', 'Ask for history?', 'Wait and observe?'], hold: 5370 },
-    { type: 'line', text: 'Every choice matters.', duration: 1800, pause: 0 },
-    { type: 'line', text: 'Can you save him?', duration: 300, pause: 0 },
+    { type: 'line', text: 'onboarding.line1', duration: 200, pause: 600, flicker: false },
+    { type: 'line', text: 'onboarding.line2', duration: 3900, pause: 0 },
+    { type: 'line', text: 'onboarding.line3', duration: 5200, pause: 0 },
+    { type: 'line', text: 'onboarding.line4', duration: 320, pause: 0, flicker: true },
+    { type: 'options', lines: ['onboarding.optionTitle', 'onboarding.option1', 'onboarding.option2', 'onboarding.option3', 'onboarding.option4'], logicIds: ['title', 'ecg', 'troponin', 'history', 'wait'], hold: 5370 },
+    { type: 'line', text: 'onboarding.line5', duration: 1800, pause: 0 },
+    { type: 'line', text: 'onboarding.line6', duration: 300, pause: 0 },
     { type: 'cta' },
   ]), []);
 
@@ -128,7 +128,7 @@ export default function OnboardingScreen() {
         if (step.type === 'line') {
           setOptionLines([]);
           optionOpacities.forEach(v => v.setValue(0));
-          setCurrentLine(step.text);
+          setCurrentLine(t(step.text));
           fade.setValue(0);
           await run(Animated.timing(fade, { toValue: 1, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }));
           await run(Animated.delay(step.duration || 1000));
@@ -142,8 +142,8 @@ export default function OnboardingScreen() {
           await run(Animated.timing(fade, { toValue: 0, duration: 350, easing: Easing.in(Easing.cubic), useNativeDriver: true }));
           await run(Animated.delay(step.pause || 0));
         } else if (step.type === 'options') {
-          setCurrentLine(step.lines[0]);
-          setOptionLines(step.lines.slice(1));
+          setCurrentLine(t(step.lines[0]));
+          setOptionLines(step.lines.slice(1).map((key, j) => ({ text: t(key), logicId: step.logicIds[j + 1] })));
           fade.setValue(0);
           optionOpacities.forEach(v => v.setValue(0));
           await run(Animated.timing(fade, { toValue: 1, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }));
@@ -218,15 +218,15 @@ export default function OnboardingScreen() {
             {optionLines.length > 0 && (
               <View style={{ marginTop: 10, alignItems: 'center' }}>
                 {optionLines.map((line, idx) => {
-                const textLower = (line || '').toLowerCase();
+                const logicId = line.logicId;
                 let color = '#374151';
                 let bg = 'transparent';
                 let icon = null;
-                if (textLower.includes('ecg') || textLower.includes('troponin')) {
+                if (logicId === 'ecg' || logicId === 'troponin') {
                   color = '#166534';
                   bg = 'rgba(22, 165, 52, 0.10)';
                   icon = 'check-circle-outline';
-                } else if (textLower.includes('wait')) {
+                } else if (logicId === 'wait') {
                   color = '#991B1B';
                   bg = 'rgba(220, 38, 38, 0.10)';
                   icon = 'alert-circle-outline';
@@ -252,7 +252,7 @@ export default function OnboardingScreen() {
                       color,
                       textAlign: 'center',
                     }}>
-                      {line}
+                      {line.text}
                     </Text>
                   </Animated.View>
                   );
@@ -303,9 +303,9 @@ export default function OnboardingScreen() {
                 </Animated.View>
                 <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 18 }}>{t('onboarding.getStarted')}</Text>
               </TouchableOpacity>
-              <Text style={{ marginTop: 8, color: '#6B7280', textAlign: 'center' }}>
-                Every choice matters.
-              </Text>
+                <Text style={{ marginTop: 8, color: '#6B7280', textAlign: 'center' }}>
+                  {t('onboarding.line5')}
+                </Text>
             </>
           )}
 

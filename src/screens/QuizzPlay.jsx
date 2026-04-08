@@ -89,6 +89,7 @@ const SkeletonCard = () => {
 };
 
 const QuizItem = React.memo(({ quiz, index, isVisible, isCurrent, selection, onOptionPress, videoRefs }) => {
+    const { t } = useTranslation();
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -116,7 +117,7 @@ const QuizItem = React.memo(({ quiz, index, isVisible, isCurrent, selection, onO
                         <View style={styles.questionCard}>
                             {quiz.department && (
                                 <View style={styles.departmentRow}>
-                                    <Text style={styles.departmentLabel}>{quiz.department}</Text>
+                                    <Text style={styles.departmentLabel}>{t(`departmentNames.${quiz.department.toLowerCase()}`, { defaultValue: quiz.department })}</Text>
                                 </View>
                             )}
 

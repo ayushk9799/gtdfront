@@ -207,7 +207,7 @@ export default function EditAccountScreen() {
                                     style={styles.textInput}
                                     value={name}
                                     onChangeText={setName}
-                                    placeholder="Enter your name"
+                                    placeholder={t('editAccount.enterName')}
                                     placeholderTextColor="#A0A0A0"
                                     autoCapitalize="words"
                                     autoCorrect={false}
@@ -229,7 +229,7 @@ export default function EditAccountScreen() {
                                 <TextInput
                                     style={[styles.textInput, styles.textInputDisabled]}
                                     value={email}
-                                    placeholder="Your email"
+                                    placeholder={t('editAccount.yourEmail')}
                                     placeholderTextColor="#A0A0A0"
                                     editable={false}
                                     selectTextOnFocus={false}
@@ -241,9 +241,9 @@ export default function EditAccountScreen() {
                                     style={styles.lockIcon}
                                 />
                             </View>
-                            <Text style={styles.helperText}>
-                                Email cannot be changed
-                            </Text>
+                                <Text style={styles.helperText}>
+                                    {t('editAccount.emailNoChange')}
+                                </Text>
                         </View>
                     </View>
 
@@ -268,10 +268,10 @@ export default function EditAccountScreen() {
                     <View style={styles.dangerZoneContainer}>
                         <View style={styles.dangerZoneHeader}>
                             <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#DC2626" />
-                            <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+                            <Text style={styles.dangerZoneTitle}>{t('editAccount.dangerZone')}</Text>
                         </View>
                         <Text style={styles.dangerZoneDescription}>
-                            Actions here are irreversible. Please proceed with caution.
+                            {t('editAccount.dangerZoneDesc')}
                         </Text>
                     </View>
 

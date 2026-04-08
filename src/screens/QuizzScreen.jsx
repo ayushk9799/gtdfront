@@ -200,11 +200,11 @@ export default function QuizzScreen() {
                                 <View style={styles.previewPlayCircle}>
                                     <MaterialCommunityIcons name={isVideo ? "play" : "stethoscope"} size={18} color="#FF407D" />
                                 </View>
-                                <Text style={styles.previewPlayText}>Solve This Case</Text>
+                                <Text style={styles.previewPlayText}>{t('home.solveTheCase')}</Text>
                                 {nextPreview.department && (
                                     <View style={styles.previewDeptBadge}>
                                         <Text style={styles.previewDeptText}>
-                                            {nextPreview.department.charAt(0).toUpperCase() + nextPreview.department.slice(1)}
+                                            {t(`departmentNames.${nextPreview.department.toLowerCase()}`, { defaultValue: nextPreview.department.charAt(0).toUpperCase() + nextPreview.department.slice(1) })}
                                         </Text>
                                     </View>
                                 )}
@@ -229,14 +229,14 @@ export default function QuizzScreen() {
                             </View>
                             <View style={styles.allQuizzesTextGroup}>
                                 <Text style={styles.allQuizzesTitle}>{t('quiz.playAll')}</Text>
-                                <Text style={styles.allQuizzesSubtitle}>Mix of 1000+ clinical cases</Text>
+                                <Text style={styles.allQuizzesSubtitle}>{t('quiz.playAllSubtitle')}</Text>
                             </View>
                             <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.5)" />
                         </View>
                     </LinearGradient>
                 )}
             </TouchableOpacity>
-            <Text style={styles.sectionTitle}>Category</Text>
+            <Text style={styles.sectionTitle}>{t('quiz.category')}</Text>
             </>
         );
     }, [categories, nextPreview, handleCategoryPress]);
@@ -257,7 +257,8 @@ export default function QuizzScreen() {
                     </Text>
                     <View style={styles.categoryIconContainer}>
                         {(() => {
-                            const normalizedName = item.name.toLowerCase();
+                            const nameToNormalize = item.originalName || item.name;
+                            const normalizedName = nameToNormalize.toLowerCase();
                             const CustomIcon = DepartmentIcons[normalizedName];
                             if (CustomIcon) return <CustomIcon size={68} color={Colors.brand.darkPink} />;
                             return <MaterialCommunityIcons name="brain" size={24} color={Colors.brand.darkPink} />;

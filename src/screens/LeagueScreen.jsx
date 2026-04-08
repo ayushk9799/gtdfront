@@ -131,9 +131,14 @@ export default function LeagueScreen() {
                         <Text style={[styles.avatarText, { fontSize: fontSize + 2 }]}>{getInitials(player.name)}</Text>
                     </View>
                 </LinearGradient>
-                <Text style={[styles.podiumName, { fontSize }]} numberOfLines={1} ellipsizeMode="tail">
-                    {player.name || '...'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', paddingHorizontal: 4 }}>
+                    <Text style={[styles.podiumName, { fontSize }]} numberOfLines={1} ellipsizeMode="tail">
+                        {player.name || '...'}
+                    </Text>
+                    {player.isPremium && (
+                        <MaterialCommunityIcons name="crown" size={fontSize + 2} color="#FFD700" style={{ marginLeft: 3 }} />
+                    )}
+                </View>
                 <View style={[styles.podiumScoreBadge, { backgroundColor: config.bgColor, borderColor: config.borderColor }]}>
                     <Image source={coinIcon} style={{ width: 12, height: 12 }} />
                     <Text style={[styles.podiumScore, { color: config.gradient[1] }]}>
@@ -176,11 +181,15 @@ export default function LeagueScreen() {
                         <Text style={styles.avatarSmallText}>{getInitials(item.name)}</Text>
                     </View>
 
-                    {/* Name */}
                     <View style={styles.nameContainer}>
-                        <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
-                            {item.name || '...'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                            <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
+                                {item.name || '...'}
+                            </Text>
+                            {item.isPremium && (
+                                <MaterialCommunityIcons name="crown" size={14} color="#FFD700" style={{ marginLeft: 4 }} />
+                            )}
+                        </View>
                         {isMe && <Text style={styles.youBadge}>{t('league.you')}</Text>}
                     </View>
 
@@ -248,7 +257,7 @@ export default function LeagueScreen() {
                         <MaterialCommunityIcons name="calendar-remove" size={48} color="#D1D5DB" />
                         <Text style={styles.noChallengeTitle}>{t('league.noRankings')}</Text>
                         <Text style={styles.noChallengeSubtitle}>
-                            {dailyError || 'No one has completed today\'s challenge yet. Be the first!'}
+                            {dailyError || t('league.noParticipants')}
                         </Text>
                     </View>
                 </View>
@@ -262,7 +271,7 @@ export default function LeagueScreen() {
                     <Text style={styles.dailyDateText}>{formatDate(dailyDate)}</Text>
                 </View>
                 <Text style={styles.dailyChallengeTitle} numberOfLines={2}>
-                    {challengeTitle || 'Daily Challenge'}
+                    {challengeTitle || t('league.dailyChallenge')}
                 </Text>
                 {category ? (
                     <View style={styles.categoryBadge}>
@@ -270,7 +279,7 @@ export default function LeagueScreen() {
                     </View>
                 ) : null}
                 <Text style={styles.participantsText}>
-                    {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''}
+                    {t('league.participants', { count: totalParticipants })}
                 </Text>
 
                 {/* Share Button */}
@@ -317,9 +326,9 @@ export default function LeagueScreen() {
             <View style={styles.leaderboardContainer}>
                 {/* Header */}
                 <View style={styles.listHeader}>
-                    <Text style={styles.listHeaderText}>RANK</Text>
-                    <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>PLAYER</Text>
-                    <Text style={styles.listHeaderText}>SCORE</Text>
+                    <Text style={styles.listHeaderText}>{t('league.rank')}</Text>
+                    <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>{t('league.player')}</Text>
+                    <Text style={styles.listHeaderText}>{t('league.score')}</Text>
                 </View>
 
                 {/* List Items */}
@@ -338,6 +347,14 @@ export default function LeagueScreen() {
                         </View>
                         {renderLeaderboardItem(me, 0, true)}
                     </>
+                )}
+
+                {/* Inactive Message */}
+                {me && me.updatedAt && (new Date(me.updatedAt) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) && (
+                    <View style={styles.inactiveMessageContainer}>
+                        <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#B45309" />
+                        <Text style={styles.inactiveMessageText}>{t('league.inactiveMessage')}</Text>
+                    </View>
                 )}
 
                 {/* Challenge Friends Button */}
@@ -367,9 +384,9 @@ export default function LeagueScreen() {
                     <View style={styles.leaderboardContainer}>
                         {/* Header */}
                         <View style={styles.listHeader}>
-                            <Text style={styles.listHeaderText}>RANK</Text>
-                            <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>PLAYER</Text>
-                            <Text style={styles.listHeaderText}>SCORE</Text>
+                            <Text style={styles.listHeaderText}>{t('league.rank')}</Text>
+                            <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>{t('league.player')}</Text>
+                            <Text style={styles.listHeaderText}>{t('league.score')}</Text>
                         </View>
 
                         {/* List Items - All participants */}
@@ -394,8 +411,8 @@ export default function LeagueScreen() {
                     {/* Show encouragement when user is the only participant */}
                     {dailyTop10.length === 1 && (
                         <View style={styles.encouragementContainer}>
-                            <Text style={styles.encouragementText}>🎉 You're the first to complete today's challenge!</Text>
-                            <Text style={styles.encouragementSubtext}>Challenge your friends to beat your score</Text>
+                            <Text style={styles.encouragementText}>{t('league.beTheFirst')}</Text>
+                            <Text style={styles.encouragementSubtext}>{t('league.challengeToBeat')}</Text>
                             <TouchableOpacity
                                 style={styles.shareButton}
                                 onPress={handleShareChallenge}
@@ -430,6 +447,8 @@ export default function LeagueScreen() {
                 >
                     {/* Render content based on active tab */}
                     {activeTab === 0 ? renderOverallContent() : renderDailyContent()}
+
+                    <View style={{ height: 80 }}></View>
 
                     {/* CloudBottom at bottom of list */}
                     <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.25 }} />
@@ -682,7 +701,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1F2937',
         marginTop: 8,
-        maxWidth: 90,
+        flexShrink: 1,
         textAlign: 'center',
     },
     podiumScoreBadge: {
@@ -790,12 +809,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        paddingRight: 4,
     },
     playerName: {
         fontSize: 13,
         fontWeight: '700',
         color: '#1F2937',
-        maxWidth: '70%',
+        flexShrink: 1,
     },
     youBadge: {
         fontSize: 9,
@@ -832,5 +852,24 @@ const styles = StyleSheet.create({
         height: 6,
         borderRadius: 3,
         backgroundColor: '#D1D5DB',
+    },
+    inactiveMessageContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFBEB',
+        padding: 12,
+        borderRadius: 12,
+        marginTop: 16,
+        marginHorizontal: 4,
+        borderWidth: 1,
+        borderColor: '#FEF3C7',
+        gap: 8,
+    },
+    inactiveMessageText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#B45309',
+        flex: 1,
+        lineHeight: 16,
     },
 });

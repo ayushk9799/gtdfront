@@ -687,7 +687,7 @@ Join me 👉 https://diagnoseit.in`
         </View>
 
         {/* Action Buttons */}
-        <View style={{ paddingHorizontal: 0, gap: 12, marginBottom: 24 }}>
+        <View style={{ paddingHorizontal: 0, gap: 12, marginBottom: 160 }}>
           <TouchableOpacity
             onPress={handleLogout}
             activeOpacity={0.85}

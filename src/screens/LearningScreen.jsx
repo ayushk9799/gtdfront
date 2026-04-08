@@ -183,9 +183,13 @@ export default function LearningScreen() {
   // Helper to get category based on sourceType
   const getItemCategory = (it) => {
     if (it.sourceType === 'dailyChallenge') {
-      return it.dailyChallenge?.category || t('common.daily');
+      const rawCat = it.dailyChallenge?.category;
+      if (rawCat) return t(`departmentNames.${rawCat.toLowerCase()}`, { defaultValue: rawCat });
+      return t('common.daily');
     }
-    return it.case?.category || 'General';
+    const rawCat = it.case?.category;
+    if (rawCat) return t(`departmentNames.${rawCat.toLowerCase()}`, { defaultValue: rawCat });
+    return 'General';
   };
 
   // Helper to get correct diagnosis based on sourceType
