@@ -11,6 +11,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedDiagnosis as setSelectedDiagnosisAction } from '../store/slices/currentGameSlice';
 import Sound from 'react-native-sound';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
+import { useTranslation } from 'react-i18next';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -107,6 +108,7 @@ export default function SelectDiagnosis() {
   const voiceId = useSelector((s) => s.currentGame.voiceId);
   const sourceType = useSelector((s) => s.currentGame.sourceType);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
+  const { t } = useTranslation();
 
   // Use default voice ID for daily challenges since they don't have a voiceId
   const effectiveVoiceId = voiceId || (sourceType === 'dailyChallenge' ? DEFAULT_VOICE_ID : null);
@@ -315,7 +317,7 @@ export default function SelectDiagnosis() {
             />
           </View>
         </View>
-        <Section title={`Select Diagnosis`}>
+        <Section title={t('diagnosis.selectDiagnosis')}>
           <View style={{ gap: 12 }}>
             {diagnosisOptions.map((opt) => {
               const selected = selectedDiagnosisId === opt.diagnosisId;
@@ -384,7 +386,7 @@ export default function SelectDiagnosis() {
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
-          <Text style={styles.primaryButtonText}>Give Medication</Text>
+          <Text style={styles.primaryButtonText}>{t('diagnosis.giveMedication')}</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
         </TouchableOpacity>
         <QuitConfirmationSheet

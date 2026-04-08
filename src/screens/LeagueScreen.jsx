@@ -10,6 +10,7 @@ import rankingImage from '../../constants/ranking.png';
 import coinIcon from '../../constants/coin.png';
 import CloudBottom from '../components/CloudBottom';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTranslation } from 'react-i18next';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -44,6 +45,7 @@ const formatDate = (dateStr) => {
 export default function LeagueScreen() {
     const dispatch = useDispatch();
     const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
 
     // Tab state: 0 = Overall, 1 = Daily Challenge
     const [activeTab, setActiveTab] = useState(0);
@@ -179,7 +181,7 @@ export default function LeagueScreen() {
                         <Text style={styles.playerName} numberOfLines={1} ellipsizeMode="tail">
                             {item.name || '...'}
                         </Text>
-                        {isMe && <Text style={styles.youBadge}>You</Text>}
+                        {isMe && <Text style={styles.youBadge}>{t('league.you')}</Text>}
                     </View>
 
                     {/* Score */}
@@ -208,7 +210,7 @@ export default function LeagueScreen() {
                     color={activeTab === 0 ? '#FF407D' : '#9CA3AF'}
                 />
                 <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>
-                    Overall
+                    {t('league.overall')}
                 </Text>
             </TouchableOpacity>
 
@@ -223,7 +225,7 @@ export default function LeagueScreen() {
                     color={activeTab === 1 ? '#FF407D' : '#9CA3AF'}
                 />
                 <Text style={[styles.tabText, activeTab === 1 && styles.tabTextActive]}>
-                    Daily Challenge
+                    {t('league.dailyChallenge')}
                 </Text>
             </TouchableOpacity>
         </View>
@@ -244,7 +246,7 @@ export default function LeagueScreen() {
                 <View style={styles.dailyHeader}>
                     <View style={styles.noChallengeContainer}>
                         <MaterialCommunityIcons name="calendar-remove" size={48} color="#D1D5DB" />
-                        <Text style={styles.noChallengeTitle}>No Rankings Yet</Text>
+                        <Text style={styles.noChallengeTitle}>{t('league.noRankings')}</Text>
                         <Text style={styles.noChallengeSubtitle}>
                             {dailyError || 'No one has completed today\'s challenge yet. Be the first!'}
                         </Text>
@@ -346,7 +348,7 @@ export default function LeagueScreen() {
                         activeOpacity={0.7}
                     >
                         <MaterialCommunityIcons name="share-variant" size={18} color="#FFFFFF" />
-                        <Text style={styles.shareButtonText}>Challenge Friends</Text>
+                        <Text style={styles.shareButtonText}>{t('league.challengeFriends')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -400,7 +402,7 @@ export default function LeagueScreen() {
                                 activeOpacity={0.7}
                             >
                                 <MaterialCommunityIcons name="share-variant" size={18} color="#FFFFFF" />
-                                <Text style={styles.shareButtonText}>Challenge Friends</Text>
+                                <Text style={styles.shareButtonText}>{t('league.challengeFriends')}</Text>
                             </TouchableOpacity>
                         </View>
                     )}

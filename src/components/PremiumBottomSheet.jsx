@@ -7,9 +7,11 @@ import { Colors } from '../../constants/Colors';
 import premiumImage from '../../constants/premium-image.png';
 import Purchases from 'react-native-purchases';
 import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
+import { useTranslation, Trans } from 'react-i18next';
 
 const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] }, ref) {
   const dispatch = useDispatch();
+  const { t, i18n } = useTranslation();
   const { userData } = useSelector(state => state.user);
   const sheetRef = useRef(null);
   const [selectedPlan, setSelectedPlan] = useState(null); // 'weekly' | 'monthly' | 'sixMonth' | 'lifetime'
@@ -116,15 +118,17 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
       const o = await Purchases.getOfferings();
       if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
         setOfferings(o);
-        // pick default: prefer sixMonth (best value), else monthly
+        // pick default: prefer lifetime, else sixMonth, else monthly
         if (o.current.lifetime) {
-          setSelectedPlan('lifetime');
+          setSelectedPlan(o.current.lifetime.identifier);
         } else if (o.current.sixMonth) {
-          setSelectedPlan('sixMonth');
+          setSelectedPlan(o.current.sixMonth.identifier);
         } else if (o.current.monthly) {
-          setSelectedPlan('monthly');
+          setSelectedPlan(o.current.monthly.identifier);
         } else if (o.current.weekly) {
-          setSelectedPlan('weekly');
+          setSelectedPlan(o.current.weekly.identifier);
+        } else if (o.current.availablePackages.length > 0) {
+          setSelectedPlan(o.current.availablePackages[0].identifier);
         } else {
           setSelectedPlan(null);
         }
@@ -141,35 +145,31 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
     }
   };
 
-  const sixMonthPackage = offerings?.current?.sixMonth || null;
-  const monthlyPackage = offerings?.current?.monthly || null;
-  const weeklyPackage = offerings?.current?.weekly || null;
-  const lifetimePackage = offerings?.current?.lifetime || null;
-  const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'sixMonth' ? sixMonthPackage : selectedPlan === 'weekly' ? weeklyPackage : selectedPlan === 'lifetime' ? lifetimePackage : null;
+  const selectedPackage = offerings?.current?.availablePackages?.find(pkg => pkg.identifier === selectedPlan) || null;
   const isPremium = !!(useSelector(state => state.user).userData?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
   const premiumPlan = useSelector(state => state.user).userData?.premiumPlan || null;
   const premiumExpiresAt = useSelector(state => state.user).userData?.premiumExpiresAt || null;
 
   const planLabelFromId = (id) => {
     try {
-      if (!id) return 'Active subscription';
+      if (!id) return t('premium.activeSubscription', 'Active subscription');
       const lower = String(id).toLowerCase();
-      if (lower.includes('week')) return 'Weekly Plan';
-      if (lower.includes('month')) return 'Monthly Plan';
-      if (lower.includes('year') || lower.includes('annual')) return 'Annual Plan';
-      if (lower.includes('life')) return 'Lifetime';
-      return 'Active subscription';
+      if (lower.includes('week')) return t('premium.weeklyPlan', 'Weekly Plan');
+      if (lower.includes('month')) return t('premium.monthlyPlan', 'Monthly Plan');
+      if (lower.includes('year') || lower.includes('annual')) return t('premium.annualPlan', 'Annual Plan');
+      if (lower.includes('life')) return t('premium.lifetime', 'Lifetime');
+      return t('premium.activeSubscription', 'Active subscription');
     } catch {
-      return 'Active subscription';
+      return t('premium.activeSubscription', 'Active subscription');
     }
   };
   const formatDate = (iso) => {
     try {
-      if (!iso) return 'Active';
+      if (!iso) return t('account.status', 'Active');
       const d = new Date(iso);
-      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      return d.toLocaleDateString(i18n.language, { year: 'numeric', month: 'short', day: 'numeric' });
     } catch {
-      return 'Active';
+      return t('account.status', 'Active');
     }
   };
 
@@ -201,36 +201,12 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
     }
   };
 
-  // Calculate strikethrough price for monthly (show a higher "original" price)
-  const getMonthlyStrikethroughPrice = () => {
-    if (!monthlyPackage?.product?.price || !monthlyPackage?.product?.currencyCode) return null;
-    const monthlyPrice = monthlyPackage.product.price;
-    const originalPrice = monthlyPrice * 2.0; // 100% higher as "original" price
-    return formatCurrencyPrice(originalPrice, monthlyPackage.product.currencyCode, true);
-  };
-
-  // Calculate strikethrough price for 6-month (1.5x the actual price)
-  const getSixMonthStrikethroughPrice = () => {
-    if (!sixMonthPackage?.product?.price || !sixMonthPackage?.product?.currencyCode) return null;
-    const sixMonthPrice = sixMonthPackage.product.price;
-    const originalPrice = sixMonthPrice * 2.0; // 100% higher as "original" price
-    return formatCurrencyPrice(originalPrice, sixMonthPackage.product.currencyCode, true);
-  };
-
-  // Calculate strikethrough price for weekly (1.5x the actual price)
-  const getWeeklyStrikethroughPrice = () => {
-    if (!weeklyPackage?.product?.price || !weeklyPackage?.product?.currencyCode) return null;
-    const weeklyPrice = weeklyPackage.product.price;
-    const originalPrice = weeklyPrice * 2.0; // 100% higher as "original" price
-    return formatCurrencyPrice(originalPrice, weeklyPackage.product.currencyCode, true);
-  };
-
-  // Calculate strikethrough price for lifetime (1.5x the actual price)
-  const getLifetimeStrikethroughPrice = () => {
-    if (!lifetimePackage?.product?.price || !lifetimePackage?.product?.currencyCode) return null;
-    const lifetimePrice = lifetimePackage.product.price;
-    const originalPrice = lifetimePrice * 2.0; // 100% higher as "original" price
-    return formatCurrencyPrice(originalPrice, lifetimePackage.product.currencyCode, true);
+  // Calculate strikethrough price dynamically
+  const getStrikethroughPrice = (pkg) => {
+    if (!pkg?.product?.price || !pkg?.product?.currencyCode) return null;
+    const price = pkg.product.price;
+    const originalPrice = price * 2.0; // 100% higher as "original" price
+    return formatCurrencyPrice(originalPrice, pkg.product.currencyCode, true);
   };
 
   return (
@@ -266,9 +242,9 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Subscribe Premium</Text>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>{t('premium.subscribe')}</Text>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
-                  Get unlimited access to all features
+                  {t('premium.unlimitedAccessDesc')}
                 </Text>
               </View>
             </View>
@@ -302,20 +278,22 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                   <MaterialCommunityIcons name="crown" size={22} color={Colors.brand.darkPink} />
                   <Text style={{ marginLeft: 8, fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
-                    You’re Premium
+                    {t('account.youArePremium')}
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <View>
-                    <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>Plan</Text>
+                    <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>{t('account.plan')}</Text>
                     <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
                       {planLabelFromId(premiumPlan)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>Renews/Expires</Text>
+                    <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>
+                      {String(premiumPlan).toLowerCase().includes('life') ? t('account.status') : t('account.renewsExpires')}
+                    </Text>
                     <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
-                      {formatDate(premiumExpiresAt)}
+                      {String(premiumPlan).toLowerCase().includes('life') ? t('account.neverExpires') : formatDate(premiumExpiresAt)}
                     </Text>
                   </View>
                 </View>
@@ -326,196 +304,89 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
           {/* Plan cards (no benefits table here) */}
           {!isPremium && (
             <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+              {offerings?.current?.availablePackages?.length > 0 ? (
+                offerings.current.availablePackages.map((pkg) => {
+                  const isSelected = selectedPlan === pkg.identifier;
+                  const isLifetime = pkg.identifier === '$rc_lifetime' || pkg.packageType === 'LIFETIME';
+                  const isSixMonth = pkg.identifier === '$rc_six_month' || pkg.packageType === 'SIX_MONTH';
 
-
-              {/* Weekly */}
-              {weeklyPackage && (
-                <Pressable
-                  onPress={() => setSelectedPlan('weekly')}
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: selectedPlan === 'weekly' ? Colors.brand.darkPink : '#EDEDED',
-                    padding: 14,
-                    marginBottom: 12,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialCommunityIcons
-                      name={selectedPlan === 'weekly' ? 'check-circle' : 'circle-outline'}
-                      size={22}
-                      color={selectedPlan === 'weekly' ? Colors.brand.darkPink : '#B0B7BF'}
-                    />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Weekly Plan</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                        {'Try it for a week. Auto-renewal subscription'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
-                        {weeklyPackage?.product?.priceString || ''}
-                      </Text>
-                      {getWeeklyStrikethroughPrice() && (
-                        <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
-                          {getWeeklyStrikethroughPrice()}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                </Pressable>
-              )}
-
-              {/* Lifetime */}
-              {lifetimePackage && (
-                <Pressable
-                  onPress={() => setSelectedPlan('lifetime')}
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: selectedPlan === 'lifetime' ? Colors.brand.darkPink : '#EDEDED',
-                    padding: 14,
-                    marginBottom: 12,
-                  }}
-                >
-                  <View style={{ position: 'absolute', top: -10, right: 14 }}>
-                    <View
+                  return (
+                    <Pressable
+                      key={pkg.identifier}
+                      onPress={() => setSelectedPlan(pkg.identifier)}
                       style={{
-                        backgroundColor: '#FFD700',
-                        borderRadius: 12,
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 16,
+                        borderWidth: 2,
+                        borderColor: isSelected ? Colors.brand.darkPink : '#EDEDED',
+                        padding: 14,
+                        marginBottom: 12,
                       }}
                     >
-                      <Text style={{ color: '#000000', fontWeight: '900', fontSize: 10 }}>ONE TIME ONLY</Text>
-                    </View>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialCommunityIcons
-                      name={selectedPlan === 'lifetime' ? 'check-circle' : 'circle-outline'}
-                      size={22}
-                      color={selectedPlan === 'lifetime' ? Colors.brand.darkPink : '#B0B7BF'}
-                    />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Lifetime Pass</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                        {'Pay once, own it forever. Best for serious learners'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
-                        {lifetimePackage?.product?.priceString || ''}
-                      </Text>
-                      {getLifetimeStrikethroughPrice() && (
-                        <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
-                          {getLifetimeStrikethroughPrice()}
-                        </Text>
+                      {isLifetime && (
+                        <View style={{ position: 'absolute', top: -10, right: 14 }}>
+                          <View
+                            style={{
+                              backgroundColor: '#FFD700',
+                              borderRadius: 12,
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                            }}
+                          >
+                            <Text style={{ color: '#000000', fontWeight: '900', fontSize: 10 }}>{t('premium.oneTimeOnly')}</Text>
+                          </View>
+                        </View>
                       )}
-                    </View>
-                  </View>
-                </Pressable>
-              )}
-
-              {monthlyPackage && (
-                <Pressable
-                  onPress={() => setSelectedPlan('monthly')}
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: selectedPlan === 'monthly' ? Colors.brand.darkPink : '#EDEDED',
-                    padding: 14,
-                    marginBottom: 12,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialCommunityIcons
-                      name={selectedPlan === 'monthly' ? 'check-circle' : 'circle-outline'}
-                      size={22}
-                      color={selectedPlan === 'monthly' ? Colors.brand.darkPink : '#B0B7BF'}
-                    />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>Monthly Plan</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                        {'Short term plan. Auto-renewal subscription'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
-                        {monthlyPackage?.product?.priceString || ''}
-                      </Text>
-                      {getMonthlyStrikethroughPrice() && (
-                        <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
-                          {getMonthlyStrikethroughPrice()}
-                        </Text>
+                      
+                      {isSixMonth && (
+                        <View style={{ position: 'absolute', top: -10, right: 14 }}>
+                          <View
+                            style={{
+                              backgroundColor: '#4CAF50',
+                              borderRadius: 12,
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                            }}
+                          >
+                            <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 10 }}>{t('premium.bestValue')}</Text>
+                          </View>
+                        </View>
                       )}
-                    </View>
-                  </View>
-                </Pressable>
-              )}
 
-              {/* 6 Month */}
-              {sixMonthPackage && (
-                <Pressable
-                  onPress={() => setSelectedPlan('sixMonth')}
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: selectedPlan === 'sixMonth' ? Colors.brand.darkPink : '#EDEDED',
-                    padding: 14,
-                  }}
-                >
-                  {sixMonthPackage && (
-                    <View style={{ position: 'absolute', top: -10, right: 14 }}>
-                      <View
-                        style={{
-                          backgroundColor: '#4CAF50',
-                          borderRadius: 12,
-                          paddingHorizontal: 10,
-                          paddingVertical: 4,
-                        }}
-                      >
-                        <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 10 }}>BEST VALUE</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MaterialCommunityIcons
+                          name={isSelected ? 'check-circle' : 'circle-outline'}
+                          size={22}
+                          color={isSelected ? Colors.brand.darkPink : '#B0B7BF'}
+                        />
+                        <View style={{ marginLeft: 10, flex: 1, paddingRight: isSixMonth ? 10 : 0 }}>
+                          <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>{pkg.product.title}</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
+                            {pkg.product.description}
+                          </Text>
+                          {isSixMonth && pkg.product.pricePerMonthString && (
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#4CAF50', marginTop: 2 }}>
+                              {t('premium.only')} {pkg.product.pricePerMonthString}/month
+                            </Text>
+                          )}
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                            {pkg.product.priceString}
+                          </Text>
+                          {getStrikethroughPrice(pkg) && (
+                            <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
+                              {getStrikethroughPrice(pkg)}
+                            </Text>
+                          )}
+                        </View>
                       </View>
-                    </View>
-                  )}
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialCommunityIcons
-                      name={selectedPlan === 'sixMonth' ? 'check-circle' : 'circle-outline'}
-                      size={22}
-                      color={selectedPlan === 'sixMonth' ? Colors.brand.darkPink : '#B0B7BF'}
-                    />
-                    <View style={{ marginLeft: 10, flex: 1, paddingRight: 10 }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>6 Month Plan</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
-                        {'Value for money. Auto-renewal subscription'}
-                      </Text>
-                      {sixMonthPackage?.product?.pricePerMonthString && (
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#4CAF50', marginTop: 2 }}>
-                          Only {sixMonthPackage.product.pricePerMonthString}/month
-                        </Text>
-                      )}
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
-                        {sixMonthPackage?.product?.priceString || ''}
-                      </Text>
-                      {getSixMonthStrikethroughPrice() && (
-                        <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
-                          {getSixMonthStrikethroughPrice()}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                </Pressable>
-              )}
-
-              {!monthlyPackage && !sixMonthPackage && !weeklyPackage && !lifetimePackage && (
+                    </Pressable>
+                  );
+                })
+              ) : (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                  <Text style={{ color: '#6C6C6C' }}>No packages available</Text>
+                  <Text style={{ color: '#6C6C6C' }}>{t('premium.noPackages', 'No packages available')}</Text>
                 </View>
               )}
             </View>
@@ -543,7 +414,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 16, marginRight: 6 }}>
-                    {loading ? 'Processing...' : 'Subscribe Now'}
+                    {loading ? t('premium.processing', 'Processing...') : t('premium.subscribeNow', 'Subscribe Now')}
                   </Text>
                   <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
                 </View>
@@ -553,26 +424,28 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
 
           {/* Cancel anytime */}
           <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-            <Text style={{ textAlign: 'center', color: '#4A5564', fontWeight: '700' }}>Cancel anytime</Text>
+            <Text style={{ textAlign: 'center', color: '#4A5564', fontWeight: '700' }}>{t('premium.cancelAnytime', 'Cancel anytime')}</Text>
           </View>
 
           <View style={{ paddingHorizontal: 16, marginTop: 10 }}>
             <Text style={{ textAlign: 'center', color: '#6B7280', fontSize: 12 }}>
-              By continuing, you agree to our{' '}
-              <Text
-                style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
-                onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
-              >
-                terms of use
-              </Text>{' '}
-              &{' '}
-              <Text
-                style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
-                onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
-              >
-                privacy policy
-              </Text>
-              .
+              <Trans
+                i18nKey="premium.footerAgreement"
+                components={{
+                  terms: (
+                    <Text
+                      style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
+                      onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
+                    />
+                  ),
+                  privacy: (
+                    <Text
+                      style={{ color: theme.tint, fontWeight: '800', textDecorationLine: 'underline' }}
+                      onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
+                    />
+                  )
+                }}
+              />
             </Text>
           </View>
         </ScrollView>

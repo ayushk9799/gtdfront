@@ -4,6 +4,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import './src/i18n';
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import { MMKV } from 'react-native-mmkv';
@@ -191,6 +193,7 @@ function RootTabs() {
   const colorScheme = useColorScheme();
   const themeColors = Colors.light;
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const bottomExtra = Platform.OS === 'android' ? (insets.bottom || 0) : 0;
   const isAndroid12Plus = Platform.OS === 'android' && Number(Platform.Version) >= 31;
 
@@ -270,18 +273,19 @@ function RootTabs() {
         sceneStyle: { backgroundColor: 'transparent', },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Learnings" component={LearningScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('tabs.home') }} />
+      <Tab.Screen name="Learnings" component={LearningScreen} options={{ tabBarLabel: t('tabs.learnings') }} />
       <Tab.Screen
         name="Quizzes"
         component={QuizzScreen}
+        options={{ tabBarLabel: t('tabs.quizzes') }}
         listeners={{
           tabPress: () => hideQuizBadge(),
           focus: () => hideQuizBadge(),
         }}
       />
-      <Tab.Screen name="Ranking" component={LeagueScreen} />
-      <Tab.Screen name="Account" component={AccountScreen} />
+      <Tab.Screen name="Ranking" component={LeagueScreen} options={{ tabBarLabel: t('tabs.ranking') }} />
+      <Tab.Screen name="Account" component={AccountScreen} options={{ tabBarLabel: t('tabs.account') }} />
     </Tab.Navigator>
   );
 }

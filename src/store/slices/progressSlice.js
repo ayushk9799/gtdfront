@@ -3,8 +3,8 @@ import { API_BASE } from '../../../constants/Api';
 
 export const fetchDepartmentProgress = createAsyncThunk(
   'progress/fetchDepartmentProgress',
-  async (userId) => {
-    const res = await fetch(`${API_BASE}/api/users/${userId}/progress/department?limit=2`);
+  async ({ userId, lang = 'en' }) => {
+    const res = await fetch(`${API_BASE}/api/users/${userId}/progress/department?limit=2&lang=${lang}`);
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Failed to fetch progress (${res.status})`);
@@ -16,8 +16,8 @@ export const fetchDepartmentProgress = createAsyncThunk(
 
 export const fetchCategoryCases = createAsyncThunk(
   'progress/fetchCategoryCases',
-  async ({ userId, categoryId }) => {
-    const res = await fetch(`${API_BASE}/api/users/${userId}/progress/department?categoryId=${categoryId}`);
+  async ({ userId, categoryId, lang = 'en' }) => {
+    const res = await fetch(`${API_BASE}/api/users/${userId}/progress/department?categoryId=${categoryId}&lang=${lang}`);
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Failed to fetch department cases (${res.status})`);

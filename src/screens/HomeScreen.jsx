@@ -23,6 +23,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { Skeleton } from '../components/Skeleton';
 import LifetimeOfferCard from '../components/LifetimeOfferCard';
 import { getGamesPlayedCount } from '../services/ratingService';
+import { useTranslation } from 'react-i18next';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -32,6 +33,7 @@ export default function HomeScreen() {
   const { isTablet } = useResponsive();
   const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
   const { hearts, isPremium } = useSelector(state => state.user);
+  const { t } = useTranslation();
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
@@ -447,7 +449,7 @@ export default function HomeScreen() {
             <View style={styles.rowCenterBetween}>
               <View style={styles.rowCenter}>
                 <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
-                <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Daily Challenge</Text>
+                <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>{t('home.dailyChallenge')}</Text>
               </View>
               {!isCheckingCompletion && !isChallengeLoading && (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -462,7 +464,7 @@ export default function HomeScreen() {
                     activeOpacity={0.7}
                   >
                     <MaterialCommunityIcons name="history" size={20} color={Colors.brand.darkPink} />
-                    <Text style={{ marginLeft: 5, color: Colors.brand.darkPink, fontSize: 15, fontWeight: '700' }}>History</Text>
+                    <Text style={{ marginLeft: 5, color: Colors.brand.darkPink, fontSize: 15, fontWeight: '700' }}>{t('home.history')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -484,7 +486,7 @@ export default function HomeScreen() {
                 {isDailyChallengeCompleted ? (
                   <View style={{ marginTop: 8 }}>
                     <Text style={[styles.cardDesc, { fontSize: 15, color: '#2E7D32', marginTop: 0 }]}>
-                      Your daily challenge is completed! 🎉
+                      {t('home.challengeCompleted')}
                     </Text>
                     <TouchableOpacity
                       onPress={handleDailyChallengePress}
@@ -495,7 +497,7 @@ export default function HomeScreen() {
                         <ActivityIndicator size="small" color={Colors.brand.darkPink} />
                       ) : (
                         <Text style={{ color: Colors.brand.darkPink, fontWeight: '800', fontSize: 15 }}>
-                          View Insights →
+                          {t('home.viewInsights')}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -553,10 +555,10 @@ export default function HomeScreen() {
                       {isDailyChallengeLoading ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <ActivityIndicator color="#FFFFFF" size="small" />
-                          <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
+                          <Text style={styles.primaryButtonText}>{t('home.solveChallenge')}</Text>
                         </View>
                       ) : (
-                        <Text style={styles.primaryButtonText}>Solve Today's Challenge</Text>
+                        <Text style={styles.primaryButtonText}>{t('home.solveChallenge')}</Text>
                       )}
                     </TouchableOpacity>
                   </>
@@ -567,14 +569,14 @@ export default function HomeScreen() {
             {!currentChallenge && !isChallengeLoading && !isCheckingCompletion && !hasChallengeError && (
               <>
                 <Text style={[styles.cardDesc, { marginTop: 8 }]}>
-                  No daily challenge available for today. Check back tomorrow!
+                  {t('home.noChallengeDesc')}
                 </Text>
                 <TouchableOpacity
                   style={[styles.primaryButton, { opacity: 0.6 }]}
                   activeOpacity={0.9}
                   disabled={true}
                 >
-                  <Text style={styles.primaryButtonText}>No Challenge Today</Text>
+                  <Text style={styles.primaryButtonText}>{t('home.noChallengeToday')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -590,7 +592,7 @@ export default function HomeScreen() {
               <View style={styles.rowCenterBetween}>
                 <View style={styles.rowCenter}>
                   <MaterialCommunityIcons name="medical-bag" size={28} color={Colors.brand.darkPink} />
-                  <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Solve the Case</Text>
+                  <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>{t('home.solveTheCase')}</Text>
                 </View>
                 <View style={{
                   alignSelf: 'flex-start',
@@ -665,7 +667,7 @@ export default function HomeScreen() {
                     <MaterialCommunityIcons name="lock" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                   )}
                   <Text style={styles.primaryButtonText}>
-                    {suggestedNextCase.isPremiumCase ? 'Unlock Premium Case' : 'Solve the Case'}
+                    {suggestedNextCase.isPremiumCase ? t('home.unlockPremium') : t('home.solveTheCase')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -677,7 +679,7 @@ export default function HomeScreen() {
           <View style={styles.rowCenterBetween}>
             <View style={styles.rowCenter}>
               <Image source={departmentIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
-              <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>Departments</Text>
+              <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>{t('home.departments')}</Text>
             </View>
           </View>
           {categoriesLoading === 'loading' && <Skeleton.DepartmentsList />}

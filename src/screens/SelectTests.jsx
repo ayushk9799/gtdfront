@@ -16,6 +16,7 @@ import Markdown from 'react-native-markdown-display';
 import { BlurView } from '@react-native-community/blur';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
+import { useTranslation } from 'react-i18next';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -77,6 +78,7 @@ export default function SelectTests() {
   const voiceId = useSelector((s) => s.currentGame.voiceId);
   const sourceType = useSelector((s) => s.currentGame.sourceType);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
+  const { t } = useTranslation();
 
   // Use default voice ID for daily challenges since they don't have a voiceId
   const effectiveVoiceId = voiceId || (sourceType === 'dailyChallenge' ? DEFAULT_VOICE_ID : null);
@@ -344,7 +346,7 @@ export default function SelectTests() {
             />
           </View>
         </View>
-        <Section title="Select Tests">
+        <Section title={t('tests.selectTests')}>
           <View style={styles.testGrid}>
             {availableTests.map((t) => {
               const selected = selectedTestIds.includes(t.testId);
@@ -400,7 +402,7 @@ export default function SelectTests() {
             />
           </Animated.View>
           <MaterialCommunityIcons name="file-document" size={18} color="#fff" />
-          <Text style={styles.primaryButtonText}>Get Reports</Text>
+          <Text style={styles.primaryButtonText}>{t('tests.getReports')}</Text>
         </TouchableOpacity>
 
         <BottomSheetModal
@@ -416,7 +418,7 @@ export default function SelectTests() {
             {evaluatedResults && evaluatedResults.length > 0 ? (
               <>
                 <View style={[styles.sheetHeaderRow, { paddingHorizontal: 16 }]}>
-                  <Text style={styles.sheetHeaderTitle}>Test Reports</Text>
+                  <Text style={styles.sheetHeaderTitle}>{t('tests.testReports')}</Text>
                   <Text style={styles.sheetPaginationText}>
                     {reportIndex + 1} / {evaluatedResults.length}
                   </Text>
@@ -487,13 +489,13 @@ export default function SelectTests() {
                                     overlayColor={Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.1)' : 'transparent'}
                                   />
                                   <View style={styles.premiumOverlay}>
-                                    <Text style={styles.premiumOverlayText}>Clinical image only available for Premium users</Text>
+                                    <Text style={styles.premiumOverlayText}>{t('clinical.premiumImageOnly')}</Text>
                                     <TouchableOpacity
                                       style={styles.premiumCtaButton}
                                       onPress={() => premiumSheetRef.current?.present()}
                                       activeOpacity={0.9}
                                     >
-                                      <Text style={styles.premiumCtaButtonText}>Unlock Now</Text>
+                                      <Text style={styles.premiumCtaButtonText}>{t('clinical.unlockNow')}</Text>
                                     </TouchableOpacity>
                                   </View>
                                 </>
@@ -501,7 +503,7 @@ export default function SelectTests() {
                             </View>
                           ) : null}
                           <Markdown style={markdownStyles}>
-                            {r?.value || 'Result not available for this test.'}
+                            {r?.value || t('tests.resultNotAvailable')}
                           </Markdown>
                         </View>
                       </View>
@@ -566,7 +568,7 @@ export default function SelectTests() {
                     style={styles.secondaryButton}
                     activeOpacity={0.9}
                   >
-                    <Text style={styles.secondaryButtonText}>Close</Text>
+                    <Text style={styles.secondaryButtonText}>{t('tests.close')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     accessibilityRole="button"
@@ -595,12 +597,12 @@ export default function SelectTests() {
                         style={StyleSheet.absoluteFill}
                       />
                     </Animated.View>
-                    <Text style={styles.primaryButtonText}>Give Diagnosis</Text>
+                    <Text style={styles.primaryButtonText}>{t('tests.giveDiagnosis')}</Text>
                   </TouchableOpacity>
                 </View>
               </>
             ) : (
-              <Text style={{ fontWeight: '800' }}>No tests selected.</Text>
+              <Text style={{ fontWeight: '800' }}>{t('tests.noTestsSelected')}</Text>
             )}
           </BottomSheetView>
         </BottomSheetModal>

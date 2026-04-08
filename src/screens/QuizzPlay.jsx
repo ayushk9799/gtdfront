@@ -26,6 +26,7 @@ import premiumImage from '../../constants/premium-image.png';
 import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 import { API_BASE } from '../../constants/Api';
 import { Colors } from '../../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 const { width: screenWidth } = Dimensions.get('window');
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -698,6 +699,8 @@ export default function QuizzPlay({ route, navigation }) {
     const dispatch = useDispatch(); // Still needed for userSlice (premium purchases)
     const userData = useSelector((state) => state.user.userData);
     const userId = userData?._id;
+    const { i18n } = useTranslation();
+    const currentLang = i18n.language || 'en';
 
     // Local state instead of Redux
     const [quizzes, setQuizzes] = useState([]);
@@ -742,6 +745,7 @@ export default function QuizzPlay({ route, navigation }) {
 
             if (userId) url += `&userId=${userId}`;
             url += `&excludeAttempted=true`;
+            url += `&lang=${currentLang}`;
 
             const res = await fetch(url);
             if (!res.ok) {
@@ -773,6 +777,7 @@ export default function QuizzPlay({ route, navigation }) {
 
             if (userId) url += `&userId=${userId}`;
             url += `&excludeAttempted=true`;
+            url += `&lang=${currentLang}`;
 
             const res = await fetch(url);
             if (!res.ok) {
@@ -800,6 +805,7 @@ export default function QuizzPlay({ route, navigation }) {
                 : `${API_BASE}/api/quizz?page=1&limit=10&onlyAttempted=true`;
 
             if (userId) url += `&userId=${userId}`;
+            url += `&lang=${currentLang}`;
 
             const res = await fetch(url);
             if (!res.ok) {
@@ -829,6 +835,7 @@ export default function QuizzPlay({ route, navigation }) {
                 : `${API_BASE}/api/quizz?page=${nextPage}&limit=10&onlyAttempted=true`;
 
             if (userId) url += `&userId=${userId}`;
+            url += `&lang=${currentLang}`;
 
             const res = await fetch(url);
             if (!res.ok) {

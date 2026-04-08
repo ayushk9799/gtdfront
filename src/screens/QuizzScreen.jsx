@@ -21,6 +21,7 @@ import { Colors } from '../../constants/Colors';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DepartmentIcons } from '../components/DepartmentIcons';
 import Video from 'react-native-video';
+import { useTranslation } from 'react-i18next';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -72,6 +73,8 @@ export default function QuizzScreen() {
     const navigation = useNavigation();
     const userData = useSelector((state) => state.user.userData);
     const userId = userData?._id;
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language || 'en';
 
     // Local state instead of Redux
     const [categories, setCategories] = useState([]);
@@ -82,9 +85,13 @@ export default function QuizzScreen() {
     const fetchCategories = useCallback(async () => {
         setCategoriesStatus('loading');
         try {
-            const url = userId
+            let url = userId
                 ? `${API_BASE}/api/quizz/category?userId=${userId}`
                 : `${API_BASE}/api/quizz/category`;
+            
+            // Append language parameter
+            url += url.includes('?') ? `&lang=${currentLang}` : `?lang=${currentLang}`;
+
             const res = await fetch(url);
             if (!res.ok) {
                 throw new Error('Failed to load categories');
@@ -101,9 +108,10 @@ export default function QuizzScreen() {
     // Fetch next unsolved quiz preview
     const fetchNextPreview = useCallback(async () => {
         try {
-            const url = userId
+            let url = userId
                 ? `${API_BASE}/api/quizz/next-preview?userId=${userId}`
                 : `${API_BASE}/api/quizz/next-preview`;
+            url += url.includes('?') ? `&lang=${currentLang}` : `?lang=${currentLang}`;
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
@@ -220,7 +228,7 @@ export default function QuizzScreen() {
                                 <MaterialCommunityIcons name="play" size={24} color="#FF407D" />
                             </View>
                             <View style={styles.allQuizzesTextGroup}>
-                                <Text style={styles.allQuizzesTitle}>Play All Quizzes</Text>
+                                <Text style={styles.allQuizzesTitle}>{t('quiz.playAll')}</Text>
                                 <Text style={styles.allQuizzesSubtitle}>Mix of 1000+ clinical cases</Text>
                             </View>
                             <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.5)" />
@@ -312,7 +320,7 @@ export default function QuizzScreen() {
         <View style={{ flex: 1 }}>
             <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
                 <View style={styles.screenTitleRow}>
-                    <Text style={styles.screenTitle}>Quizzes</Text>
+                    <Text style={styles.screenTitle}>{t('quiz.title')}</Text>
                     <TouchableOpacity
                         onPress={() => {
                             const globalAttemptedCount = categories.reduce((sum, cat) => sum + (cat.attemptedCount || 0), 0);
@@ -330,7 +338,7 @@ export default function QuizzScreen() {
                         activeOpacity={0.7}
                     >
                         <MaterialCommunityIcons name="history" size={22} color={Colors.brand.darkPink} />
-                        <Text style={styles.historyButtonText}>History</Text>
+                        <Text style={styles.historyButtonText}>{t('quiz.history')}</Text>
                     </TouchableOpacity>
                 </View>
                 <FlatList

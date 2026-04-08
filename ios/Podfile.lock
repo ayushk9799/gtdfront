@@ -2753,6 +2753,35 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNLocalize (3.7.0):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - RNPurchases (9.7.3):
     - PurchasesHybridCommon (= 17.30.0)
     - React-Core
@@ -3179,6 +3208,7 @@ DEPENDENCIES:
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNLocalize (from `../node_modules/react-native-localize`)
   - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -3384,6 +3414,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/messaging"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNLocalize:
+    :path: "../node_modules/react-native-localize"
   RNPurchases:
     :path: "../node_modules/react-native-purchases"
   RNReanimated:
@@ -3495,7 +3527,7 @@ SPEC CHECKSUMS:
   React-timing: c3c923df2b86194e1682e01167717481232f1dc7
   React-utils: 9154a037543147e1c24098f1a48fc8472602c092
   ReactAppDependencyProvider: afd905e84ee36e1678016ae04d7370c75ed539be
-  ReactCodegen: 9834189d83a559c2f91f69f4b1c735678e825632
+  ReactCodegen: f8d5fb047c4cd9d2caade972cad9edac22521362
   ReactCommon: 17fd88849a174bf9ce45461912291aca711410fc
   RevenueCat: 9e2a13bead55198a72272ff105a7265e9510cd11
   RNBootSplash: ce1a6f2d0a8cfe999af30c62151ab84562c30284
@@ -3503,6 +3535,7 @@ SPEC CHECKSUMS:
   RNFBApp: a19bb76d13bda27f4c6b2315de64a8974ccb3162
   RNFBMessaging: c173265c69e7ac81aeded33604efa0483f5755f1
   RNGestureHandler: 4089d198e5474209e2b77dfb503578e704dee4e6
+  RNLocalize: 461a6ee5a3ce5a3f9c5d7bb0b4511eac831c4ccd
   RNPurchases: 90119bdefe27a94c0c76a548433ca6e90cffc58f
   RNReanimated: bc1ddb7a5352648bcf0d592256069833bf935a46
   RNScreens: ab490a252dd536fca261c72ab7e5538e656dcb2b

@@ -17,6 +17,7 @@ import googleAuth from './services/googleAuth';
 import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../constants/Colors.jsx';
+import { useTranslation } from 'react-i18next';
 
 // Initialize MMKV storage
 const storage = new MMKV();
@@ -93,6 +94,7 @@ function Login({ onLogin }) {
   const colorScheme = useColorScheme();
   const themeColors = Colors.light;
   const dispatch = useDispatch();
+  const { t } = useTranslation();
 
   const handlePostLogin = async (credential) => {
     // Persist user credential
@@ -211,7 +213,7 @@ function Login({ onLogin }) {
                       />
                     </Svg>
                   </View>
-                  <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                  <Text style={styles.appleButtonText}>{t('login.signInWithApple')}</Text>
                 </View>
               </TouchableOpacity>
             )
@@ -239,26 +241,26 @@ function Login({ onLogin }) {
                     <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
                   </Svg>
                 </View>
-                <Text style={styles.primaryButtonText}>Continue with Google</Text>
+                <Text style={styles.primaryButtonText}>{t('login.signInWithGoogle')}</Text>
               </View>
             </TouchableOpacity>
           )}
 
           {/* Terms & Privacy Policy */}
           <Text style={styles.termsText}>
-            By continuing, you agree to our{' '}
+            {t('login.termsPrefix')}{' '}
             <Text
               style={styles.termsLink}
               onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
             >
-              Terms of Service
+              {t('login.termsLink')}
             </Text>{' '}
             &{' '}
             <Text
               style={styles.termsLink}
               onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
             >
-              Privacy Policy
+              {t('login.privacyLink')}
             </Text>
           </Text>
         </View>

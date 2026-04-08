@@ -11,6 +11,7 @@ import { MMKV } from 'react-native-mmkv';
 import { useDispatch } from 'react-redux';
 import { setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setUserId, setGameplay, setCaseData } from '../store/slices/currentGameSlice';
 import CloudBottom from '../components/CloudBottom';
+import { useTranslation } from 'react-i18next';
 
 // Skeleton Loader Component
 const SkeletonLoader = ({ width, height, borderRadius = 8, style }) => {
@@ -105,6 +106,7 @@ export default function LearningScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const { t, i18n } = useTranslation();
   const [userId, setUid] = React.useState(undefined);
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -131,7 +133,7 @@ export default function LearningScreen() {
           if (uid) {
             setUid(uid);
             dispatch(setUserId(uid));
-            const res = await fetch(`${API_BASE}/api/gameplays/brief?userId=${encodeURIComponent(uid)}`);
+            const res = await fetch(`${API_BASE}/api/gameplays/brief?userId=${encodeURIComponent(uid)}&lang=${i18n.language}`);
             if (!res.ok) {
               const t = await res.text();
               throw new Error(t || `Failed to load gameplays (${res.status})`);
@@ -147,7 +149,7 @@ export default function LearningScreen() {
         setLoading(false);
       }
     })();
-  }, [dispatch]);
+  }, [dispatch, i18n.language]);
 
   const groupedByDate = React.useMemo(() => {
     const toKeyLabel = (createdAt) => {
@@ -156,7 +158,7 @@ export default function LearningScreen() {
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const key = `${y}-${m}-${day}`;
-      const label = d.toLocaleDateString("en-IN", { month: 'long', day: 'numeric', year: 'numeric' });
+      const label = d.toLocaleDateString(i18n.language === 'de' ? 'de-DE' : 'en-US', { month: 'long', day: 'numeric', year: 'numeric' });
       return { key, label };
     };
     const map = new Map();
@@ -173,15 +175,15 @@ export default function LearningScreen() {
   // Helper to get title based on sourceType
   const getItemTitle = (it) => {
     if (it.sourceType === 'dailyChallenge') {
-      return it.dailyChallenge?.title || 'Daily Challenge';
+      return it.dailyChallenge?.title || t('home.dailyChallenge');
     }
-    return it.case?.title || 'Case';
+    return it.case?.title || t('home.solveTheCase');
   };
 
   // Helper to get category based on sourceType
   const getItemCategory = (it) => {
     if (it.sourceType === 'dailyChallenge') {
-      return it.dailyChallenge?.category || 'Daily';
+      return it.dailyChallenge?.category || t('common.daily');
     }
     return it.case?.category || 'General';
   };
@@ -204,7 +206,7 @@ export default function LearningScreen() {
 
   const openGameplay = async (gameplayId) => {
     try {
-      const res = await fetch(`${API_BASE}/api/gameplays/${encodeURIComponent(gameplayId)}`);
+      const res = await fetch(`${API_BASE}/api/gameplays/${encodeURIComponent(gameplayId)}?lang=${i18n.language}`);
       if (!res.ok) {
         const t = await res.text();
         throw new Error(t || `Failed to load gameplay (${res.status})`);
@@ -285,9 +287,9 @@ export default function LearningScreen() {
         {!loading && !error && groupedByDate.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateEmoji}>📚</Text>
-            <Text style={styles.emptyStateTitle}>No cases solved yet</Text>
+            <Text style={styles.emptyStateTitle}>{t('learning.noCases')}</Text>
             <Text style={styles.emptyStateDesc}>
-              Start solving cases from the Home screen to see your learning history here.
+              {t('learning.noCasesDesc')}
             </Text>
           </View>
         )}
@@ -317,7 +319,7 @@ export default function LearningScreen() {
                         </Text>
                         {isDailyChallenge && (
                           <View style={styles.dailyBadge}>
-                            <Text style={styles.dailyBadgeText}>Daily</Text>
+                            <Text style={styles.dailyBadgeText}>{t('common.daily')}</Text>
                           </View>
                         )}
                       </View>

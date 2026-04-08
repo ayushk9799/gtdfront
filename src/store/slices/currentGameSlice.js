@@ -1,12 +1,14 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { API_BASE } from '../../../constants/Api';
 import { computeGameplayScoreNormalized } from '../../services/scoring';
+import { getLanguage } from '../../i18n';
 
 // Thunk: load case data by ObjectId and store as current case
 export const loadCaseById = createAsyncThunk(
   'currentGame/loadCaseById',
   async (caseId) => {
-    const res = await fetch(`${API_BASE}/api/cases/${caseId}`);
+    const lang = getLanguage();
+    const res = await fetch(`${API_BASE}/api/cases/${caseId}?lang=${lang}`);
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Failed to load case (${res.status})`);

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { API_BASE } from '../../../constants/Api';
+import { getLanguage } from '../../i18n';
 
 // Thunk: load today's daily challenge
 export const loadTodaysChallenge = createAsyncThunk(
@@ -7,8 +8,9 @@ export const loadTodaysChallenge = createAsyncThunk(
   async () => {
     // Get user's timezone
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const lang = getLanguage();
 
-    const res = await fetch(`${API_BASE}/api/daily-challenge/today?timezone=${encodeURIComponent(userTimezone)}`);
+    const res = await fetch(`${API_BASE}/api/daily-challenge/today?timezone=${encodeURIComponent(userTimezone)}&lang=${lang}`);
     if (!res.ok) {
       const errorData = await res.json();
       throw new Error(errorData.message || `Failed to load today's challenge (${res.status})`);
@@ -28,9 +30,11 @@ export const loadChallengeByDate = createAsyncThunk(
   async ({ date, userId }) => {
     // Get user's timezone
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const lang = getLanguage();
 
     const url = new URL(`${API_BASE}/api/daily-challenge/${date}`);
     url.searchParams.set('timezone', userTimezone);
+    url.searchParams.set('lang', lang);
     if (userId) url.searchParams.set('userId', userId);
 
     const res = await fetch(url.toString());

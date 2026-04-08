@@ -8,11 +8,13 @@ import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Sound from 'react-native-sound';
 import { MMKV } from 'react-native-mmkv';
+import { useTranslation } from 'react-i18next';
 
 export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [showCTA, setShowCTA] = useState(false);
   const [currentLine, setCurrentLine] = useState('');
   const [optionLines, setOptionLines] = useState([]);
@@ -195,7 +197,7 @@ export default function OnboardingScreen() {
         <View style={{ flex: 1, padding: 20, justifyContent: 'flex-start', alignItems: 'center' }}>
           <View style={{ position: 'absolute', right: 20, top: 8 }}>
             <TouchableOpacity onPress={() => navigation.replace('Login')} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-              <Text style={{ color: '#6B7280', fontWeight: '700' }}>Skip</Text>
+              <Text style={{ color: '#6B7280', fontWeight: '700' }}>{t('onboarding.skip')}</Text>
             </TouchableOpacity>
           </View>
           <View style={{ width: '100%', maxWidth: 640, minHeight: 180, alignItems: 'center', marginTop: 6 }}>
@@ -299,7 +301,7 @@ export default function OnboardingScreen() {
                     style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
                   />
                 </Animated.View>
-                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 18 }}>Tap to begin your first case</Text>
+                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 18 }}>{t('onboarding.getStarted')}</Text>
               </TouchableOpacity>
               <Text style={{ marginTop: 8, color: '#6B7280', textAlign: 'center' }}>
                 Every choice matters.

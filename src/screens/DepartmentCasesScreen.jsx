@@ -23,6 +23,7 @@ import CloudBottom from '../components/CloudBottom';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { Skeleton } from '../components/Skeleton';
 import { styles } from './styles';
+import { useTranslation } from 'react-i18next';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -33,6 +34,7 @@ export default function DepartmentCasesScreen() {
     const insets = useSafeAreaInsets();
     const { categoryId, categoryName, userId } = route.params || {};
     const themeColors = Colors.light;
+    const { t, i18n } = useTranslation();
 
     const [loadingCaseId, setLoadingCaseId] = useState(null);
     const premiumSheetRef = useRef(null);
@@ -42,9 +44,9 @@ export default function DepartmentCasesScreen() {
 
     useEffect(() => {
         if (userId && categoryId) {
-            dispatch(fetchCategoryCases({ userId, categoryId }));
+            dispatch(fetchCategoryCases({ userId, categoryId, lang: i18n.language }));
         }
-    }, [dispatch, userId, categoryId]);
+    }, [dispatch, userId, categoryId, i18n.language]);
 
     const handleStartCase = async (caseItem, index) => {
         if (loadingCaseId) return;
@@ -269,13 +271,13 @@ export default function DepartmentCasesScreen() {
                             style={styles.primaryButton}
                             onPress={() => dispatch(fetchCategoryCases({ userId, categoryId }))}
                         >
-                            <Text style={styles.primaryButtonText}>Retry</Text>
+                            <Text style={styles.primaryButtonText}>{t('common.retry')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : !departmentCases || !departmentCases.cases || departmentCases.cases.length === 0 ? (
                     <View style={[styles.centered, { padding: 20 }]}>
                         <MaterialCommunityIcons name="folder-open-outline" size={48} color={themeColors.icon} />
-                        <Text style={{ marginTop: 12, color: themeColors.icon, textAlign: 'center' }}>No cases found for this department</Text>
+                        <Text style={{ marginTop: 12, color: themeColors.icon, textAlign: 'center' }}>{t('departmentCases.noCases')}</Text>
                     </View>
                 ) : (
                     <ScrollView

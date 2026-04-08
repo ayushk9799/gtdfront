@@ -15,6 +15,7 @@ import { updateUser } from '../store/slices/userSlice';
 import { handleFCMTokenUpdate } from '../../App';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTranslation } from 'react-i18next';
 
 const storage = new MMKV();
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
@@ -23,6 +24,7 @@ export default function NotificationPermission() {
   const navigation = useNavigation();
   const themeColors = Colors.light;
   const dispatch = useDispatch();
+  const { t } = useTranslation();
 
   async function requestUserPermission() {
     if (Platform.OS === 'ios') {
@@ -102,8 +104,8 @@ export default function NotificationPermission() {
         <View style={styles.logoBadge}>
           <MaterialCommunityIcons name="bell-ring" size={28} color="#ffffff" />
         </View>
-        <Text style={styles.title}>Don't miss case of the day</Text>
-        <Text style={styles.subtitle}>We’ll remind you once a day to keep your clinical skills sharp.</Text>
+        <Text style={styles.title}>{t('notification.title')}</Text>
+        <Text style={styles.subtitle}>{t('notification.description')}</Text>
       </View>
 
       <View style={[styles.infoCard, styles.cardShadow]}>
@@ -148,10 +150,10 @@ export default function NotificationPermission() {
             end={{ x: 1, y: 0 }}
             style={styles.primaryButtonGradient}
           />
-          <Text style={styles.primaryButtonText}>Allow notifications</Text>
+          <Text style={styles.primaryButtonText}>{t('notification.enable')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryButton} onPress={skip} activeOpacity={0.9}>
-          <Text style={styles.secondaryButtonText}>Not now</Text>
+          <Text style={styles.secondaryButtonText}>{t('notification.notNow')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

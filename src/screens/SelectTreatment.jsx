@@ -16,6 +16,7 @@ import { useHeart } from '../store/slices/userSlice';
 import Sound from 'react-native-sound';
 import { checkAndRequestReview, incrementGamesPlayed, setFirstPlayedCaseId } from '../services/ratingService';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
+import { useTranslation } from 'react-i18next';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -73,6 +74,7 @@ export default function SelectTreatment() {
   const { userId, caseId, selectedTreatmentIds, sourceType } = useSelector((s) => s.currentGame);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
+  const { t } = useTranslation();
 
   // Use default voice ID for daily challenges since they don't have a voiceId
   const effectiveVoiceId = voiceId || (sourceType === 'dailyChallenge' ? DEFAULT_VOICE_ID : null);
@@ -295,7 +297,7 @@ export default function SelectTreatment() {
       </View>
 
       <View style={{ flex: 1, paddingHorizontal: isTablet ? 24 : 10, paddingTop: 50, paddingBottom: 120 }}>
-        <Section title="Select Treatment Plan">
+        <Section title={t('treatment.selectTreatmentPlan')}>
           {[
             { key: 'Medication', items: medications },
             { key: 'Surgical/Interventional', items: surgicalInterventional },
@@ -407,7 +409,7 @@ export default function SelectTreatment() {
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
-          <Text style={styles.primaryButtonText}>Confirm Treatment</Text>
+          <Text style={styles.primaryButtonText}>{t('treatment.confirmTreatment')}</Text>
           <MaterialCommunityIcons name="check" size={18} color="#fff" />
         </TouchableOpacity>
         <QuitConfirmationSheet

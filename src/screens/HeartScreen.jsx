@@ -10,6 +10,7 @@ import heartImage from '../../constants/heart.png';
 import LinearGradient from 'react-native-linear-gradient';
 import { MMKV } from 'react-native-mmkv';
 import { API_BASE } from '../../constants/Api';
+import { useTranslation } from 'react-i18next';
 
 const storage = new MMKV();
 
@@ -25,6 +26,7 @@ export default function HeartScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const premiumSheetRef = React.useRef(null);
+  const { t } = useTranslation();
   const MAX_HEARTS_DISPLAY = 2;
   const heartsToShow = Math.min(hearts, MAX_HEARTS_DISPLAY);
 
@@ -313,7 +315,7 @@ Join me 👉 https://diagnoseit.in`
                       <View style={styles.optionIconContainer}>
                         <Ionicons name="diamond" size={20} color="#667eea" />
                       </View>
-                      <Text style={styles.optionTitle}>Get Premium</Text>
+                      <Text style={styles.optionTitle}>{t('heart.getPremium')}</Text>
                     </View>
 
                     <View style={styles.listRow}>
@@ -337,7 +339,7 @@ Join me 👉 https://diagnoseit.in`
                     </View>
 
                     <TouchableOpacity style={styles.ctaButton} onPress={onGoPro} activeOpacity={0.9}>
-                      <Text style={styles.ctaButtonText}>Get Premium →</Text>
+                      <Text style={styles.ctaButtonText}>{t('heart.getPremium')} →</Text>
                     </TouchableOpacity>
                   </View>
 

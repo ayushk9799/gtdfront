@@ -8,15 +8,17 @@ import { Colors } from '../../constants/Colors';
 import { fetchDepartmentProgress } from '../store/slices/progressSlice';
 import { styles } from '../screens/styles';
 import { Skeleton } from './Skeleton';
+import { useTranslation } from 'react-i18next';
 
 export default function DepartmentProgressList({ userId, themeColors, onStartCase }) {
   const dispatch = useDispatch();
   const navigation = useNavigation();
+  const { i18n } = useTranslation();
   const { status, items, error } = useSelector((s) => s.progress);
 
   useEffect(() => {
-    if (userId) dispatch(fetchDepartmentProgress(userId));
-  }, [dispatch, userId]);
+    if (userId) dispatch(fetchDepartmentProgress({ userId, lang: i18n.language }));
+  }, [dispatch, userId, i18n.language]);
 
   if (status === 'loading') {
     return <Skeleton.DepartmentsList count={3} />;

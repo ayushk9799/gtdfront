@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback, useState } from 'react';
-import { useColorScheme, View, Text, ScrollView, TouchableOpacity, Alert, Platform, PermissionsAndroid, Linking, Share } from 'react-native';
+import React, { useMemo, useCallback, useState, useRef } from 'react';
+import { useColorScheme, View, Text, ScrollView, TouchableOpacity, Alert, Platform, PermissionsAndroid, Linking, Share, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { styles } from './styles';
@@ -11,6 +11,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch } from 'react-redux';
 import { updateUser } from '../store/slices/userSlice';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage, getLanguage } from '../i18n';
 import { getApp } from '@react-native-firebase/app';
 import {
   getMessaging,
@@ -24,6 +26,7 @@ import {
 import { useSelector } from 'react-redux';
 import CloudBottom from '../components/CloudBottom';
 import { requestInAppReview, isReviewAvailable } from '../services/ratingService';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 
 export default function AccountScreen() {
   const colorScheme = useColorScheme();
@@ -36,6 +39,33 @@ export default function AccountScreen() {
   const [osPermissionEnabled, setOsPermissionEnabled] = useState(true);
   const { isPremium, customerInfo, userData } = useSelector(state => state.user);
   const referralCode = userData?.referralCode || '';
+  const { t } = useTranslation();
+  const [currentLang, setCurrentLang] = useState(getLanguage());
+  const langSheetRef = useRef(null);
+
+  const snapPoints = useMemo(() => ['35%'], []);
+
+  const renderBackdrop = useCallback(
+    (props) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
+
+  const LANGUAGES = [
+    { code: 'en', label: 'English', flag: '🇬🇧' },
+    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  ];
+  const currentLangObj = LANGUAGES.find(l => l.code === currentLang) || LANGUAGES[0];
+
+  const handleLanguageChange = useCallback(() => {
+    langSheetRef.current?.present();
+  }, []);
 
   const onShareWithFriend = useCallback(async () => {
     try {
@@ -144,21 +174,19 @@ Join me 👉 https://diagnoseit.in`
 
   const handleLogout = useCallback(async () => {
     Alert.alert(
-      'Log out',
-      'Are you sure you want to log out?',
+      t('account.logOut'),
+      t('account.logOutConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Log out',
+          text: t('account.logOut'),
           style: 'destructive',
           onPress: async () => {
             try { await googleAuth.signOut(); } catch { }
             try { await googleAuth.revoke?.(); } catch { }
             try {
-              // Force App root to show unauthenticated stack at Login screen
               storage.set('forceLogin', true);
               storage.delete('user');
-              // After clearing auth, reset navigation to Login explicitly
               setTimeout(() => {
                 try {
                   navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
@@ -169,26 +197,25 @@ Join me 👉 https://diagnoseit.in`
         },
       ]
     );
-  }, [storage, navigation]);
+  }, [storage, navigation, t]);
 
   const handleDeleteAccount = useCallback(async () => {
     Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including game progress, scores, and premium subscriptions.',
+      t('account.deleteAccount'),
+      t('account.deleteAccountConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('account.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               const userId = user?.userId || user?._id || user?.id;
               if (!userId) {
-                Alert.alert('Error', 'Unable to identify user. Please try logging out and back in.');
+                Alert.alert(t('account.error'), t('account.unableToIdentifyUser'));
                 return;
               }
 
-              // Call backend delete endpoint
               const response = await fetch(`${API_BASE}/api/users/${userId}`, {
                 method: 'DELETE',
                 headers: {
@@ -199,35 +226,32 @@ Join me 👉 https://diagnoseit.in`
               const data = await response.json();
 
               if (!response.ok || data?.error) {
-                Alert.alert('Error', data?.error || 'Failed to delete account. Please try again.');
+                Alert.alert(t('account.error'), data?.error || t('account.failedToDelete'));
                 return;
               }
 
-              // Clear all local storage
               try {
                 storage.clearAll();
               } catch (e) {
                 console.warn('Error clearing local storage:', e);
               }
 
-              // Sign out from Google
               try { await googleAuth.signOut(); } catch { }
               try { await googleAuth.revoke?.(); } catch { }
 
-              // Reset navigation to Login screen
               setTimeout(() => {
                 try {
                   navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
                 } catch { }
               }, 0);
             } catch (err) {
-              Alert.alert('Error', err?.message || 'Failed to delete account. Please try again.');
+              Alert.alert(t('account.error'), err?.message || t('account.failedToDelete'));
             }
           },
         },
       ]
     );
-  }, [user, storage, navigation]);
+  }, [user, storage, navigation, t]);
 
   return (
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
@@ -311,7 +335,7 @@ Join me 👉 https://diagnoseit.in`
                   {(userData?.completedCases?.length || 0) + (userData?.completedDailyChallenges?.length || 0)}
                 </Text>
                 <Text style={{ fontSize: 10, fontWeight: '600', color: '#888888' }}>
-                  Cases Solved
+                  {t('account.casesSolved')}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -347,7 +371,7 @@ Join me 👉 https://diagnoseit.in`
                   {parseInt(userData?.cumulativePoints?.total || 0)}
                 </Text>
                 <Text style={{ fontSize: 10, fontWeight: '600', color: '#888888' }}>
-                  Total Points
+                  {t('account.totalPoints')}
                 </Text>
               </View>
             </View>
@@ -383,10 +407,10 @@ Join me 👉 https://diagnoseit.in`
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ color: '#6C6C6C', fontSize: 12, fontWeight: '700' }}>
-                    {String(premiumPlan).toLowerCase().includes('life') ? 'Status' : 'Renews/Expires'}
+                    {String(premiumPlan).toLowerCase().includes('life') ? t('account.status') : t('account.renewsExpires')}
                   </Text>
                   <Text style={{ color: '#1E1E1E', fontSize: 14, fontWeight: '800', marginTop: 2 }}>
-                    {String(premiumPlan).toLowerCase().includes('life') ? 'Never expires ✨' : formatDate(premiumExpiresAt)}
+                    {String(premiumPlan).toLowerCase().includes('life') ? t('account.neverExpires') : formatDate(premiumExpiresAt)}
                   </Text>
                 </View>
               </View>
@@ -410,11 +434,11 @@ Join me 👉 https://diagnoseit.in`
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <MaterialCommunityIcons name="bell-alert" size={22} color="#B45309" />
-              <Text style={{ color: '#92400E', fontWeight: '900', marginLeft: 8, fontSize: 15 }}>Notifications are disabled</Text>
+              <Text style={{ color: '#92400E', fontWeight: '900', marginLeft: 8, fontSize: 15 }}>{t('account.notificationsDisabled')}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
               <Text style={{ flex: 1, color: '#92400E', marginRight: 12, fontSize: 13, lineHeight: 18 }}>
-                Turn on notifications to receive daily reminders and updates.
+                {t('account.notificationsDesc')}
               </Text>
               <TouchableOpacity
                 onPress={async () => {
@@ -470,7 +494,7 @@ Join me 👉 https://diagnoseit.in`
                   flexShrink: 0
                 }}
               >
-                <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>Allow</Text>
+                <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>{t('account.allow')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -513,7 +537,7 @@ Join me 👉 https://diagnoseit.in`
               <MaterialCommunityIcons name="gift-outline" size={22} color="#ff4d4f" />
             </View>
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>Refer a Friend</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>{t('account.referAFriend')}</Text>
               <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -526,6 +550,38 @@ Join me 👉 https://diagnoseit.in`
                 <MaterialCommunityIcons name="heart" size={12} color="#ff4d4f" />
                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#ff4d4f', marginLeft: 3 }}>+1</Text>
               </View>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
+          </TouchableOpacity>
+
+          <View style={{ height: 1, backgroundColor: '#F0F0F2', marginLeft: 72 }} />
+
+          {/* Language Picker */}
+          <TouchableOpacity
+            onPress={handleLanguageChange}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 16,
+              paddingHorizontal: 18,
+              backgroundColor: '#FFFFFF',
+            }}
+            activeOpacity={0.6}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: '#F0F8FF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}>
+              <Text style={{ fontSize: 20 }}>{currentLangObj.flag}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>{t('account.language')}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '500', color: '#888888', marginTop: 2 }}>{currentLangObj.label}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
           </TouchableOpacity>
@@ -565,7 +621,7 @@ Join me 👉 https://diagnoseit.in`
             }}>
               <MaterialCommunityIcons name="star" size={22} color={Colors.brand.darkPink} />
             </View>
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>Rate the App</Text>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>{t('account.rateTheApp')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
           </TouchableOpacity>
 
@@ -595,7 +651,7 @@ Join me 👉 https://diagnoseit.in`
             }}>
               <MaterialCommunityIcons name="shield-lock-outline" size={22} color="#4A5568" />
             </View>
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>Privacy Policy</Text>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>{t('account.privacyPolicy')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
           </TouchableOpacity>
 
@@ -625,7 +681,7 @@ Join me 👉 https://diagnoseit.in`
             }}>
               <MaterialCommunityIcons name="file-document-outline" size={22} color="#4A5568" />
             </View>
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>Terms of Service</Text>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>{t('account.termsOfService')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
           </TouchableOpacity>
         </View>
@@ -649,12 +705,84 @@ Join me 👉 https://diagnoseit.in`
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
               <MaterialCommunityIcons name="logout" size={20} color="#ffffff" />
-              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 16, marginLeft: 10 }}>Log out</Text>
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 16, marginLeft: 10 }}>{t('account.logOut')}</Text>
             </View>
           </TouchableOpacity>
         </View>
         <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />
       </ScrollView>
+
+      <BottomSheetModal
+        ref={langSheetRef}
+        index={0}
+        snapPoints={snapPoints}
+        backdropComponent={renderBackdrop}
+        enablePanDownToClose
+        handleIndicatorStyle={{ backgroundColor: '#D1D1D6', width: 40 }}
+        backgroundStyle={{ borderRadius: 32 }}
+      >
+        <BottomSheetView style={{ flex: 1, paddingHorizontal: 24, paddingBottom: insets.bottom + 20 }}>
+          <View style={{ marginTop: 8, marginBottom: 20, alignItems: 'center' }}>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#1C1C1E' }}>
+              {t('account.language')}
+            </Text>
+          </View>
+
+          <View style={{ gap: 12 }}>
+            {LANGUAGES.map((lang) => {
+              const isSelected = lang.code === currentLang;
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  onPress={() => {
+                    changeLanguage(lang.code);
+                    setCurrentLang(lang.code);
+                    langSheetRef.current?.dismiss();
+                  }}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 16,
+                    borderRadius: 16,
+                    backgroundColor: isSelected ? '#FFF0F5' : '#F2F2F7',
+                    borderWidth: 1.5,
+                    borderColor: isSelected ? Colors.brand.darkPink : 'transparent',
+                  }}
+                >
+                  <View style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 14,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  }}>
+                    <Text style={{ fontSize: 22 }}>{lang.flag}</Text>
+                  </View>
+                  <Text style={{
+                    flex: 1,
+                    fontSize: 17,
+                    fontWeight: isSelected ? '700' : '600',
+                    color: isSelected ? Colors.brand.darkPink : '#1C1C1E',
+                  }}>
+                    {lang.label}
+                  </Text>
+                  {isSelected && (
+                    <MaterialCommunityIcons name="check-circle" size={24} color={Colors.brand.darkPink} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }

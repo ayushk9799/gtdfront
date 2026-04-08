@@ -4,8 +4,10 @@ import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../constants/Colors';
 import LinearGradient from 'react-native-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const QuitConfirmationSheet = forwardRef(function QuitConfirmationSheet({ onConfirmQuit }, ref) {
+    const { t } = useTranslation();
     const sheetRef = useRef(null);
     const snapPoints = useMemo(() => ['35%'], []);
 
@@ -46,11 +48,11 @@ const QuitConfirmationSheet = forwardRef(function QuitConfirmationSheet({ onConf
                 </View>
 
                 {/* Title */}
-                <Text style={styles.title}>Quit Case?</Text>
+                <Text style={styles.title}>{t('quit.title')}</Text>
 
                 {/* Message */}
                 <Text style={styles.message}>
-                    Are you sure you want to quit solving this case? Your progress will be lost.
+                    {t('quit.description')}
                 </Text>
 
                 {/* Buttons */}
@@ -61,7 +63,7 @@ const QuitConfirmationSheet = forwardRef(function QuitConfirmationSheet({ onConf
                         onPress={handleCancel}
                         activeOpacity={0.9}
                     >
-                        <Text style={styles.continueButtonText}>Continue</Text>
+                        <Text style={styles.continueButtonText}>{t('quit.cancel')}</Text>
                     </TouchableOpacity>
 
                     {/* Quit Button */}
@@ -76,7 +78,7 @@ const QuitConfirmationSheet = forwardRef(function QuitConfirmationSheet({ onConf
                             end={{ x: 1, y: 0 }}
                             style={StyleSheet.absoluteFill}
                         />
-                        <Text style={styles.quitButtonText}>Quit Case</Text>
+                        <Text style={styles.quitButtonText}>{t('quit.confirm')}</Text>
                     </TouchableOpacity>
                 </View>
             </BottomSheetView>

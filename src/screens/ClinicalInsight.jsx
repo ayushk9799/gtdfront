@@ -20,6 +20,7 @@ import Video from 'react-native-video';
 import Pdf from 'react-native-pdf';
 import Markdown from 'react-native-markdown-display';
 import { getGamesPlayedCount, getFirstPlayedCaseId } from '../services/ratingService';
+import { useTranslation } from 'react-i18next';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -87,15 +88,15 @@ const ERROR_BG = '#FDEAEA';
 const INFO_COLOR = '#6E4A13';
 const INFO_BG = '#F6EFE4';
 
-const TABS = ['Tests', 'Diagnosis', 'Treatment'];
+const TABS = ['tests', 'diagnosis', 'treatment'];
 
 const PREMIUM_FEATURES = [
-  { label: 'Unlimited Cases', free: false, pro: true },
-  { label: 'Daily Challenge', free: true, pro: true },
-  { label: 'Past Daily Challenge', free: false, pro: true },
-  { label: 'Video Overview', free: false, pro: true },
-  { label: 'Clinical images', free: false, pro: true },
-  { label: 'Deep Dive explanations', free: false, pro: true },
+  { label: 'premium.unlimitedCases', free: false, pro: true },
+  { label: 'premium.dailyChallenge', free: true, pro: true },
+  { label: 'premium.pastDailyChallenge', free: false, pro: true },
+  { label: 'premium.videoOverview', free: false, pro: true },
+  { label: 'premium.clinicalImages', free: false, pro: true },
+  { label: 'premium.deepDiveExplanations', free: false, pro: true },
 ];
 
 // Local animated number to avoid re-rendering the whole screen each frame
@@ -157,6 +158,7 @@ export default function ClinicalInsight() {
   const caseDataFromRoute = route?.params?.caseData;
   const premiumSheetRef = React.useRef(null);
   const scrollViewRef = React.useRef(null);
+  const { t } = useTranslation();
 
   // Refs for section Y positions (for cycling scroll)
   const sectionYRefs = React.useRef({
@@ -420,7 +422,7 @@ export default function ClinicalInsight() {
     }
     if (!effectiveCaseId && caseData?.caseId) {
       try {
-        const res = await fetch(`${API_BASE}/api/cases/casewise/${encodeURIComponent(caseData.caseId)}`);
+        const res = await fetch(`${API_BASE}/api/cases/casewise/${encodeURIComponent(caseData.caseId)}?lang=${i18n.language}`);
         if (res.ok) {
           const data = await res.json();
           effectiveCaseId = data?.caseItem?._id || null;
@@ -485,11 +487,12 @@ export default function ClinicalInsight() {
   // Alias mapping for initial tab labels coming from previous screens
   const normalizedInitialTab = (initialTabParam === 'Treatment Plan') ? 'Treatment' : initialTabParam;
   const [index, setIndex] = React.useState(
-    Math.max(0, TABS.indexOf(TABS.includes(normalizedInitialTab) ? normalizedInitialTab : 'Diagnosis'))
+    Math.max(0, TABS.indexOf(TABS.includes(initialTabParam?.toLowerCase()) ? initialTabParam.toLowerCase() : 'diagnosis'))
   );
 
-  const [routes] = React.useState(
-    TABS.map((t) => ({ key: t.toLowerCase(), title: t }))
+  const routes = React.useMemo(() => 
+    TABS.map((tabKey) => ({ key: tabKey, title: t(`insight.${tabKey}`) })),
+    [t]
   );
 
   // Single expanded state for all tabs - when true, all tabs show full content
@@ -600,13 +603,13 @@ export default function ClinicalInsight() {
     const missedRelevantTests = availableTests.filter((t) => t.isRelevant && !(selectedTestIds || []).includes(t.testId));
 
     if (correctSelectedTests.length) {
-      sec.tests.push({ kind: 'success', title: 'Efficient Test Choices', items: correctSelectedTests.map((t) => t.testName) });
+      sec.tests.push({ kind: 'success', title: t('insight.efficientTests'), items: correctSelectedTests.map((t) => t.testName) });
     }
     if (unnecessarySelectedTests.length) {
-      sec.tests.push({ kind: 'error', title: 'Unnecessary Tests Ordered', items: unnecessarySelectedTests.map((t) => t.testName) });
+      sec.tests.push({ kind: 'error', title: t('insight.unnecessaryTests'), items: unnecessarySelectedTests.map((t) => t.testName) });
     }
     if (missedRelevantTests.length) {
-      sec.tests.push({ kind: 'info', title: 'Missed Key Tests', items: missedRelevantTests.map((t) => t.testName) });
+      sec.tests.push({ kind: 'info', title: t('insight.missedTests'), items: missedRelevantTests.map((t) => t.testName) });
     }
 
     // Diagnosis (step 3 / index 2)
@@ -618,12 +621,12 @@ export default function ClinicalInsight() {
       const userCorrect = !!userDiagnosis.isCorrect;
       sec.diagnosis.push({
         kind: userCorrect ? 'success' : 'error',
-        title: 'Your Diagnosis',
+        title: t('insight.yourDiagnosis'),
         items: [userDiagnosis.diagnosisName],
       });
     }
     if (correctDiagnosis) {
-      sec.diagnosis.push({ kind: 'success', title: 'Correct Diagnosis', items: [correctDiagnosis.diagnosisName] });
+      sec.diagnosis.push({ kind: 'success', title: t('insight.correctDiagnosis'), items: [correctDiagnosis.diagnosisName] });
     }
 
     // Treatment (step 4 / index 3)
@@ -642,13 +645,13 @@ export default function ClinicalInsight() {
     const missedTx = flatTreatments.filter((t) => t.isCorrect && !(selectedTreatmentIds || []).includes(t.treatmentId));
 
     if (correctSelectedTx.length) {
-      sec.treatment.push({ kind: 'success', title: 'Correct Treatments Given', items: correctSelectedTx.map((t) => t.treatmentName) });
+      sec.treatment.push({ kind: 'success', title: t('insight.correctTreatments'), items: correctSelectedTx.map((t) => t.treatmentName) });
     }
     if (unnecessarySelectedTx.length) {
-      sec.treatment.push({ kind: 'error', title: 'Unnecessary Treatments Given', items: unnecessarySelectedTx.map((t) => t.treatmentName) });
+      sec.treatment.push({ kind: 'error', title: t('insight.unnecessaryTreatments'), items: unnecessarySelectedTx.map((t) => t.treatmentName) });
     }
     if (missedTx.length) {
-      sec.treatment.push({ kind: 'info', title: 'Missed Treatments', items: missedTx.map((t) => t.treatmentName) });
+      sec.treatment.push({ kind: 'info', title: t('insight.missedTreatments'), items: missedTx.map((t) => t.treatmentName) });
     }
 
     return sec;
@@ -660,16 +663,16 @@ export default function ClinicalInsight() {
     if (!review) return [];
     const out = [];
     if (review?.coreClinicalInsight?.correctDiagnosis) {
-      out.push({ title: 'Correct Diagnosis', bullets: [review.coreClinicalInsight.correctDiagnosis] });
+      out.push({ title: t('insight.correctDiagnosis'), bullets: [review.coreClinicalInsight.correctDiagnosis] });
     }
     if (review?.coreClinicalInsight?.keyClues) {
-      out.push({ title: 'Key Clues', bullets: [review.coreClinicalInsight.keyClues] });
+      out.push({ title: t('insight.keyClues'), bullets: [review.coreClinicalInsight.keyClues] });
     }
     if (review?.coreClinicalInsight?.essentialTests) {
-      out.push({ title: 'Essential Tests', bullets: [review.coreClinicalInsight.essentialTests] });
+      out.push({ title: t('insight.essentialTests'), bullets: [review.coreClinicalInsight.essentialTests] });
     }
     if (Array.isArray(review?.coreClinicalInsight?.trapsToAvoid) && review.coreClinicalInsight.trapsToAvoid.length) {
-      out.push({ title: 'Pitfalls to avoid', bullets: review.coreClinicalInsight.trapsToAvoid });
+      out.push({ title: t('insight.pitfalls'), bullets: review.coreClinicalInsight.trapsToAvoid });
     }
     return out;
   }, [caseData]);
@@ -721,7 +724,7 @@ export default function ClinicalInsight() {
             >
               <View style={styles.reattemptTopContent}>
                 <MaterialCommunityIcons name="refresh" size={16} color="#FF8A00" />
-                <Text style={styles.reattemptTopBtnText}>Reattempt</Text>
+                <Text style={styles.reattemptTopBtnText}>{t('insight.reattempt')}</Text>
               </View>
             </Pressable>
           )}
@@ -732,7 +735,7 @@ export default function ClinicalInsight() {
             value={scores.total}
             duration={800}
             animate={openedFromTreatment}
-            formatter={(v) => `Score: ${Math.round(v)} / 100`}
+            formatter={(v) => t('insight.score', { score: Math.round(v) })}
           />
           {headerDx.correct ? (
             <View style={[styles.dxPill, styles.dxPillCorrect, { marginTop: 16, marginHorizontal: 16 }]}>
@@ -780,7 +783,7 @@ export default function ClinicalInsight() {
                 ]}
               >
                 <Text style={{ fontSize: 13, fontWeight: viewedAttemptIndex === 0 ? '700' : '500', color: viewedAttemptIndex === 0 ? themeColors.primary : themeColors.textSecondary }}>
-                  Attempt 1
+                  {t('insight.attempt', { number: 1 })}
                 </Text>
               </Pressable>
               
@@ -808,7 +811,7 @@ export default function ClinicalInsight() {
                   ]}
                 >
                   <Text style={{ fontSize: 13, fontWeight: viewedAttemptIndex === i + 1 ? '700' : '500', color: viewedAttemptIndex === i + 1 ? themeColors.primary : themeColors.textSecondary }}>
-                    Attempt {i + 2}
+                    {t('insight.attempt', { number: i + 2 })}
                   </Text>
                 </Pressable>
               ))}
@@ -821,7 +824,7 @@ export default function ClinicalInsight() {
             <View style={styles.caseIconWrap}>
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
             </View>
-            <Text style={styles.caseHeaderText}>CASE REVIEW</Text>
+            <Text style={styles.caseHeaderText}>{t('insight.caseReview')}</Text>
           </View>
 
           <Animated.View style={{ height: animatedHeight, margin: 4, overflow: 'hidden' }}>
@@ -874,10 +877,10 @@ export default function ClinicalInsight() {
                             value={categoryScore}
                             duration={650}
                             animate={openedFromTreatment}
-                            formatter={(v) => `Score: ${Math.round(v)} / ${categoryMax}`}
+                            formatter={(v) => `${t('insight.score', { score: Math.round(v) })} / ${categoryMax}`}
                           />
                           {currentSections.length === 0 ? (
-                            <Text style={[styles.bulletText, { marginLeft: 0 }]}>No items to display.</Text>
+                            <Text style={[styles.bulletText, { marginLeft: 0 }]}>{t('insight.noItems')}</Text>
                           ) : (
                             currentSections.map((section, idx) => (
                               <Section
@@ -916,7 +919,7 @@ export default function ClinicalInsight() {
                           >
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                               <Text style={{ color: Colors.brand.darkPink, fontWeight: '700', fontSize: 14 }}>
-                                Show More
+                                {t('insight.showMore')}
                               </Text>
                               <MaterialCommunityIcons
                                 name="chevron-down"
@@ -942,7 +945,7 @@ export default function ClinicalInsight() {
                       >
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                           <Text style={{ color: Colors.brand.darkPink, fontWeight: '700', fontSize: 14 }}>
-                            Show Less
+                            {t('insight.showLess')}
                           </Text>
                           <MaterialCommunityIcons
                             name="chevron-up"
@@ -974,7 +977,7 @@ export default function ClinicalInsight() {
               <View style={styles.insightIconWrap}>
                 <MaterialCommunityIcons name="chevron-right" size={16} color={SUCCESS_COLOR} />
               </View>
-              <Text style={styles.insightHeaderText}>Core Clinical Insights</Text>
+              <Text style={styles.insightHeaderText}>{t('insight.coreInsight')}</Text>
             </View>
             <MaterialCommunityIcons name={insightsExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={SUCCESS_COLOR} />
           </Pressable>
@@ -1005,7 +1008,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapBlue]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#2A4670" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextBlue]}>How We Landed on the Diagnosis</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextBlue]}>{t('insight.howLanded')}</Text>
               </View>
               <MaterialCommunityIcons name={howExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#2A4670" />
             </Pressable>
@@ -1023,10 +1026,10 @@ export default function ClinicalInsight() {
                       overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
                     />
                     <View style={styles.premiumOverlay}>
-                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
                       <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                        <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
                   </>
@@ -1049,7 +1052,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#6E4A13" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Logic Behind Test Selection</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>{t('insight.logicBehindTests')}</Text>
               </View>
               <MaterialCommunityIcons name={rationaleExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#6E4A13" />
             </Pressable>
@@ -1067,10 +1070,10 @@ export default function ClinicalInsight() {
                       overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
                     />
                     <View style={styles.premiumOverlay}>
-                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
                       <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                        <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
                   </>
@@ -1093,7 +1096,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#5B2E91" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Treatment Priority </Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>{t('insight.treatmentPriority')}</Text>
               </View>
               <MaterialCommunityIcons name={txExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#5B2E91" />
             </Pressable>
@@ -1111,10 +1114,10 @@ export default function ClinicalInsight() {
                       overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
                     />
                     <View style={styles.premiumOverlay}>
-                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
                       <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                        <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
                   </>
@@ -1137,7 +1140,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapRed]}>
                   <MaterialCommunityIcons name="chevron-right" size={16} color="#7B1F24" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextRed]}>Why Other Diagnoses Didn't Fit</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextRed]}>{t('insight.whyNotOthers')}</Text>
               </View>
               <MaterialCommunityIcons name={whyExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#7B1F24" />
             </Pressable>
@@ -1155,10 +1158,10 @@ export default function ClinicalInsight() {
                       overlayColor={Platform.OS === 'android' ? 'rgba(255,255,255,0.82)' : 'transparent'}
                     />
                     <View style={styles.premiumOverlay}>
-                      <Text style={styles.premiumOverlayText}>Clinical detailed analysis only available for premium user</Text>
+                      <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
                       <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                        <Text style={styles.premiumCtaButtonText}>Buy Premium & Unlock</Text>
+                        <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
                   </>
@@ -1173,7 +1176,7 @@ export default function ClinicalInsight() {
           <View style={styles.standaloneResourceCard}>
             <View style={styles.resourceInfoRow}>
               <MaterialCommunityIcons name="image-multiple-outline" size={20} color="#14919B" />
-              <Text style={styles.resourceTitle}>Clinical Infographic</Text>
+              <Text style={styles.resourceTitle}>{t('insight.clinicalInfographic')}</Text>
             </View>
             <View style={[styles.inlineImageContainer, { position: 'relative' }]}>
               {!shouldShowPremiumBlur ? (
@@ -1192,9 +1195,9 @@ export default function ClinicalInsight() {
                   />
                   <View style={styles.premiumOverlay}>
                     <MaterialCommunityIcons name="image-multiple-outline" size={40} color="#14919B" />
-                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>{t('insight.unlockWithPremium')}</Text>
                     <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                      <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremium')}</Text>
                     </Pressable>
                   </View>
                 </>
@@ -1211,7 +1214,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapPurple]}>
                   <MaterialCommunityIcons name="video-outline" size={16} color="#5B2E91" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>Video Overview</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextPurple]}>{t('insight.videoOverview')}</Text>
               </View>
             </View>
             <View style={[styles.inlineVideoContainer, { position: 'relative' }]}>
@@ -1255,12 +1258,12 @@ export default function ClinicalInsight() {
                   />
                   <View style={styles.premiumOverlay}>
                     <MaterialCommunityIcons name="video-outline" size={40} color="#5B2E91" />
-                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 4 }]}>Unlock Full Video with Premium</Text>
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 4 }]}>{t('insight.unlockVideo')}</Text>
                     {/* <Text style={{ color: '#5B2E91', fontSize: 13, marginTop: 4, textAlign: 'center', fontWeight: '600' }}>
                       Watch full video to unlock premium
                     </Text> */}
                     <Pressable style={[styles.premiumCtaButton, { marginTop: 8 }]} onPress={() => premiumSheetRef.current?.present()}>
-                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                      <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremium')}</Text>
                     </Pressable>
                     <Pressable
                       style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
@@ -1272,7 +1275,7 @@ export default function ClinicalInsight() {
                       }}
                     >
                       <MaterialCommunityIcons name="restart" size={16} color="#5B2E91" style={{ marginRight: 4 }} />
-                      <Text style={{ color: '#5B2E91', fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' }}>Restart Video</Text>
+                      <Text style={{ color: '#5B2E91', fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' }}>{t('insight.restartVideo')}</Text>
                     </Pressable>
 
                   </View>
@@ -1290,7 +1293,7 @@ export default function ClinicalInsight() {
                 <View style={[styles.insightIconWrap, styles.insightIconWrapOrange]}>
                   <MaterialCommunityIcons name="file-presentation-box" size={16} color="#6E4A13" />
                 </View>
-                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>Slide Deck (PDF)</Text>
+                <Text style={[styles.insightHeaderText, styles.insightHeaderTextOrange]}>{t('insight.slidesTitle')}</Text>
               </View>
               <Pressable
                 onPress={async () => {
@@ -1307,7 +1310,7 @@ export default function ClinicalInsight() {
 
                     // Show download started toast
                     if (Platform.OS === 'android') {
-                      ToastAndroid.show('Downloading PDF...', ToastAndroid.SHORT);
+                      ToastAndroid.show(t('insight.downloadingPdf'), ToastAndroid.SHORT);
                     }
 
                     if (Platform.OS === 'android') {
@@ -1319,14 +1322,14 @@ export default function ClinicalInsight() {
                           useDownloadManager: true,
                           notification: true,
                           title: fileName,
-                          description: 'Downloading slide deck PDF',
+                          description: t('insight.downloadingSlidesDesc'),
                           path: downloadPath,
                           mime: 'application/pdf',
                           mediaScannable: true,
                         },
                       }).fetch('GET', caseData.slidedeck);
 
-                      ToastAndroid.show('PDF saved to Downloads!', ToastAndroid.LONG);
+                      ToastAndroid.show(t('insight.pdfSaved'), ToastAndroid.LONG);
                     } else {
                       // For iOS
                       const downloadPath = `${dirs.DocumentDir}/${fileName}`;
@@ -1339,7 +1342,7 @@ export default function ClinicalInsight() {
                     }
                   } catch (error) {
                     console.error('Download error:', error);
-                    Alert.alert('Download Failed', 'Unable to download the PDF. Please try again.');
+                    Alert.alert(t('insight.downloadFailed'), t('insight.downloadErrorDesc'));
                   }
                 }}
                 hitSlop={10}
@@ -1383,12 +1386,12 @@ export default function ClinicalInsight() {
                   />
                   <View style={styles.premiumOverlay} {...pdfOverlayPanResponder.panHandlers}>
                     <MaterialCommunityIcons name="file-presentation-box" size={40} color="#6E4A13" />
-                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>Unlock with Premium</Text>
+                    <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>{t('insight.unlockWithPremium')}</Text>
                     <Text style={{ color: '#6E4A13', fontSize: 13, marginTop: 4, textAlign: 'center' }}>
-                      {pdfTotalPages > 4 ? `${pdfTotalPages - 4} more slides available` : 'More content available'}
+                      {pdfTotalPages > 4 ? t('insight.slidesMoreAvailable', { count: pdfTotalPages - 4 }) : t('insight.slidesContentAvailable')}
                     </Text>
                     <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
-                      <Text style={styles.premiumCtaButtonText}>Buy Premium</Text>
+                      <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremium')}</Text>
                     </Pressable>
                   </View>
                 </>
@@ -1491,18 +1494,18 @@ export default function ClinicalInsight() {
 
               <View style={{ paddingHorizontal: 28, paddingTop: 32, paddingBottom: 24 }}>
                 <Text style={{ fontSize: 22, fontWeight: '900', color: '#0F172A', textAlign: 'center', letterSpacing: -0.5 }}>
-                  Reattempt Case
+                  {t('insight.reattemptTitle')}
                 </Text>
                 
                 <View style={{ height: 1.5, width: 40, backgroundColor: '#F1F5F9', alignSelf: 'center', marginVertical: 16 }} />
 
                 <Text style={{ fontSize: 15, color: '#475569', textAlign: 'center', lineHeight: 22, fontWeight: '500' }}>
-                  Ready to try again? Your previous score will be saved in your journey history.
+                  {t('insight.reattemptDescription')}
                 </Text>
                 
                 <View style={{ marginTop: 12, backgroundColor: '#FFF1F2', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, alignSelf: 'center' }}>
                   <Text style={{ fontSize: 12, color: Colors.brand.darkPink, fontWeight: '700', textAlign: 'center' }}>
-                    Note: Points won't be re-added
+                    {t('insight.reattemptNote')}
                   </Text>
                 </View>
               </View>
@@ -1527,7 +1530,7 @@ export default function ClinicalInsight() {
                     end={{ x: 1, y: 0 }}
                     style={StyleSheet.absoluteFill}
                   />
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>Start Reattempt</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>{t('insight.reattemptConfirm')}</Text>
                 </Pressable>
 
                 <Pressable
@@ -1541,7 +1544,7 @@ export default function ClinicalInsight() {
                     borderColor: '#F1F5F9',
                   })}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#64748B' }}>Maybe Later</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#64748B' }}>{t('insight.reattemptCancel')}</Text>
                 </Pressable>
               </View>
             </Animated.View>
@@ -1569,12 +1572,13 @@ const markdownStyles = {
 };
 
 const WhyNotList = React.memo(({ items }) => {
+  const { t } = useTranslation();
   if (!Array.isArray(items) || items.length === 0) return null;
   return (
     <View style={{ paddingTop: 8 }}>
       {items.map((it, i) => (
         <View key={i} style={{ marginBottom: 4 }}>
-          <Markdown style={{ ...markdownStyles, body: styles.insightTitle }}>{it?.diagnosisName || 'Alternative Diagnosis'}</Markdown>
+          <Markdown style={{ ...markdownStyles, body: styles.insightTitle }}>{it?.diagnosisName || t('insight.alternativeDiagnosis')}</Markdown>
           {!!it?.reasoning && (
             <View style={{ flexDirection: 'row', marginTop: 0, alignItems: 'flex-start' }}>
               <Text style={[styles.insightBullet, { marginTop: Platform.OS === 'ios' ? 0 : 2 }]}>{`\u2022 `}</Text>
@@ -1746,11 +1750,11 @@ function PremiumBenefitsTable() {
       <View style={styles.premiumTableHeader}>
         <View style={{ flex: 1 }} />
         <View style={styles.premiumTableHeaderCell}>
-          <Text style={{ fontSize: 12, fontWeight: '800', color: '#6C6C6C' }}>FREE</Text>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: '#6C6C6C' }}>{t('premium.freeCaps')}</Text>
         </View>
         <View style={styles.premiumTableHeaderCell}>
           <View style={styles.premiumProPill}>
-            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF' }}>PRO</Text>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF' }}>{t('premium.proCaps')}</Text>
           </View>
         </View>
       </View>
@@ -1763,7 +1767,7 @@ function PremiumBenefitsTable() {
           ]}
         >
           <View style={{ flex: 1, paddingRight: 10 }}>
-            <Text style={styles.premiumTableLabel}>{f.label}</Text>
+            <Text style={styles.premiumTableLabel}>{t(f.label)}</Text>
           </View>
           <View style={styles.premiumTableCell}>
             {f.free ? (
@@ -1822,7 +1826,8 @@ function DashedDivider() {
 }
 
 const InsightSection = React.memo(({ title, bullets }) => {
-  const isCorrectDiagnosis = title === 'Correct Diagnosis';
+  const { t } = useTranslation();
+  const isCorrectDiagnosis = title === t('insight.correctDiagnosis');
   return (
     <View style={{ paddingTop: 8 }}>
       <Markdown style={{ ...markdownStyles, body: { ...styles.insightTitle, color: isCorrectDiagnosis ? SUCCESS_COLOR : styles.insightTitle.color } }}>{title}</Markdown>

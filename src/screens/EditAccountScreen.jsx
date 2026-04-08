@@ -22,6 +22,7 @@ import { API_BASE } from '../../constants/Api';
 import googleAuth from '../services/googleAuth';
 import CloudBottom from '../components/CloudBottom';
 import LinearGradient from 'react-native-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -31,6 +32,7 @@ export default function EditAccountScreen() {
     const insets = useSafeAreaInsets();
     const storage = useMemo(() => new MMKV(), []);
     const { userData, status } = useSelector(state => state.user);
+    const { t } = useTranslation();
 
     // Get user from MMKV storage
     const user = useMemo(() => {
@@ -51,13 +53,13 @@ export default function EditAccountScreen() {
 
     const handleUpdate = useCallback(async () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Name cannot be empty');
+            Alert.alert(t('account.error'), t('editAccount.nameRequired'));
             return;
         }
 
         const userId = user?.userId || user?._id || user?.id || userData?._id;
         if (!userId) {
-            Alert.alert('Error', 'Unable to identify user. Please try logging out and back in.');
+            Alert.alert(t('account.error'), t('account.unableToIdentifyUser'));
             return;
         }
 
@@ -81,11 +83,11 @@ export default function EditAccountScreen() {
                 console.warn('Failed to update local storage:', e);
             }
 
-            Alert.alert('Success', 'Your profile has been updated', [
-                { text: 'OK', onPress: () => navigation.goBack() }
+            Alert.alert(t('editAccount.saved'), '', [
+                { text: t('common.ok'), onPress: () => navigation.goBack() }
             ]);
         } catch (error) {
-            Alert.alert('Error', error?.message || 'Failed to update profile. Please try again.');
+            Alert.alert(t('account.error'), error?.message || t('account.failedToDelete'));
         } finally {
             setIsUpdating(false);
         }
@@ -93,18 +95,18 @@ export default function EditAccountScreen() {
 
     const handleDeleteAccount = useCallback(async () => {
         Alert.alert(
-            'Delete Account',
-            'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including game progress, scores, and premium subscriptions.',
+            t('account.deleteAccount'),
+            t('account.deleteAccountConfirm'),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: t('account.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
                             const userId = user?.userId || user?._id || user?.id || userData?._id;
                             if (!userId) {
-                                Alert.alert('Error', 'Unable to identify user. Please try logging out and back in.');
+                                Alert.alert(t('account.error'), t('account.unableToIdentifyUser'));
                                 return;
                             }
 
@@ -119,7 +121,7 @@ export default function EditAccountScreen() {
                             const data = await response.json();
 
                             if (!response.ok || data?.error) {
-                                Alert.alert('Error', data?.error || 'Failed to delete account. Please try again.');
+                                Alert.alert(t('account.error'), data?.error || t('account.failedToDelete'));
                                 return;
                             }
 
@@ -141,7 +143,7 @@ export default function EditAccountScreen() {
                                 } catch { }
                             }, 0);
                         } catch (err) {
-                            Alert.alert('Error', err?.message || 'Failed to delete account. Please try again.');
+                            Alert.alert(t('account.error'), err?.message || t('account.failedToDelete'));
                         }
                     },
                 },
@@ -193,7 +195,7 @@ export default function EditAccountScreen() {
                     <View style={styles.formContainer}>
                         {/* Name Input */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Name</Text>
+                            <Text style={styles.inputLabel}>{t('editAccount.name')}</Text>
                             <View style={styles.inputWrapper}>
                                 <MaterialCommunityIcons
                                     name="account-outline"
@@ -216,7 +218,7 @@ export default function EditAccountScreen() {
 
                         {/* Email Input (Disabled) */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Email</Text>
+                            <Text style={styles.inputLabel}>{t('editAccount.email')}</Text>
                             <View style={[styles.inputWrapper, styles.inputDisabled]}>
                                 <MaterialCommunityIcons
                                     name="email-outline"
@@ -257,7 +259,7 @@ export default function EditAccountScreen() {
                         ) : (
                             <View style={styles.buttonContent}>
                                 <MaterialCommunityIcons name="check" size={20} color="#ffffff" />
-                                <Text style={styles.updateButtonText}>Update Profile</Text>
+                                <Text style={styles.updateButtonText}>{t('editAccount.save')}</Text>
                             </View>
                         )}
                     </TouchableOpacity>
@@ -281,7 +283,7 @@ export default function EditAccountScreen() {
                     >
                         <View style={styles.buttonContent}>
                             <MaterialCommunityIcons name="delete-outline" size={20} color="#DC2626" />
-                            <Text style={styles.deleteButtonText}>Delete Account</Text>
+                            <Text style={styles.deleteButtonText}>{t('account.deleteAccount')}</Text>
                         </View>
                     </TouchableOpacity>
                     <View style={{ position: 'relative', height: 160, marginTop: 24, marginHorizontal: -20 }}>

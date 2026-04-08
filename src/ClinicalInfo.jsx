@@ -19,6 +19,7 @@ import { BlurView } from '@react-native-community/blur';
 import PremiumBottomSheet from './components/PremiumBottomSheet';
 import QuitConfirmationSheet from './components/QuitConfirmationSheet';
 import Markdown from 'react-native-markdown-display';
+import { useTranslation } from 'react-i18next';
 
 // Match the app's subtle pink gradient
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -150,6 +151,7 @@ export default function ClinicalInfo() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const soundRef = useRef(null);
   // Use refs instead of state for audio status to avoid re-renders
   const isPlayingRef = useRef(false);
@@ -642,7 +644,7 @@ export default function ClinicalInfo() {
       >
         <View key="1" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
-            title="Basic Info & Chief Complaint"
+            title={t('clinical.basicInfoAndChiefComplaint')}
           >
             {!heroLoadError && mainImageUrl ? (
               <Image
@@ -663,14 +665,14 @@ export default function ClinicalInfo() {
               <ComingSoonImage style={[styles.heroImage, { height: isTablet ? 300 : 200 }]} />
             )}
             <View style={styles.infoGrid}>
-              <InfoColumn icon="badge-account" label="Name" value={p?.name || '—'} />
-              <InfoColumn icon="gender-male-female" label="Sex" value={p?.gender || '—'} />
-              <InfoColumn icon="calendar" label="Age" value={p?.age != null ? String(p.age) : '—'} />
+              <InfoColumn icon="badge-account" label={t('clinical.name')} value={p?.name || '—'} />
+              <InfoColumn icon="gender-male-female" label={t('clinical.sex')} value={p?.gender || '—'} />
+              <InfoColumn icon="calendar" label={t('clinical.age')} value={p?.age != null ? String(p.age) : '—'} />
             </View>
             <View style={styles.chiefContainer}>
               <View style={styles.subHeaderRow}>
                 <MaterialCommunityIcons name="clipboard-text-outline" size={18} color={Colors.brand.darkPink} />
-                <Text style={styles.subHeaderText}>Chief Complaint</Text>
+                <Text style={styles.subHeaderText}>{t('clinical.chiefComplaint')}</Text>
               </View>
               <Text style={styles.chiefText}>{chief || '—'}</Text>
             </View>
@@ -678,7 +680,7 @@ export default function ClinicalInfo() {
         </View>
         <View key="2" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
-            title="Vitals"
+            title={t('clinical.vitals')}
           >
             <View style={styles.statsRow}>
               {displayVitals.map((v) => (
@@ -701,7 +703,7 @@ export default function ClinicalInfo() {
         </View>
         <View key="3" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
-            title="History (Hx)"
+            title={t('clinical.history')}
           >
             {historyItems.map((h, i) => (
               <View key={i} style={styles.historySection}>
@@ -713,7 +715,7 @@ export default function ClinicalInfo() {
         </View>
         <View key="4" style={[styles.slide, { paddingTop: Math.max(36, insets.top + 24) }]}>
           <Section
-            title="Physical Examination (PE)"
+            title={t('clinical.physicalExam')}
             footer={
               physicalImages.length > 0 ? (
                 <TouchableOpacity
@@ -732,7 +734,7 @@ export default function ClinicalInfo() {
                     style={styles.sectionFloatingButtonGradient}
                   />
                   <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#fff" />
-                  <Text style={styles.sectionFloatingButtonText}>View Images</Text>
+                  <Text style={styles.sectionFloatingButtonText}>{t('clinical.viewImages')}</Text>
                 </TouchableOpacity>
               ) : null
             }
@@ -766,7 +768,7 @@ export default function ClinicalInfo() {
             pointerEvents="none"
           />
           <View style={styles.sheetHeaderRow}>
-            <Text style={styles.sheetHeaderTitle}>Physical Exam Images</Text>
+            <Text style={styles.sheetHeaderTitle}>{t('clinical.physicalExamImages')}</Text>
             {totalPhysImages > 0 ? (
               <Text style={styles.sheetHeaderMeta}>{`${selectedPhysImageIndex + 1}/${totalPhysImages}`}</Text>
             ) : null}
@@ -812,13 +814,13 @@ export default function ClinicalInfo() {
                                 overlayColor={Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.1)' : 'transparent'}
                               />
                               <View style={styles.premiumOverlay}>
-                                <Text style={styles.premiumOverlayText}>Clinical image only available for Premium users</Text>
+                                <Text style={styles.premiumOverlayText}>{t('clinical.premiumImageOnly')}</Text>
                                 <TouchableOpacity
                                   style={styles.premiumCtaButton}
                                   onPress={() => premiumSheetRef.current?.present()}
                                   activeOpacity={0.9}
                                 >
-                                  <Text style={styles.premiumCtaButtonText}>Unlock Now</Text>
+                                  <Text style={styles.premiumCtaButtonText}>{t('clinical.unlockNow')}</Text>
                                 </TouchableOpacity>
                               </View>
                             </>

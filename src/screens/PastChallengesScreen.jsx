@@ -24,6 +24,7 @@ import { API_BASE } from '../../constants/Api';
 import { setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setGameplay } from '../store/slices/currentGameSlice';
 import CloudBottom from '../components/CloudBottom';
 import { styles } from './styles';
+import { useTranslation } from 'react-i18next';
 
 
 const storage = new MMKV();
@@ -35,6 +36,7 @@ export default function PastChallengesScreen() {
     const navigation = useNavigation();
     const dispatch = useDispatch();
     const { isPremium } = useSelector((state) => state.user);
+    const { t } = useTranslation();
 
     const [challenges, setChallenges] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -392,7 +394,7 @@ export default function PastChallengesScreen() {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
                         <MaterialCommunityIcons name="arrow-left" size={24} color={themeColors.text} />
                     </TouchableOpacity>
-                    <Text style={[styles.cardTitle, { color: themeColors.text, fontSize: 20, marginBottom: 0 }]}>Past Challenges</Text>
+                    <Text style={[styles.cardTitle, { color: themeColors.text, fontSize: 20, marginBottom: 0 }]}>{t('pastChallenges.title')}</Text>
                 </View>
 
                 {/* Info Banner */}
@@ -414,13 +416,13 @@ export default function PastChallengesScreen() {
                         <MaterialCommunityIcons name="alert-circle-outline" size={48} color={Colors.brand.darkPink} />
                         <Text style={{ marginTop: 12, color: themeColors.icon, textAlign: 'center' }}>{error}</Text>
                         <TouchableOpacity style={styles.primaryButton} onPress={fetchPastChallenges}>
-                            <Text style={styles.primaryButtonText}>Retry</Text>
+                            <Text style={styles.primaryButtonText}>{t('common.retry')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : pastChallenges.length === 0 ? (
                     <View style={[styles.centered, { padding: 20 }]}>
                         <MaterialCommunityIcons name="calendar-blank" size={48} color={themeColors.icon} />
-                        <Text style={{ marginTop: 12, color: themeColors.icon, textAlign: 'center' }}>No past challenges available</Text>
+                        <Text style={{ marginTop: 12, color: themeColors.icon, textAlign: 'center' }}>{t('pastChallenges.noHistory')}</Text>
                     </View>
                 ) : (
                     <FlatList
