@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -25,12 +26,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const FEATURES = [
-  { label: 'Unlimited Cases', free: false, pro: true },
-  { label: 'Daily Challenges', free: true, pro: true },
-  { label: 'Past Daily Challenges', free: false, pro: true },
-  { label: 'Play 1000+ Quizzes', free: false, pro: true },
-  { label: 'Clinical Images', free: false, pro: true },
-  { label: 'Clinical Insights', free: false, pro: true },
+  { key: 'unlimitedCases', free: false, pro: true },
+  { key: 'dailyChallenge', free: true, pro: true },
+  { key: 'pastDailyChallenge', free: false, pro: true },
+  { key: 'unlimitedQuizzes', free: false, pro: true },
+  { key: 'clinicalImages', free: false, pro: true },
+  { key: 'clinicalInsights', free: false, pro: true },
 ];
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
@@ -46,6 +47,7 @@ function formatCountdown(ms) {
 }
 
 export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime }) {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { userData } = useSelector(state => state.user);
   const insets = useSafeAreaInsets();
@@ -252,7 +254,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
       // Final check: Is the offering still there?
       const checkOfferings = await Purchases.getOfferings();
       if (!checkOfferings.all['lifetime_offer']) {
-        Alert.alert('Offer Expired', 'We apologize, but this special lifetime offer is no longer available.');
+        Alert.alert(t('lifetime.expiredTitle'), t('lifetime.expiredMsg'));
         handleDismiss();
         return;
       }
@@ -262,19 +264,19 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
       await syncServerPremium(customerInfo);
       
       Alert.alert(
-        "Welcome to Pro! 👑",
-        "Thank you! Your Lifetime Pass is now active. You have permanent access to all premium features.",
-        [{ text: "Start Exploring", onPress: () => handleDismiss() }]
+        t('lifetime.welcomeTitle'),
+        t('lifetime.welcomeMsg'),
+        [{ text: t('lifetime.startExploring'), onPress: () => handleDismiss() }]
       );
     } catch (e) {
       if (e?.userCancelled) {
         if (Platform.OS === 'android') {
-          ToastAndroid.show('Purchase cancelled', ToastAndroid.SHORT);
+          ToastAndroid.show(t('lifetime.purchaseCancelled'), ToastAndroid.SHORT);
         } else {
-          Alert.alert('Purchase cancelled');
+          Alert.alert(t('lifetime.purchaseCancelled'));
         }
       } else {
-        Alert.alert('Purchase Error', 'There was an issue processing your purchase. Please try again.');
+        Alert.alert(t('lifetime.purchaseError'), t('lifetime.purchaseErrorMsg'));
       }
     } finally {
       setLoading(false);
@@ -328,13 +330,13 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
           {/* Badge */}
           <View style={s.badge}>
             <MaterialCommunityIcons name="lightning-bolt" size={11} color="#FFD700" />
-            <Text style={s.badgeText}>LIMITED TIME OFFER</Text>
+            <Text style={s.badgeText}>{t('lifetime.badge')}</Text>
           </View>
 
           {/* Countdown timer */}
           <View style={s.countdownContainer}>
             <MaterialCommunityIcons name="clock-outline" size={16} color="#FF6B9D" />
-            <Text style={s.countdownLabel}>Offer expires in</Text>
+            <Text style={s.countdownLabel}>{t('lifetime.expiresIn')}</Text>
             <Text style={s.countdownTime}>{formatCountdown(remaining)}</Text>
           </View>
 
@@ -350,8 +352,8 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
           </View>
 
           {/* Title */}
-          <Text style={s.title}>Lifetime Pass</Text>
-          <Text style={s.subtitle}>Pay once, learn forever. No subscriptions.</Text>
+          <Text style={s.title}>{t('lifetime.title')}</Text>
+          <Text style={s.subtitle}>{t('lifetime.subtitle')}</Text>
 
           {/* Feature comparison table */}
           <View style={s.tableContainer}>
@@ -359,25 +361,25 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
             <View style={s.tableHeaderRow}>
               <View style={{ flex: 1 }} />
               <View style={s.tableColHeader}>
-                <Text style={s.tableHeaderText}>FREE</Text>
+                <Text style={s.tableHeaderText}>{t('premium.freeCaps')}</Text>
               </View>
               <View style={s.tableColHeader}>
                 <View style={s.proBadge}>
-                  <Text style={s.proBadgeText}>PRO</Text>
+                  <Text style={s.proBadgeText}>{t('premium.proCaps')}</Text>
                 </View>
               </View>
             </View>
             {/* Feature rows */}
             {FEATURES.map((f, idx) => (
               <View
-                key={f.label}
+                key={f.key}
                 style={[
                   s.tableRow,
                   idx > 0 && { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
                 ]}
               >
                 <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={s.tableLabel}>{f.label}</Text>
+                  <Text style={s.tableLabel}>{t(`premium.${f.key}`)}</Text>
                 </View>
                 <View style={s.tableColCell}>
                   {f.free ? (
@@ -445,7 +447,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
                 <Text style={s.actualPrice}>{offerPriceStr}</Text>
               </View>
             )}
-            <Text style={s.priceNote}>One-time payment • Forever access</Text>
+            <Text style={s.priceNote}>{t('lifetime.foreverAccess')}</Text>
           </View>
 
           {/* CTA Button */}
@@ -464,32 +466,32 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
             <View style={s.ctaContent}>
               <MaterialCommunityIcons name="crown" size={18} color="#FFD700" style={{ marginRight: 8 }} />
               <Text style={s.ctaText}>
-                {loading ? 'Processing...' : 'Get Lifetime Pass'}
+                {loading ? t('lifetime.processing') : t('lifetime.getPass')}
               </Text>
             </View>
           </TouchableOpacity>
 
           {/* Skip link */}
           <TouchableOpacity onPress={handleDismiss} style={s.skipBtn} activeOpacity={0.6}>
-            <Text style={s.skipText}>Maybe Later</Text>
+            <Text style={s.skipText}>{t('lifetime.maybeLater')}</Text>
           </TouchableOpacity>
 
           {/* Legal Links */}
           <View style={s.legalContainer}>
             <Text style={s.legalText}>
-              By continuing, you agree to our{' '}
+              {t('premium.footerAgreement').split('<terms>')[0]}
               <Text
                 style={s.legalLink}
                 onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
               >
-                terms of use
-              </Text>{' '}
-              &{' '}
+                {t('premium.termsOfUse')}
+              </Text>
+              {t('premium.footerAgreement').split('</terms>')[1]?.split('<privacy>')[0] || ' & '}
               <Text
                 style={s.legalLink}
                 onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
               >
-                privacy policy
+                {t('premium.privacyPolicy')}
               </Text>
               .
             </Text>

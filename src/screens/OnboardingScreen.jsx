@@ -14,7 +14,7 @@ export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const themeColors =  Colors.light;
   const navigation = useNavigation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [showCTA, setShowCTA] = useState(false);
   const [currentLine, setCurrentLine] = useState('');
   const [optionLines, setOptionLines] = useState([]);
@@ -69,51 +69,36 @@ export default function OnboardingScreen() {
     };
   }, []);
 
-  // Audio playback - plays the onboarding narration
+  // Audio playback - plays the onboarding narration in the user's language
   const playAudio = React.useCallback(() => {
+    // Map language code to the corresponding audio file
+    const langSuffix = { fr: '_fr', de: '_de', es: '_es' };
+    const suffix = langSuffix[i18n.language] || '';
+    const audioFile = `onboardingspeech1${suffix}.mp3`;
+
     return new Promise((resolve) => {
       try {
-        // if (Platform.OS === 'android') {
-          // Load from android/app/src/main/res/raw (filename without extension)
-          const s = new Sound('onboardingspeech1.mp3', Sound.MAIN_BUNDLE, (error) => {
-            if (error) {
-              console.warn('Audio load error (android raw):', error);
-              resolve();
-              return;
-            }
-            soundRef.current = s;
-            try { s.setVolume(1.0); } catch (_) {}
-            s.play((success) => {
-              try { s.release(); } catch (_) {}
-              soundRef.current = null;
-              if (!success) console.warn('Audio play failed');
-            });
-            setTimeout(resolve, 150);
+        const s = new Sound(audioFile, Sound.MAIN_BUNDLE, (error) => {
+          if (error) {
+            console.warn('Audio load error:', error);
+            resolve();
+            return;
+          }
+          soundRef.current = s;
+          try { s.setVolume(1.0); } catch (_) {}
+          s.play((success) => {
+            try { s.release(); } catch (_) {}
+            soundRef.current = null;
+            if (!success) console.warn('Audio play failed');
           });
-        // } else {
-        //   // iOS: bundle via require
-        //   const s = new Sound(require('../../constants/onboardingspeech1.mp3'), (error) => {
-        //     if (error) {
-        //       console.warn('Audio load error (ios bundle):', error);
-        //       resolve();
-        //       return;
-        //     }
-        //     soundRef.current = s;
-        //     try { s.setVolume(1.0); } catch (_) {}
-        //     s.play((success) => {
-        //       try { s.release(); } catch (_) {}
-        //       soundRef.current = null;
-        //       if (!success) console.warn('Audio play failed');
-        //     });
-        //     setTimeout(resolve, 150);
-        //   });
-        // }
+          setTimeout(resolve, 150);
+        });
       } catch (e) {
         console.warn('Audio init error:', e);
         resolve();
       }
     });
-  }, []);
+  }, [i18n.language]);
 
   useEffect(() => {
     if (!shouldPlayExperience) return;

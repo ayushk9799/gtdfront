@@ -43,7 +43,7 @@ export default function AccountScreen() {
   const [currentLang, setCurrentLang] = useState(getLanguage());
   const langSheetRef = useRef(null);
 
-  const snapPoints = useMemo(() => ['35%'], []);
+  const snapPoints = useMemo(() => ['50%'], []);
 
   const renderBackdrop = useCallback(
     (props) => (
@@ -58,8 +58,10 @@ export default function AccountScreen() {
   );
 
   const LANGUAGES = [
-    { code: 'en', label: 'English', flag: '🇬🇧' },
-    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+    { code: 'en', label: 'English', secondary: 'English', flag: '🇬🇧' },
+    { code: 'de', label: 'Deutsch', secondary: 'German', flag: '🇩🇪' },
+    { code: 'fr', label: 'Français', secondary: 'French', flag: '🇫🇷' },
+    { code: 'es', label: 'Español', secondary: 'Spanish', flag: '🇪🇸' },
   ];
   const currentLangObj = LANGUAGES.find(l => l.code === currentLang) || LANGUAGES[0];
 
@@ -766,14 +768,25 @@ Join me 👉 https://diagnoseit.in`
                   }}>
                     <Text style={{ fontSize: 22 }}>{lang.flag}</Text>
                   </View>
-                  <Text style={{
-                    flex: 1,
-                    fontSize: 17,
-                    fontWeight: isSelected ? '700' : '600',
-                    color: isSelected ? Colors.brand.darkPink : '#1C1C1E',
-                  }}>
-                    {lang.label}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{
+                      fontSize: 17,
+                      fontWeight: isSelected ? '700' : '600',
+                      color: isSelected ? Colors.brand.darkPink : '#1C1C1E',
+                    }}>
+                      {lang.label}
+                    </Text>
+                    {lang.code !== 'en' && (
+                      <Text style={{
+                        fontSize: 13,
+                        color: isSelected ? Colors.brand.darkPink : '#8E8E93',
+                        marginTop: 2,
+                        opacity: isSelected ? 0.8 : 1
+                      }}>
+                        {lang.secondary}
+                      </Text>
+                    )}
+                  </View>
                   {isSelected && (
                     <MaterialCommunityIcons name="check-circle" size={24} color={Colors.brand.darkPink} />
                   )}

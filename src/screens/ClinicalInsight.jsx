@@ -735,7 +735,7 @@ export default function ClinicalInsight() {
             value={scores.total}
             duration={800}
             animate={openedFromTreatment}
-            formatter={(v) => t('insight.score', { score: Math.round(v) })}
+            formatter={(v) => t('insight.score', { score: Math.round(v) }) + " / 100"}
           />
           {headerDx.correct ? (
             <View style={[styles.dxPill, styles.dxPillCorrect, { marginTop: 16, marginHorizontal: 16 }]}>
@@ -877,7 +877,7 @@ export default function ClinicalInsight() {
                             value={categoryScore}
                             duration={650}
                             animate={openedFromTreatment}
-                            formatter={(v) => `${t('insight.score', { score: Math.round(v) })} / ${categoryMax}`}
+                            formatter={(v) => t('insight.score', { score: Math.round(v) }) + " / " + categoryMax}
                           />
                           {currentSections.length === 0 ? (
                             <Text style={[styles.bulletText, { marginLeft: 0 }]}>{t('insight.noItems')}</Text>
@@ -1878,11 +1878,11 @@ const styles = StyleSheet.create({
   // removed flex growth on the card to keep it compact
   caseHeader: { flexDirection: 'row', alignItems: 'center', padding: 8, paddingBottom: 4, justifyContent: 'center' },
   caseIconWrap: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#E9EEF6', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  caseHeaderText: { fontSize: 16, fontWeight: '800', color: '#5C6C83' },
+  caseHeaderText: { fontSize: 14, fontWeight: '800', color: '#5C6C83' },
   tabText: { fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink },
   tabTextActive: { color: Colors.brand.darkPink },
   sectionIconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: '800' },
+  sectionTitle: { fontSize: 16, fontWeight: '800' },
   bulletText: { fontSize: 16, color: '#223148', marginVertical: 2, marginLeft: 4 },
   // removed fixed-position back button
   backBtnInline: {
@@ -1963,7 +1963,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 8,
   },
-  insightHeaderText: { color: '#1F9E90', fontWeight: '800', fontSize: 18 },
+  insightHeaderText: { color: '#1F9E90', fontWeight: '800', fontSize: 16 },
 
   insightTitle: { fontSize: 15, fontWeight: '900', color: '#163D3A', marginBottom: 0 },
   insightBullet: { fontSize: 15.5, color: '#163D3A', lineHeight: 20 },

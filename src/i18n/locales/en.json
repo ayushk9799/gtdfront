@@ -1,7 +1,7 @@
 {
   "tabs": {
     "home": "Home",
-    "learnings": "Learnings",
+    "learnings": "My Cases",
     "quizzes": "Quizzes",
     "ranking": "Ranking",
     "account": "Account"
@@ -10,7 +10,7 @@
     "dailyChallenge": "Daily Challenge",
     "history": "History",
     "solveChallenge": "Solve Today's Challenge",
-    "viewInsights": "View Insights →",
+    "viewInsights": "View Insights",
     "challengeCompleted": "Your daily challenge is completed! 🎉",
     "noChallengeToday": "No Challenge Today",
     "noChallengeDesc": "No daily challenge available for today. Check back tomorrow!",
@@ -32,12 +32,12 @@
     "history": "History (Hx)",
     "physicalExam": "Physical Examination (PE)",
     "name": "Name",
-    "sex": "Sex",
+    "sex": "Gender",
     "age": "Age",
     "chiefComplaint": "Chief Complaint",
     "viewImages": "View Images",
     "physicalExamImages": "Physical Exam Images",
-    "premiumImageOnly": "Clinical image only available for Premium users",
+    "premiumImageOnly": "Clinical images are available for Premium users only",
     "unlockNow": "Unlock Now",
     "temperature": "Temperature",
     "heartRate": "Heart Rate",
@@ -52,7 +52,7 @@
     "testReports": "Test Reports",
     "noTestsSelected": "No tests selected.",
     "close": "Close",
-    "giveDiagnosis": "Give Diagnosis",
+    "giveDiagnosis": "Select Diagnosis",
     "resultNotAvailable": "Result not available for this test."
   },
   "diagnosis": {
@@ -68,7 +68,7 @@
     "confirmTreatment": "Confirm Treatment"
   },
   "insight": {
-    "score": "Score: {{score}} / 100",
+    "score": "Score: {{score}}",
     "reattempt": "Reattempt",
     "attempt": "Attempt {{number}}",
     "tests": "Tests",
@@ -103,7 +103,7 @@
     "reattemptNote": "Note: Points won't be re-added",
     "reattemptConfirm": "Start Reattempt",
     "reattemptCancel": "Maybe Later",
-    "premiumAnalysisOnly": "Clinical detailed analysis only available for premium user",
+    "premiumAnalysisOnly": "Detailed clinical analysis available for Premium users only",
     "buyPremiumUnlock": "Buy Premium & Unlock",
     "buyPremium": "Buy Premium",
     "unlockWithPremium": "Unlock with Premium",
@@ -245,7 +245,7 @@
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including game progress, scores, and premium subscriptions.",
     "delete": "Delete",
     "error": "Error",
-    "unableToIdentifyUser": "Unable to identify user. Please try logging out and back in.",
+    "unableToIdentifyUser": "Couldn't identify user. Please log in again.",
     "failedToDelete": "Failed to delete account. Please try again.",
     "language": "Language",
     "settings": "Settings",
@@ -375,6 +375,29 @@
     "description": "Are you sure you want to quit? Your progress in this case will be lost.",
     "confirm": "Quit",
     "cancel": "Continue Playing"
+  },
+  "lifetime": {
+    "title": "Lifetime Pass",
+    "subtitle": "Pay once, learn forever. No subscriptions.",
+    "badge": "LIMITED TIME OFFER",
+    "expiresIn": "Offer expires in",
+    "foreverAccess": "One-time payment • Forever access",
+    "getPass": "Get Lifetime Pass",
+    "maybeLater": "Maybe Later",
+    "welcomeTitle": "Welcome to Pro! 👑",
+    "welcomeMsg": "Thank you! Your Lifetime Pass is now active. You have permanent access to all premium features.",
+    "startExploring": "Start Exploring",
+    "expiredTitle": "Offer Expired",
+    "expiredMsg": "We apologize, but this special lifetime offer is no longer available.",
+    "purchaseCancelled": "Purchase cancelled",
+    "purchaseError": "Purchase Error",
+    "purchaseErrorMsg": "There was an issue processing your purchase. Please try again.",
+    "processing": "Processing...",
+    "cardTitle": "Lifetime Pass Offer",
+    "live": "LIVE",
+    "cardSubtitle": "Get lifetime access for {{price}}",
+    "cardSubtitleDefault": "Get lifetime access now",
+    "endsIn": "Ends in"
   },
   "common": {
     "loading": "Loading...",

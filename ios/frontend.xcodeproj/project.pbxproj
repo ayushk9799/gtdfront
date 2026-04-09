@@ -11,6 +11,9 @@
 		170ED2DE6DE6C850FED46669 /* libPods-frontend.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 40307AA271913CAB89CFD133 /* libPods-frontend.a */; };
 		1777549D2EA0F75D0026B425 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1777549C2EA0F75D0026B425 /* GoogleService-Info.plist */; };
 		17F3A7FD2ED7453D002FE266 /* onboardingspeech1.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 17F3A7FC2ED7453D002FE266 /* onboardingspeech1.mp3 */; };
+		A1B2C3D42F00000000000001 /* onboardingspeech1_fr.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000011 /* onboardingspeech1_fr.mp3 */; };
+		A1B2C3D42F00000000000002 /* onboardingspeech1_de.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000012 /* onboardingspeech1_de.mp3 */; };
+		A1B2C3D42F00000000000003 /* onboardingspeech1_es.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000013 /* onboardingspeech1_es.mp3 */; };
 		25141050265E422B83B73C1E /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 27730285FA2E411EBFD301E7 /* BootSplash.storyboard */; };
 		276B33289091494AAD84DBEA /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 076E929E79FB4119B0E96820 /* Colors.xcassets */; };
 		3E8271D5AF374154A78859A9 /* NotoSerif-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4F5F6A291D21423AB8FF2401 /* NotoSerif-BoldItalic.ttf */; };
@@ -48,6 +51,9 @@
 		1777549C2EA0F75D0026B425 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		17D2F9A82E9F769C00BBDDB9 /* frontend.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = frontend.entitlements; path = frontend/frontend.entitlements; sourceTree = "<group>"; };
 		17F3A7FC2ED7453D002FE266 /* onboardingspeech1.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1.mp3; sourceTree = "<group>"; };
+		A1B2C3D42F00000000000011 /* onboardingspeech1_fr.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_fr.mp3; sourceTree = "<group>"; };
+		A1B2C3D42F00000000000012 /* onboardingspeech1_de.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_de.mp3; sourceTree = "<group>"; };
+		A1B2C3D42F00000000000013 /* onboardingspeech1_es.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_es.mp3; sourceTree = "<group>"; };
 		27730285FA2E411EBFD301E7 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = frontend/BootSplash.storyboard; sourceTree = "<group>"; };
 		35FCB94AB9F04A12ADBC61EB /* NotoSerif-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "NotoSerif-Regular.ttf"; path = "../assets/fonts/NotoSerif-Regular.ttf"; sourceTree = "<group>"; };
 		3CA17443C79E4A6A8F5E257D /* NotoSerif-Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "NotoSerif-Italic.ttf"; path = "../assets/fonts/NotoSerif-Italic.ttf"; sourceTree = "<group>"; };
@@ -169,6 +175,9 @@
 				790F0D712EE0A2DE00270688 /* tap_sound.wav */,
 				790F0D732EE0FEF500270688 /* BrightChalk.ttf */,
 				17F3A7FC2ED7453D002FE266 /* onboardingspeech1.mp3 */,
+				A1B2C3D42F00000000000011 /* onboardingspeech1_fr.mp3 */,
+				A1B2C3D42F00000000000012 /* onboardingspeech1_de.mp3 */,
+				A1B2C3D42F00000000000013 /* onboardingspeech1_es.mp3 */,
 				1777549C2EA0F75D0026B425 /* GoogleService-Info.plist */,
 				13B07FAE1A68108700A75B9A /* frontend */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
@@ -282,6 +291,9 @@
 				ACEADF6829FA2886D6C58312 /* PrivacyInfo.xcprivacy in Resources */,
 				25141050265E422B83B73C1E /* BootSplash.storyboard in Resources */,
 				17F3A7FD2ED7453D002FE266 /* onboardingspeech1.mp3 in Resources */,
+				A1B2C3D42F00000000000001 /* onboardingspeech1_fr.mp3 in Resources */,
+				A1B2C3D42F00000000000002 /* onboardingspeech1_de.mp3 in Resources */,
+				A1B2C3D42F00000000000003 /* onboardingspeech1_es.mp3 in Resources */,
 				276B33289091494AAD84DBEA /* Colors.xcassets in Resources */,
 				3E8271D5AF374154A78859A9 /* NotoSerif-BoldItalic.ttf in Resources */,
 				6B16432D66FA4228B4386A1D /* NotoSerif-Regular.ttf in Resources */,

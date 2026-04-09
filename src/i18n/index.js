@@ -4,6 +4,8 @@ import { MMKV } from 'react-native-mmkv';
 import * as RNLocalize from 'react-native-localize';
 import en from './locales/en.json';
 import de from './locales/de.json';
+import fr from './locales/fr.json';
+import es from './locales/es.json';
 
 const storage = new MMKV();
 
@@ -15,13 +17,13 @@ const getDeviceLanguage = () => {
             return locales[0].languageCode;
         }
     } catch (error) {
-        console.log('Error detecting language with react-native-localize:', error);
+        // console.log('Error detecting language with react-native-localize:', error);
     }
     return 'en';
 };
 
 // Available languages in our app
-const SUPPORTED_LANGUAGES = ['en', 'de'];
+const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'es'];
 
 // 1. Get stored language. 
 // 2. If no stored language, get device language.
@@ -36,6 +38,8 @@ i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
     de: { translation: de },
+    fr: { translation: fr },
+    es: { translation: es },
   },
   lng: savedLang,
   fallbackLng: 'en',
@@ -46,7 +50,7 @@ i18n.use(initReactI18next).init({
 
 /**
  * Change the app language. Persists to MMKV so it survives restarts.
- * @param {'en' | 'de'} lang
+ * @param {'en' | 'de' | 'fr' | 'es'} lang
  */
 export const changeLanguage = (lang) => {
   i18n.changeLanguage(lang);
@@ -55,7 +59,7 @@ export const changeLanguage = (lang) => {
 
 /**
  * Get the currently active language code.
- * @returns {'en' | 'de'}
+ * @returns {'en' | 'de' | 'fr' | 'es'}
  */
 export const getLanguage = () => i18n.language || 'en';
 

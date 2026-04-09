@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -24,6 +25,7 @@ function formatCountdown(ms) {
 }
 
 export default function LifetimeOfferCard({ offerStartTime, onOfferExpired }) {
+  const { t } = useTranslation();
   const [remaining, setRemaining] = useState(TWO_HOURS_MS);
   const [lifetimePackage, setLifetimePackage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -90,23 +92,23 @@ export default function LifetimeOfferCard({ offerStartTime, onOfferExpired }) {
           </View>
           <View style={s.textSection}>
             <View style={s.titleRow}>
-              <Text style={s.title}>Lifetime Pass Offer</Text>
+              <Text style={s.title}>{t('lifetime.cardTitle')}</Text>
               <View style={s.liveBadge}>
                 <View style={s.liveDot} />
-                <Text style={s.liveText}>LIVE</Text>
+                <Text style={s.liveText}>{t('lifetime.live')}</Text>
               </View>
             </View>
             <Text style={s.subtitle}>
               {lifetimePackage?.product?.priceString
-                ? `Get lifetime access for ${lifetimePackage.product.priceString}`
-                : 'Get lifetime access now'}
+                ? t('lifetime.cardSubtitle', { price: lifetimePackage.product.priceString })
+                : t('lifetime.cardSubtitleDefault')}
             </Text>
           </View>
         </View>
 
         {/* Right section: countdown */}
         <View style={s.countdownSection}>
-          <Text style={s.countdownLabel}>Ends in</Text>
+          <Text style={s.countdownLabel}>{t('lifetime.endsIn')}</Text>
           <Text style={s.countdownTime}>{formatCountdown(remaining)}</Text>
         </View>
       </View>

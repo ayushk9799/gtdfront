@@ -151,7 +151,7 @@ export default function ClinicalInfo() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const soundRef = useRef(null);
   // Use refs instead of state for audio status to avoid re-renders
   const isPlayingRef = useRef(false);
@@ -410,7 +410,10 @@ export default function ClinicalInfo() {
     2: 'historyspeech',
     3: 'physicalspeech',
   };
-  const urlFor = (id, part) => `https://gtdthousandways1.s3.ap-south-1.amazonaws.com/mp3files/${id}_${part}.mp3`;
+  const urlFor = (id, part, lang) => {
+    const suffix = lang && lang !== 'en' ? `_${lang}` : '';
+    return `https://gtdthousandways1.s3.ap-south-1.amazonaws.com/mp3files/${id}_${part}${suffix}.mp3`;
+  };
 
   const stopPlayback = useCallback(() => {
     try {
@@ -444,51 +447,76 @@ export default function ClinicalInfo() {
     }
 
     const part = indexToPart[i];
-    const url = urlFor(effectiveCaseId, part);
+    const currentLang = i18n.language || 'en';
+    const url = urlFor(effectiveCaseId, part, currentLang);
     // stop prior if any
     stopPlayback();
     isLoadingRef.current = true;
     try { Sound.setCategory('Playback', true); } catch (_) { }
     try { Sound.enableInSilenceMode(true); } catch (_) { }
-    const s = new Sound(url, undefined, (error) => {
-      // Race condition guard: check if this sound is still the current one
-      // If user swiped away while loading, soundRef.current will be different/null
-      if (soundRef.current !== s) {
-        try { s.release(); } catch (_) { }
-        return;
-      }
-      // Also check session ID hasn't changed
-      if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
-        try { s.release(); } catch (_) { }
-        return;
-      }
-      if (error) {
-        console.warn('Audio load error:', error);
-        isLoadingRef.current = false;
-        isPlayingRef.current = false;
-        currentPartRef.current = null;
-        try { auraRef.current?.stop?.(); } catch (_) { }
-        return;
-      }
+
+    // Helper to start playback once a sound is loaded
+    const startPlayback = (sound) => {
       isLoadingRef.current = false;
       isPlayingRef.current = true;
       currentPartRef.current = part;
       try { auraRef.current?.start?.(); } catch (_) { }
       // Set playback speed to 1.25x
-      try { s.setSpeed(1.25); } catch (_) { }
-      s.play(() => {
-        try { s.release(); } catch (_) { }
+      try { sound.setSpeed(1.25); } catch (_) { }
+      sound.play(() => {
+        try { sound.release(); } catch (_) { }
         // Only update refs if this sound is still the active one
-        if (soundRef.current === s) {
+        if (soundRef.current === sound) {
           soundRef.current = null;
           isPlayingRef.current = false;
           currentPartRef.current = null;
           try { auraRef.current?.stop?.(); } catch (_) { }
         }
       });
+    };
+
+    const s = new Sound(url, undefined, (error) => {
+      // Race condition guard
+      if (soundRef.current !== s) {
+        try { s.release(); } catch (_) { }
+        return;
+      }
+      if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
+        try { s.release(); } catch (_) { }
+        return;
+      }
+      if (error) {
+        // If localized file failed and we're not already on English, fall back to English
+        if (currentLang !== 'en') {
+          try { s.release(); } catch (_) { }
+          const fallbackUrl = urlFor(effectiveCaseId, part, 'en');
+          const fb = new Sound(fallbackUrl, undefined, (fbError) => {
+            if (soundRef.current !== fb) {
+              try { fb.release(); } catch (_) { }
+              return;
+            }
+            if (fbError) {
+              isLoadingRef.current = false;
+              isPlayingRef.current = false;
+              currentPartRef.current = null;
+              try { auraRef.current?.stop?.(); } catch (_) { }
+              return;
+            }
+            startPlayback(fb);
+          });
+          soundRef.current = fb;
+        } else {
+          isLoadingRef.current = false;
+          isPlayingRef.current = false;
+          currentPartRef.current = null;
+          try { auraRef.current?.stop?.(); } catch (_) { }
+        }
+        return;
+      }
+      startPlayback(s);
     });
     soundRef.current = s;
-  }, [caseId, stopPlayback]);
+  }, [caseId, stopPlayback, i18n.language]);
 
   const togglePlayForIndex = useCallback((i) => {
     const part = indexToPart[i];
