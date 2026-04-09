@@ -158,6 +158,8 @@ export default function ClinicalInfo() {
   const isLoadingRef = useRef(false);
   const currentPartRef = useRef(null);
   const auraRef = useRef(null);
+  // Generation counter to invalidate stale async audio callbacks (fetch, setTimeout, etc.)
+  const playGenRef = useRef(0);
   const [showAura, setShowAura] = useState(false);
 
   const pagerRef = useRef(null);
@@ -448,10 +450,14 @@ export default function ClinicalInfo() {
 
     const part = indexToPart[i];
     const currentLang = i18n.language || 'en';
-    const url = urlFor(effectiveCaseId, part, currentLang);
+    const primaryUrl = urlFor(effectiveCaseId, part, currentLang);
+    const englishUrl = urlFor(effectiveCaseId, part, 'en');
     // stop prior if any
     stopPlayback();
     isLoadingRef.current = true;
+    // Increment play generation so stale async callbacks (fetch, setTimeout) are discarded
+    playGenRef.current += 1;
+    const myGen = playGenRef.current;
     try { Sound.setCategory('Playback', true); } catch (_) { }
     try { Sound.enableInSilenceMode(true); } catch (_) { }
 
@@ -475,22 +481,67 @@ export default function ClinicalInfo() {
       });
     };
 
-    const s = new Sound(url, undefined, (error) => {
-      // Race condition guard
-      if (soundRef.current !== s) {
-        try { s.release(); } catch (_) { }
+    // Helper: load a single URL and play it (no further fallback)
+    const loadAndPlay = (audioUrl) => {
+      // Stale generation check
+      if (myGen !== playGenRef.current) {
+        isLoadingRef.current = false;
         return;
       }
       if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
-        try { s.release(); } catch (_) { }
+        isLoadingRef.current = false;
         return;
       }
-      if (error) {
-        // If localized file failed and we're not already on English, fall back to English
-        if (currentLang !== 'en') {
+      const snd = new Sound(audioUrl, null, (error) => {
+        if (soundRef.current !== snd) {
+          try { snd.release(); } catch (_) { }
+          return;
+        }
+        if (error) {
+          isLoadingRef.current = false;
+          isPlayingRef.current = false;
+          currentPartRef.current = null;
+          try { auraRef.current?.stop?.(); } catch (_) { }
+          return;
+        }
+        startPlayback(snd);
+      });
+      soundRef.current = snd;
+    };
+
+    if (currentLang === 'en') {
+      // English is primary — load directly
+      loadAndPlay(primaryUrl);
+    } else if (Platform.OS === 'android') {
+      // Android + non-English: pre-check URL availability with fetch HEAD because
+      // Android MediaPlayer does NOT reliably fire the error callback for failed
+      // remote URLs (HTTP 403/404). This avoids the broken error-callback fallback.
+      fetch(primaryUrl, { method: 'HEAD' })
+        .then((resp) => {
+          // Discard if a newer play request was made while fetch was in-flight
+          if (myGen !== playGenRef.current) return;
+          if (sessionId !== undefined && sessionId !== audioSessionRef.current) return;
+          loadAndPlay(resp.ok ? primaryUrl : englishUrl);
+        })
+        .catch(() => {
+          if (myGen !== playGenRef.current) return;
+          if (sessionId !== undefined && sessionId !== audioSessionRef.current) return;
+          loadAndPlay(englishUrl);
+        });
+    } else {
+      // iOS + non-English: Sound error callback works reliably, use it for fallback
+      const s = new Sound(primaryUrl, null, (error) => {
+        if (soundRef.current !== s) {
           try { s.release(); } catch (_) { }
-          const fallbackUrl = urlFor(effectiveCaseId, part, 'en');
-          const fb = new Sound(fallbackUrl, undefined, (fbError) => {
+          return;
+        }
+        if (sessionId !== undefined && sessionId !== audioSessionRef.current) {
+          try { s.release(); } catch (_) { }
+          return;
+        }
+        if (error) {
+          try { s.release(); } catch (_) { }
+          const fb = new Sound(englishUrl, null, (fbError) => {
             if (soundRef.current !== fb) {
               try { fb.release(); } catch (_) { }
               return;
@@ -505,17 +556,12 @@ export default function ClinicalInfo() {
             startPlayback(fb);
           });
           soundRef.current = fb;
-        } else {
-          isLoadingRef.current = false;
-          isPlayingRef.current = false;
-          currentPartRef.current = null;
-          try { auraRef.current?.stop?.(); } catch (_) { }
+          return;
         }
-        return;
-      }
-      startPlayback(s);
-    });
-    soundRef.current = s;
+        startPlayback(s);
+      });
+      soundRef.current = s;
+    }
   }, [caseId, stopPlayback, i18n.language]);
 
   const togglePlayForIndex = useCallback((i) => {

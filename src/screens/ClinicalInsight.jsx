@@ -438,7 +438,13 @@ export default function ClinicalInsight() {
     }
   }, [closeReattemptDialog, dispatch, caseData, storeCaseId, storeDailyChallengeId, gameplay, navigation]);
 
-  const handleReattempt = openReattemptDialog;
+  const handleReattempt = React.useCallback(() => {
+    if (!isPremium) {
+      premiumSheetRef.current?.present?.();
+      return;
+    }
+    openReattemptDialog();
+  }, [isPremium, openReattemptDialog]);
 
   // Get games played count and first played case ID - re-read when screen comes into focus
   const [gamesPlayed, setGamesPlayed] = React.useState(0);
@@ -714,20 +720,24 @@ export default function ClinicalInsight() {
             <MaterialCommunityIcons name="chevron-left" size={26} color="#ffffff" />
           </Pressable>
 
-          {isPremium && (
-            <Pressable
-              onPress={handleReattempt}
-              style={({ pressed }) => [
-                styles.reattemptTopBtn,
-                pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
-              ]}
-            >
-              <View style={styles.reattemptTopContent}>
-                <MaterialCommunityIcons name="refresh" size={16} color="#FF8A00" />
-                <Text style={styles.reattemptTopBtnText}>{t('insight.reattempt')}</Text>
-              </View>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={handleReattempt}
+            style={({ pressed }) => [
+              styles.reattemptTopBtn,
+              pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
+            ]}
+          >
+            <View style={styles.reattemptTopContent}>
+              <MaterialCommunityIcons 
+                name="refresh" 
+                size={16} 
+                color="#FF8A00" 
+              />
+              <Text style={styles.reattemptTopBtnText}>
+                {t('insight.reattempt')}
+              </Text>
+            </View>
+          </Pressable>
         </View>
         <View style={styles.scoreSection}>
           <AnimatedNumber
@@ -1430,6 +1440,33 @@ export default function ClinicalInsight() {
           </View>
         ) : null}
 
+
+        {/* Bottom Reattempt Button */}
+        <View style={{ paddingHorizontal: 16, marginTop: 32 }}>
+          <Pressable
+            onPress={handleReattempt}
+            style={({ pressed }) => [
+              styles.reattemptButton,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+            ]}
+          >
+            <LinearGradient
+              colors={['#FF8A00', '#FF5C00']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.reattemptGradient}
+            >
+              <MaterialCommunityIcons
+                name="refresh"
+                size={22}
+                color="#FFFFFF"
+              />
+              <Text style={styles.reattemptButtonText}>
+                {t('insight.reattemptCase')}
+              </Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
 
       </ScrollView>
 

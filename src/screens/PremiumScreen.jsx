@@ -526,7 +526,9 @@ export default function PremiumScreen() {
                             color={isSelected ? Colors.brand.darkPink : '#B0B7BF'}
                           />
                           <View style={{ marginLeft: 10, flex: 1, paddingRight: isSixMonth ? 10 : 0 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>{pkg.product.title}</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
+                              {Platform.OS === 'android' ? pkg.product.title.split('(')[0].split('-')[0].trim() : pkg.product.title}
+                            </Text>
                             <Text style={{ fontSize: 11, fontWeight: '600', color: '#65727E', marginTop: 2 }}>
                               {pkg.product.description}
                             </Text>

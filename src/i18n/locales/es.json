@@ -70,6 +70,7 @@
   "insight": {
     "score": "Puntuación: {{score}}",
     "reattempt": "Reintentar",
+    "reattemptCase": "Reintentar caso",
     "attempt": "Intento {{number}}",
     "tests": "Pruebas",
     "diagnosis": "Diagnóstico",
