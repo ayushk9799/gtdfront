@@ -158,7 +158,7 @@ export default function ClinicalInsight() {
   const caseDataFromRoute = route?.params?.caseData;
   const premiumSheetRef = React.useRef(null);
   const scrollViewRef = React.useRef(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // Refs for section Y positions (for cycling scroll)
   const sectionYRefs = React.useRef({
@@ -309,9 +309,13 @@ export default function ClinicalInsight() {
     gameplay,
   } = useSelector((s) => s.currentGame);
 
-  const { isPremium } = useSelector(state => state.user);
+  const { isPremium, userData } = useSelector(state => state.user);
+  const hasPremiumAccess = isPremium || !!userData?.isPremium;
   const dispatch = useDispatch();
-  const caseData = caseDataFromRoute || caseDataFromStore || {};
+  const caseData = React.useMemo(
+    () => caseDataFromRoute || caseDataFromStore || {},
+    [caseDataFromRoute, caseDataFromStore]
+  );
 
   const [viewedAttemptIndex, setViewedAttemptIndex] = React.useState(0); // 0 = First Attempt (Default)
 
@@ -375,7 +379,7 @@ export default function ClinicalInsight() {
   const reattemptDialogAnim = React.useRef(new Animated.Value(0)).current;
 
   const openReattemptDialog = React.useCallback(() => {
-    if (!isPremium) return;
+    if (!hasPremiumAccess) return;
     setShowReattemptDialog(true);
     Animated.spring(reattemptDialogAnim, {
       toValue: 1,
@@ -383,7 +387,7 @@ export default function ClinicalInsight() {
       tension: 65,
       friction: 9,
     }).start();
-  }, [isPremium, reattemptDialogAnim]);
+  }, [hasPremiumAccess, reattemptDialogAnim]);
 
   const closeReattemptDialog = React.useCallback(() => {
     Animated.timing(reattemptDialogAnim, {
@@ -436,15 +440,15 @@ export default function ClinicalInsight() {
       await dispatch(loadCaseById(effectiveCaseId));
       dispatch(setIsReattempt(true));
     }
-  }, [closeReattemptDialog, dispatch, caseData, storeCaseId, storeDailyChallengeId, gameplay, navigation]);
+  }, [closeReattemptDialog, dispatch, caseData, storeCaseId, storeDailyChallengeId, gameplay, navigation, i18n.language]);
 
   const handleReattempt = React.useCallback(() => {
-    if (!isPremium) {
+    if (!hasPremiumAccess) {
       premiumSheetRef.current?.present?.();
       return;
     }
     openReattemptDialog();
-  }, [isPremium, openReattemptDialog]);
+  }, [hasPremiumAccess, openReattemptDialog]);
 
   // Get games played count and first played case ID - re-read when screen comes into focus
   const [gamesPlayed, setGamesPlayed] = React.useState(0);
@@ -459,9 +463,10 @@ export default function ClinicalInsight() {
   // Get current case ID for comparison - MUST be after caseData is defined
   const currentCaseId = caseData?.caseId || caseData?._id || null;
 
-  // First 2 played cases should always be viewable without blur (matches 2 free hearts)
-  const isWithinFreeCases = gamesPlayed <= 2;
-  const shouldShowPremiumBlur = !isPremium && !isWithinFreeCases; // Show blur for non-premium users, except first 2 cases
+  // First played case should remain viewable even after the free counter moves past 2.
+  const isFirstPlayedCase = !!firstPlayedCaseId && !!currentCaseId && String(firstPlayedCaseId) === String(currentCaseId);
+  const isWithinFreeCases = gamesPlayed <= 2 || isFirstPlayedCase;
+  const shouldShowPremiumBlur = !hasPremiumAccess && !isWithinFreeCases; // Show blur for non-premium users, except free cases
 
   // Video preview state - allow 30 seconds preview for non-premium users
   const [videoPlayedSeconds, setVideoPlayedSeconds] = React.useState(0);
@@ -484,16 +489,14 @@ export default function ClinicalInsight() {
   // PDF preview state - allow slides 1-4 preview for non-premium users
   const [pdfAttemptedPastLimit, setPdfAttemptedPastLimit] = React.useState(false);
 
-  // Show overlay when non-premium user is on page 4 and has attempted to go past it
-  // OR if they somehow reach page 5+ (as additional safety)
-  const shouldShowPdfPremiumOverlay = shouldShowPremiumBlur && (pdfAttemptedPastLimit || pdfCurrentPage >= 5);
-
-
   const layout = useWindowDimensions();
   // Alias mapping for initial tab labels coming from previous screens
   const normalizedInitialTab = (initialTabParam === 'Treatment Plan') ? 'Treatment' : initialTabParam;
+  const normalizedInitialTabKey = TABS.includes(normalizedInitialTab?.toLowerCase())
+    ? normalizedInitialTab.toLowerCase()
+    : 'diagnosis';
   const [index, setIndex] = React.useState(
-    Math.max(0, TABS.indexOf(TABS.includes(initialTabParam?.toLowerCase()) ? initialTabParam.toLowerCase() : 'diagnosis'))
+    Math.max(0, TABS.indexOf(normalizedInitialTabKey))
   );
 
   const routes = React.useMemo(() => 
@@ -536,7 +539,7 @@ export default function ClinicalInsight() {
       animatedHeight.stopAnimation();
       animatedHeight.setValue(COLLAPSED_TAB_HEIGHT);
     };
-  }, []);
+  }, [animatedHeight]);
 
 
 
@@ -572,6 +575,10 @@ export default function ClinicalInsight() {
   // PDF page tracking
   const [pdfCurrentPage, setPdfCurrentPage] = React.useState(1);
   const [pdfTotalPages, setPdfTotalPages] = React.useState(0);
+
+  // Show overlay when non-premium user is on page 4 and has attempted to go past it
+  // OR if they somehow reach page 5+ (as additional safety)
+  const shouldShowPdfPremiumOverlay = shouldShowPremiumBlur && (pdfAttemptedPastLimit || pdfCurrentPage >= 5);
 
   // Compute normalized scores (30/40/30)
   const scores = React.useMemo(() => {
@@ -661,7 +668,7 @@ export default function ClinicalInsight() {
     }
 
     return sec;
-  }, [caseData, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds]);
+  }, [caseData, selectedTestIds, selectedDiagnosisId, selectedTreatmentIds, t]);
 
   // Build core insights from case review if present
   const insights = React.useMemo(() => {
@@ -681,7 +688,7 @@ export default function ClinicalInsight() {
       out.push({ title: t('insight.pitfalls'), bullets: review.coreClinicalInsight.trapsToAvoid });
     }
     return out;
-  }, [caseData]);
+  }, [caseData, t]);
 
   // Full case review (step 5) data for additional reference cards
   const caseReview = React.useMemo(() => {
@@ -1441,32 +1448,7 @@ export default function ClinicalInsight() {
         ) : null}
 
 
-        {/* Bottom Reattempt Button */}
-        <View style={{ paddingHorizontal: 16, marginTop: 32 }}>
-          <Pressable
-            onPress={handleReattempt}
-            style={({ pressed }) => [
-              styles.reattemptButton,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-            ]}
-          >
-            <LinearGradient
-              colors={['#FF8A00', '#FF5C00']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.reattemptGradient}
-            >
-              <MaterialCommunityIcons
-                name="refresh"
-                size={22}
-                color="#FFFFFF"
-              />
-              <Text style={styles.reattemptButtonText}>
-                {t('insight.reattemptCase')}
-              </Text>
-            </LinearGradient>
-          </Pressable>
-        </View>
+
 
       </ScrollView>
 
@@ -1782,6 +1764,8 @@ const HowDiagnosisList = React.memo(({ items }) => {
 });
 
 function PremiumBenefitsTable() {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.premiumTableCard}>
       <View style={styles.premiumTableHeader}>

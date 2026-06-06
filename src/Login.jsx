@@ -68,6 +68,7 @@ async function appleSignUp() {
     const appleCredential = await signUpWithApple({
       requestedScopes: ['fullName', 'email'],
     });
+    console.log("appleCredential",appleCredential)
 
     const ans = await fetch(`${API_BASE}/api/login/apple/loginSignUp`, {
       method: 'POST',
@@ -81,6 +82,7 @@ async function appleSignUp() {
       }),
     });
     const data = await ans.json();
+    (data);
     return data;
   } catch (error) {
     console.error('Apple sign-up failed:', error);

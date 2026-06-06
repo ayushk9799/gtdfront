@@ -31,6 +31,7 @@ import SelectDiagnosis from './src/screens/SelectDiagnosis';
 import SelectTreatment from './src/screens/SelectTreatment';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPermission from './src/screens/NotificationPermission';
+import GetReadyForCaseScreen from './src/screens/GetReadyForCaseScreen';
 
 import HeartScreen from './src/screens/HeartScreen';
 import EditAccountScreen from './src/screens/EditAccountScreen';
@@ -673,6 +674,15 @@ export default function App() {
               />
 
               <Stack.Screen name="Tabs" component={RootTabs} />
+              <Stack.Screen
+                name="GetReadyForCase"
+                component={GetReadyForCaseScreen}
+                options={{
+                  animation: 'slide_from_right',
+                  presentation: 'card',
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
+              />
               <Stack.Screen
                 name="ClinicalInfo"
                 component={ClinicalInfo}

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, PermissionsAndroid, Image, SafeAreaView } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/Colors';
 import { MMKV } from 'react-native-mmkv';
@@ -11,20 +11,35 @@ import messaging, {
 } from '@react-native-firebase/messaging';
 import { getApp } from '@react-native-firebase/app';
 import { useDispatch } from 'react-redux';
-import { updateUser } from '../store/slices/userSlice';
 import { handleFCMTokenUpdate } from '../../App';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
 
 const storage = new MMKV();
-const { width: WINDOW_WIDTH } = Dimensions.get('window');
 
 export default function NotificationPermission() {
   const navigation = useNavigation();
-  const themeColors = Colors.light;
   const dispatch = useDispatch();
   const { t } = useTranslation();
+
+  const openGetReadyScreen = () => {
+    const isNewUser = storage.getBoolean('isNewUser');
+    if (isNewUser) {
+      navigation.reset({
+        index: 1,
+        routes: [
+          { name: 'Tabs' },
+          { name: 'GetReadyForCase' },
+        ],
+      });
+    } else {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Tabs' }],
+      });
+    }
+  };
 
   async function requestUserPermission() {
     if (Platform.OS === 'ios') {
@@ -54,8 +69,7 @@ export default function NotificationPermission() {
     const granted = await requestUserPermission();
     storage.set('notifEnabled', granted);
 
-    // Navigate directly to Tabs
-    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+    openGetReadyScreen();
 
 
     // If granted, ensure device is registered and subscribe to topic
@@ -88,8 +102,7 @@ export default function NotificationPermission() {
   const skip = () => {
     storage.set('notifDecided', true);
     storage.set('notifEnabled', false);
-    // Navigate directly to Tabs
-    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+    openGetReadyScreen();
   };
 
   return (
@@ -136,7 +149,7 @@ export default function NotificationPermission() {
           <Text style={styles.previewTime}>9:00 AM</Text>
         </View> */}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
+        <View style={styles.finePrintRow}>
           <MaterialCommunityIcons name="shield-lock-outline" size={14} color="#6B7280" />
           <Text style={styles.finePrint}>  {t('notification.finePrint')}</Text>
         </View>
@@ -214,7 +227,7 @@ const styles = StyleSheet.create({
     padding: 30,
     // width: '90%',
     alignSelf: 'center',
-    margin: 20
+    margin: 20,
   },
   cardShadow: {
     shadowColor: '#000',
@@ -287,40 +300,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
-  primaryButton: {
-    width: WINDOW_WIDTH - 32,
-    backgroundColor: 'transparent',
-    paddingVertical: 16,
-    borderRadius: 14,
+  finePrintRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    overflow: 'hidden',
-  },
-  primaryButtonGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 14,
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  secondaryButton: {
-    width: WINDOW_WIDTH - 32,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  secondaryButtonText: {
-    color: '#0F172A',
-    fontSize: 16,
-    fontWeight: '800',
+    justifyContent: 'center',
+    marginTop: 10,
   },
   finePrint: {
     marginTop: 12,

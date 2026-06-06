@@ -51,6 +51,10 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
   const dispatch = useDispatch();
   const { userData } = useSelector(state => state.user);
   const insets = useSafeAreaInsets();
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0
+  );
   const [lifetimePackage, setLifetimePackage] = useState(null);
   const [originalPriceString, setOriginalPriceString] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -315,7 +319,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
 
         {/* Close button */}
         <TouchableOpacity
-          style={[s.closeBtn, { top: insets.top + 10 }]}
+          style={[s.closeBtn, { top: topInset + 12 }]}
           onPress={handleDismiss}
           activeOpacity={0.7}
         >
@@ -323,7 +327,13 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
         </TouchableOpacity>
 
         <ScrollView
-          contentContainerStyle={[s.scrollContent, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}
+          contentContainerStyle={[
+            s.scrollContent,
+            {
+              paddingTop: topInset + 64,
+              paddingBottom: insets.bottom + 24,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
@@ -509,7 +519,7 @@ const s = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 28,
   },
   closeBtn: {

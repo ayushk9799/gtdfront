@@ -103,7 +103,7 @@ export default function QuizzScreen() {
             console.error('Error fetching categories:', error);
             setCategoriesStatus('failed');
         }
-    }, [userId]);
+    }, [currentLang, userId]);
 
     // Fetch next unsolved quiz preview
     const fetchNextPreview = useCallback(async () => {
@@ -120,7 +120,7 @@ export default function QuizzScreen() {
         } catch (error) {
             console.error('Error fetching next preview:', error);
         }
-    }, [userId]);
+    }, [currentLang, userId]);
 
     useFocusEffect(
         useCallback(() => {
@@ -129,7 +129,7 @@ export default function QuizzScreen() {
         }, [fetchCategories, fetchNextPreview])
     );
 
-    const handleCategoryPress = (category) => {
+    const handleCategoryPress = useCallback((category) => {
         let initialAttemptedCount = 0;
         let totalQuizzCount = 0;
         const globalAttemptedCount = categories.reduce((sum, cat) => sum + (cat.attemptedCount || 0), 0);
@@ -149,7 +149,7 @@ export default function QuizzScreen() {
             globalAttemptedCount,
             totalQuizzCount
         });
-    };
+    }, [categories, navigation]);
 
     const renderHeader = useCallback(() => {
         const totalQuizzCount = categories.reduce((sum, cat) => sum + (cat.quizzCount || 0), 0);
@@ -239,7 +239,7 @@ export default function QuizzScreen() {
             <Text style={styles.sectionTitle}>{t('quiz.category')}</Text>
             </>
         );
-    }, [categories, nextPreview, handleCategoryPress]);
+    }, [categories, nextPreview, handleCategoryPress, t]);
 
     const renderCategoryItem = useCallback(({ item }) => {
         const attemptedCount = item.attemptedCount || 0;

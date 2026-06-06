@@ -441,7 +441,7 @@ const PremiumLimitCard = ({ onBack }) => {
                         >
                             <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.brand.darkPink }}>Premium Limit Reached</Text>
                             <Text style={{ fontSize: 14, fontWeight: '500', color: '#4A4A4A', marginTop: 4, textAlign: 'center' }}>
-                                Free users can play up to 20 cases. Subscribe to continue!
+                                Free users can play up to 5 cases. Subscribe to continue!
                             </Text>
                         </View>
                     </View>
@@ -762,7 +762,7 @@ export default function QuizzPlay({ route, navigation }) {
             setQuizzesError(error.message);
             setQuizzesStatus('failed');
         }
-    }, [categoryId, userId]);
+    }, [categoryId, currentLang, userId]);
 
     // API: Fetch more quizzes (pagination)
     const fetchMoreQuizzesApi = useCallback(async () => {
@@ -793,7 +793,7 @@ export default function QuizzPlay({ route, navigation }) {
         } finally {
             setIsFetchingMore(false);
         }
-    }, [hasMore, isFetchingMore, userId]);
+    }, [currentLang, hasMore, isFetchingMore, userId]);
 
     // API: Fetch solved quizzes (initial load)
     const fetchSolvedQuizzesApi = useCallback(async () => {
@@ -821,7 +821,7 @@ export default function QuizzPlay({ route, navigation }) {
             console.error('Error fetching solved quizzes:', error);
             setSolvedStatus('failed');
         }
-    }, [categoryId, userId]);
+    }, [categoryId, currentLang, userId]);
 
     // API: Fetch more solved quizzes (pagination)
     const fetchMoreSolvedQuizzesApi = useCallback(async () => {
@@ -855,19 +855,28 @@ export default function QuizzPlay({ route, navigation }) {
         } finally {
             setIsFetchingMoreSolved(false);
         }
-    }, [categoryId, userId, solvedHasMore, isFetchingMoreSolved]);
+    }, [categoryId, currentLang, userId, solvedHasMore, isFetchingMoreSolved]);
 
-    // API: Submit quiz attempt (fire-and-forget)
+    // API: Submit quiz attempt
     const submitQuizzAttemptApi = useCallback(async (quizzId, selectedOption, isCorrect) => {
-        try {
-            await fetch(`${API_BASE}/api/quizz/attempt`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, quizzId, selectedOption, isCorrect }),
-            });
-        } catch (error) {
-            console.error('Error submitting attempt:', error);
+        const res = await fetch(`${API_BASE}/api/quizz/attempt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, quizzId, selectedOption, isCorrect }),
+        });
+
+        if (!res.ok) {
+            let message = 'Failed to submit quiz attempt';
+            try {
+                const errorData = await res.json();
+                message = errorData.message || message;
+            } catch {
+                // Keep the default message if the server did not return JSON.
+            }
+            throw new Error(message);
         }
+
+        return res.json();
     }, [userId]);
 
     // Initial load
@@ -876,7 +885,7 @@ export default function QuizzPlay({ route, navigation }) {
         if (startWithSolved) {
             fetchSolvedQuizzesApi();
         }
-    }, [fetchQuizzesByCategoryApi]);
+    }, [fetchQuizzesByCategoryApi, fetchSolvedQuizzesApi, startWithSolved]);
 
     // Populate selections from backend attempt data (for both solved and unsolved)
     useEffect(() => {
@@ -902,7 +911,7 @@ export default function QuizzPlay({ route, navigation }) {
         if (!isPremium) {
             // Calculate how many NEW quizzes they can still play
             // globalAttemptedCount is passed from QuizzScreen as total quizzes attempted by user across all categories
-            const maxNewCases = Math.max(0, 20 - globalAttemptedCount);
+            const maxNewCases = Math.max(0, 5 - globalAttemptedCount);
             const allowedUnsolved = quizzes.slice(0, maxNewCases);
 
             if (showSolved) {
@@ -1028,17 +1037,29 @@ export default function QuizzPlay({ route, navigation }) {
     }, [solvedStatus, solvedQuizzes.length, showSolved]);
 
     const onOptionPress = useCallback((quizId, index) => {
+        if (selections[quizId] !== undefined) return;
+
+        const quiz = quizzes.find(q => q._id === quizId);
+        if (!quiz) return;
+
         setSelections(prev => {
             if (prev[quizId] !== undefined) return prev;
-
-            const quiz = quizzes.find(q => q._id === quizId);
-            if (quiz && userId) {
-                submitQuizzAttemptApi(quizId, index, index === quiz.correctOptionIndex);
-            }
-
             return { ...prev, [quizId]: index };
         });
-    }, [quizzes, userId, submitQuizzAttemptApi]);
+
+        if (!userId) return;
+
+        submitQuizzAttemptApi(quizId, index, index === quiz.correctOptionIndex).catch(error => {
+            console.error('Error submitting attempt:', error);
+            setSelections(prev => {
+                if (prev[quizId] !== index) return prev;
+                const next = { ...prev };
+                delete next[quizId];
+                return next;
+            });
+            Alert.alert('Unable to save answer', 'Please check your connection and try again.');
+        });
+    }, [quizzes, selections, userId, submitQuizzAttemptApi]);
 
     // Pre-fetching for smoother images
     useEffect(() => {
@@ -1390,12 +1411,6 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
-    explanationScrollContent: {
-        paddingTop: 80,
-        paddingBottom: 40,
-        flexGrow: 1,
-        justifyContent: 'center',
-    },
     swipeHints: {
         alignItems: 'center',
         marginTop: 16,
@@ -1676,7 +1691,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '800',
-        color: '#fff',
     },
     errorText: {
         fontSize: 16,
