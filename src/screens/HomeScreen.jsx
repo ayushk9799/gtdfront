@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useColorScheme, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../constants/Colors';
-import inappicon from '../../constants/inappicon.png';
 import { styles } from './styles';
 import LeagueHeader from './LeagueHeader';
 import DepartmentProgressList from '../components/DepartmentProgressList';
@@ -26,18 +25,19 @@ import { getGamesPlayedCount } from '../services/ratingService';
 import { useTranslation } from 'react-i18next';
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
   const themeColors = Colors.light;
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { isTablet } = useResponsive();
-  const { status: categoriesLoading, items: categories, error: categoriesError } = useSelector(state => state.categories);
+  const { status: categoriesLoading, error: categoriesError } = useSelector(state => state.categories);
   const { hearts, isPremium } = useSelector(state => state.user);
   const { t } = useTranslation();
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState(false);
   const [isCheckingCompletion, setIsCheckingCompletion] = useState(true); // Start as true to show skeleton initially
+  // MMKV storage instance for persisting suggested case
+  const storage = React.useMemo(() => new MMKV(), []);
 
   // Lifetime offer card state — read from MMKV
   const [offerStartTime, setOfferStartTime] = useState(() => {
@@ -80,9 +80,6 @@ export default function HomeScreen() {
 
   // Responsive image height: 300 for iPad/tablet, 200 for iPhone/mobile
   const imageHeight = isTablet ? 350 : 200;
-
-  // MMKV storage instance for persisting suggested case
-  const storage = React.useMemo(() => new MMKV(), []);
 
   // 1 hour expiration in milliseconds
   const SUGGESTED_CASE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
@@ -138,13 +135,13 @@ export default function HomeScreen() {
         }
       }
     } catch (_) { }
-  }, []);
+  }, [dispatch, storage]);
 
   useEffect(() => {
     if (categoriesLoading === 'idle') {
       dispatch(fetchCategories());
     }
-  }, [dispatch]);
+  }, [categoriesLoading, dispatch]);
 
   // Load today's daily challenge on component mount
   useEffect(() => {
@@ -195,9 +192,16 @@ export default function HomeScreen() {
   // 2. No challenge available (API succeeded with null challenge), OR
   // 3. Challenge loading failed (meaning no challenge for today)
   const challengeStatus = useSelector(state => state.dailyChallenge.status);
-  const noDailyChallengeAvailable = (challengeStatus === 'succeeded' && !currentChallenge) || challengeStatus === 'failed';
+  const isDailyChallengeUnavailableError = hasChallengeError
+    && typeof challengeError === 'string'
+    && /no daily challenge|no challenge/i.test(challengeError);
+  const noDailyChallengeAvailable = (challengeStatus === 'succeeded' && !currentChallenge) || isDailyChallengeUnavailableError;
   // Only show suggested case when daily challenge is completed or no challenge available
   const shouldShowSuggestedCase = isDailyChallengeCompleted || (noDailyChallengeAvailable || hasChallengeError);
+  const shouldShowDailyChallengeCard = isChallengeLoading
+    || isCheckingCompletion
+    || (hasChallengeError && !isDailyChallengeUnavailableError)
+    || !!currentChallenge;
 
   // Pick a random suggested case only if we don't have one persisted
   useEffect(() => {
@@ -263,7 +267,7 @@ export default function HomeScreen() {
         }
       }
     }
-  }, [shouldShowSuggestedCase, progressStatus, departmentProgress, suggestedNextCase]);
+  }, [shouldShowSuggestedCase, progressStatus, departmentProgress, suggestedNextCase, isPremium, storage]);
 
   // Function to clear suggested case (call this when user completes the case)
   const clearSuggestedCase = useCallback(() => {
@@ -444,146 +448,131 @@ export default function HomeScreen() {
             onOfferExpired={handleOfferExpired}
           />
         )}
-        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-          <View style={styles.cardContent}>
-            <View style={styles.rowCenterBetween}>
-              <View style={styles.rowCenter}>
-                <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
-                <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>{t('home.dailyChallenge')}</Text>
-              </View>
-              {!isCheckingCompletion && !isChallengeLoading && (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('PastChallenges')}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons name="history" size={20} color={Colors.brand.darkPink} />
-                    <Text style={{ marginLeft: 5, color: Colors.brand.darkPink, fontSize: 15, fontWeight: '700' }}>{t('home.history')}</Text>
-                  </TouchableOpacity>
+        {shouldShowDailyChallengeCard && (
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+            <View style={styles.cardContent}>
+              <View style={styles.rowCenterBetween}>
+                <View style={styles.rowCenter}>
+                  <Image source={calendarIcon} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
+                  <Text style={[styles.cardTitle, { marginLeft: 8, color: themeColors.text }]}>{t('home.dailyChallenge')}</Text>
                 </View>
-              )}
-            </View>
-
-            {(isChallengeLoading || isCheckingCompletion) && <Skeleton.DailyChallenge imageHeight={imageHeight} />}
-
-            {hasChallengeError && !isChallengeLoading && (
-              <View style={{ marginTop: 8 }}>
-                <Text style={[styles.cardDesc, { color: '#C62828' }]}>
-                  {challengeError || 'Failed to load today\'s challenge'}
-                </Text>
-
-              </View>
-            )}
-
-            {currentChallenge && !isChallengeLoading && !isCheckingCompletion && !hasChallengeError && (
-              <>
-                {isDailyChallengeCompleted ? (
-                  <View style={{ marginTop: 8 }}>
-                    <Text style={[styles.cardDesc, { fontSize: 15, color: '#2E7D32', marginTop: 0 }]}>
-                      {t('home.challengeCompleted')}
-                    </Text>
+                {!isCheckingCompletion && !isChallengeLoading && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity
-                      onPress={handleDailyChallengePress}
-                      disabled={isDailyChallengeLoading}
-                      style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                      onPress={() => navigation.navigate('PastChallenges')}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                      }}
+                      activeOpacity={0.7}
                     >
-                      {isDailyChallengeLoading ? (
-                        <ActivityIndicator size="small" color={Colors.brand.darkPink} />
-                      ) : (
-                        <Text style={{ color: Colors.brand.darkPink, fontWeight: '800', fontSize: 15 }}>
-                          {t('home.viewInsights')}
-                        </Text>
-                      )}
+                      <MaterialCommunityIcons name="history" size={20} color={Colors.brand.darkPink} />
+                      <Text style={{ marginLeft: 5, color: Colors.brand.darkPink, fontSize: 15, fontWeight: '700' }}>{t('home.history')}</Text>
                     </TouchableOpacity>
                   </View>
-                ) : (
-                  <>
-                    {currentChallenge?.caseData?.mainimage && (
-                      <View style={{ width: '100%', height: imageHeight, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F5F5F5' }}>
-                        <Image
-                          source={{ uri: currentChallenge?.caseData?.mainimage }}
-                          style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
-                        />
-                        {/* Gradient overlay */}
-                        <LinearGradient
-                          colors={['transparent', 'rgba(0,0,0,0.85)']}
-                          style={{
+                )}
+              </View>
+
+              {(isChallengeLoading || isCheckingCompletion) && <Skeleton.DailyChallenge imageHeight={imageHeight} />}
+
+              {hasChallengeError && !isChallengeLoading && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={[styles.cardDesc, { color: '#C62828' }]}>
+                    {challengeError || 'Failed to load today\'s challenge'}
+                  </Text>
+
+                </View>
+              )}
+
+              {currentChallenge && !isChallengeLoading && !isCheckingCompletion && !hasChallengeError && (
+                <>
+                  {isDailyChallengeCompleted ? (
+                    <View style={{ marginTop: 8 }}>
+                      <Text style={[styles.cardDesc, { fontSize: 15, color: '#2E7D32', marginTop: 0 }]}>
+                        {t('home.challengeCompleted')}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={handleDailyChallengePress}
+                        disabled={isDailyChallengeLoading}
+                        style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        {isDailyChallengeLoading ? (
+                          <ActivityIndicator size="small" color={Colors.brand.darkPink} />
+                        ) : (
+                          <Text style={{ color: Colors.brand.darkPink, fontWeight: '800', fontSize: 15 }}>
+                            {t('home.viewInsights')}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <>
+                      {currentChallenge?.caseData?.mainimage && (
+                        <View style={{ width: '100%', height: imageHeight, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F5F5F5' }}>
+                          <Image
+                            source={{ uri: currentChallenge?.caseData?.mainimage }}
+                            style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+                          />
+                          {/* Gradient overlay */}
+                          <LinearGradient
+                            colors={['transparent', 'rgba(0,0,0,0.85)']}
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: imageHeight * 0.6,
+                            }}
+                          />
+                          {/* Text positioned absolutely at bottom */}
+                          <View style={{
                             position: 'absolute',
                             bottom: 0,
                             left: 0,
                             right: 0,
-                            height: imageHeight * 0.6,
-                          }}
-                        />
-                        {/* Text positioned absolutely at bottom */}
-                        <View style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          paddingHorizontal: 16,
-                          paddingBottom: 14,
-                        }}>
-                          <Text style={{
-                            fontFamily: 'Artifika-Regular',
-                            fontSize: 18,
-                            color: 'white',
-                            fontWeight: '600',
-                          }} numberOfLines={2}>
-                            {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
-                          </Text>
+                            paddingHorizontal: 16,
+                            paddingBottom: 14,
+                          }}>
+                            <Text style={{
+                              fontFamily: 'Artifika-Regular',
+                              fontSize: 18,
+                              color: 'white',
+                              fontWeight: '600',
+                            }} numberOfLines={2}>
+                              {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
-                    )}
-                    {!currentChallenge?.caseData?.mainimage && (
-                      <Text style={[styles.cardDesc, { marginTop: 8, fontFamily: 'Artifika-Regular', fontSize: 18, color: "black" }]}>
-                        {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
-                      </Text>
-                    )}
-                    <TouchableOpacity
-                      style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
-                      activeOpacity={0.9}
-                      onPress={handleDailyChallengePress}
-                      disabled={isDailyChallengeLoading}
-                    >
-                      {isDailyChallengeLoading ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                          <Text style={styles.primaryButtonText}>{t('home.solveChallenge')}</Text>
-                        </View>
-                      ) : (
-                        <Text style={styles.primaryButtonText}>{t('home.solveChallenge')}</Text>
                       )}
-                    </TouchableOpacity>
-                  </>
-                )}
-              </>
-            )}
-
-            {!currentChallenge && !isChallengeLoading && !isCheckingCompletion && !hasChallengeError && (
-              <>
-                <Text style={[styles.cardDesc, { marginTop: 8 }]}>
-                  {t('home.noChallengeDesc')}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.primaryButton, { opacity: 0.6 }]}
-                  activeOpacity={0.9}
-                  disabled={true}
-                >
-                  <Text style={styles.primaryButtonText}>{t('home.noChallengeToday')}</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-
+                      {!currentChallenge?.caseData?.mainimage && (
+                        <Text style={[styles.cardDesc, { marginTop: 8, fontFamily: 'Artifika-Regular', fontSize: 18, color: "black" }]}>
+                          {currentChallenge?.caseData?.caseTitle || 'Solve today\'s case in under 3 tries to keep your streak alive.'}
+                        </Text>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.primaryButton, isDailyChallengeLoading && { opacity: 0.7 }]}
+                        activeOpacity={0.9}
+                        onPress={handleDailyChallengePress}
+                        disabled={isDailyChallengeLoading}
+                      >
+                        {isDailyChallengeLoading ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                            <Text style={styles.primaryButtonText}>{t('home.solveChallenge')}</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.primaryButtonText}>{t('home.solveChallenge')}</Text>
+                        )}
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </>
+              )}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Continue Solving Card - Shows when daily challenge is completed OR no challenge available */}
         {shouldShowSuggestedCase && suggestedNextCase && (

@@ -1,0 +1,5 @@
+/* Bundle display name */
+"CFBundleDisplayName" = "Diagnose It";
+
+/* Bundle name */
+"CFBundleName" = "Diagnose It";
