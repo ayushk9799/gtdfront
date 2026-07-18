@@ -17,6 +17,7 @@ import { BlurView } from '@react-native-community/blur';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -75,6 +76,8 @@ export default function SelectTests() {
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const dispatch = useDispatch();
   const selectedTestIds = useSelector((s) => s.currentGame.selectedTestIds);
+  const caseId = useSelector((s) => s.currentGame.caseId);
+  const dailyChallengeId = useSelector((s) => s.currentGame.dailyChallengeId);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
   const sourceType = useSelector((s) => s.currentGame.sourceType);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
@@ -162,6 +165,13 @@ export default function SelectTests() {
       ? selectedTestIds.filter((t) => t !== id)
       : [...selectedTestIds, id];
     dispatch(setSelectedTestsAction(next));
+    trackEvent('tests_selection_changed', {
+      case_id: caseId || caseData?._id,
+      daily_challenge_id: dailyChallengeId,
+      source_type: sourceType,
+      selected_count: next.length,
+      selected: !isCurrentlySelected,
+    });
     // Play tap sound only when selecting (not deselecting)
     if (!isCurrentlySelected) {
       playTapSound();
@@ -575,6 +585,12 @@ export default function SelectTests() {
                     onPress={() => {
                       stopLabAudio(); // Stop audio before navigating
                       reportsSheetRef.current?.dismiss();
+                      trackEvent('tests_submitted', {
+                        case_id: caseId || caseData?._id,
+                        daily_challenge_id: dailyChallengeId,
+                        source_type: sourceType,
+                        selected_count: selectedTestIds.length,
+                      });
                       navigation.navigate('SelectDiagnosis', { caseData });
                     }}
                     style={[styles.primaryButtonInRow, styles.sheetPrimaryInRow]}
@@ -1046,4 +1062,3 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 });
-

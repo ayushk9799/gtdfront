@@ -23,6 +23,7 @@ import { Skeleton } from '../components/Skeleton';
 import LifetimeOfferCard from '../components/LifetimeOfferCard';
 import { getGamesPlayedCount } from '../services/ratingService';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 export default function HomeScreen() {
   const themeColors = Colors.light;
@@ -325,13 +326,27 @@ export default function HomeScreen() {
     }, [storage])
   );
 
-  const openCaseById = async (caseId) => {
+  const openCaseById = async (caseId, entryPoint = 'home') => {
     try {
       if (!isPremium && hearts <= 0) {
+        trackEvent('no_hearts_blocked_case', {
+          case_id: caseId,
+          entry_point: entryPoint,
+          source_type: 'case',
+          hearts_remaining: hearts,
+          is_premium: isPremium,
+        });
         ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);
         navigation.navigate('Heart');
         return;
       }
+      trackEvent('case_started', {
+        case_id: caseId,
+        entry_point: entryPoint,
+        source_type: 'case',
+        hearts_remaining: hearts,
+        is_premium: isPremium,
+      });
       dispatch(clearCurrentGame()); // Clear old data to prevent stale flash
       navigation.navigate('ClinicalInfo');
       await dispatch(loadCaseById(caseId));
@@ -342,6 +357,13 @@ export default function HomeScreen() {
   const handleDailyChallengePress = async () => {
     if (!currentChallenge?._id || !currentUserId) {
       // Fallback to normal flow if no challenge or user
+      trackEvent('daily_challenge_started', {
+        daily_challenge_id: currentChallenge?._id,
+        entry_point: 'home_fallback',
+        source_type: 'dailyChallenge',
+        hearts_remaining: hearts,
+        is_premium: isPremium,
+      });
       dispatch(setCaseData({
         dailyChallengeId: currentChallenge?._id,
         caseData: currentChallenge?.caseData,
@@ -353,6 +375,13 @@ export default function HomeScreen() {
 
     // Check hearts before starting (will be skipped for already-completed challenges below)
     if (!isPremium && hearts <= 0) {
+      trackEvent('no_hearts_blocked_case', {
+        daily_challenge_id: currentChallenge?._id,
+        entry_point: 'daily_challenge',
+        source_type: 'dailyChallenge',
+        hearts_remaining: hearts,
+        is_premium: isPremium,
+      });
       navigation.navigate('Heart');
       return;
     }
@@ -411,11 +440,23 @@ export default function HomeScreen() {
         dispatch(setGameplay(completedGameplay));
 
         // Navigate to ClinicalInsight to review the completed case
+        trackEvent('daily_challenge_insights_viewed', {
+          daily_challenge_id: currentChallenge?._id,
+          source_type: 'dailyChallenge',
+          is_premium: isPremium,
+        });
         navigation.navigate('ClinicalInsight', { caseData, from: 'HomeScreen' });
 
         ToastAndroid.show('You\'ve already completed today\'s challenge!', ToastAndroid.SHORT);
       } else {
         // Not completed - proceed with normal flow
+        trackEvent('daily_challenge_started', {
+          daily_challenge_id: currentChallenge?._id,
+          entry_point: 'home',
+          source_type: 'dailyChallenge',
+          hearts_remaining: hearts,
+          is_premium: isPremium,
+        });
         dispatch(setCaseData({
           dailyChallengeId: currentChallenge?._id,
           caseData: currentChallenge?.caseData,
@@ -426,6 +467,13 @@ export default function HomeScreen() {
     } catch (error) {
       // On error, fallback to normal flow
       console.warn('Error checking daily challenge status:', error);
+      trackEvent('daily_challenge_started', {
+        daily_challenge_id: currentChallenge?._id,
+        entry_point: 'home_status_check_failed',
+        source_type: 'dailyChallenge',
+        hearts_remaining: hearts,
+        is_premium: isPremium,
+      });
       dispatch(setCaseData({
         dailyChallengeId: currentChallenge?._id,
         caseData: currentChallenge?.caseData,
@@ -645,9 +693,15 @@ export default function HomeScreen() {
                 activeOpacity={0.9}
                 onPress={() => {
                   if (suggestedNextCase.isPremiumCase) {
+                    trackEvent('premium_sheet_opened', {
+                      trigger: 'suggested_case_locked',
+                      case_id: suggestedNextCase.caseId,
+                      source_type: 'case',
+                      is_premium: isPremium,
+                    });
                     premiumSheetRef.current?.present();
                   } else {
-                    openCaseById(suggestedNextCase.caseId);
+                    openCaseById(suggestedNextCase.caseId, 'suggested_case');
                   }
                 }}
               >

@@ -9,6 +9,7 @@ import { fetchDepartmentProgress } from '../store/slices/progressSlice';
 import { styles } from '../screens/styles';
 import { Skeleton } from './Skeleton';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 export default function DepartmentProgressList({ userId, themeColors, onStartCase }) {
   const dispatch = useDispatch();
@@ -47,7 +48,14 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
           <TouchableOpacity
             key={String(dept.categoryId)}
             activeOpacity={0.9}
-            onPress={() => navigation.navigate('DepartmentCases', { categoryId: dept.categoryId, categoryName: dept.name, userId })}
+            onPress={() => {
+              trackEvent('department_opened', {
+                department_id: dept.categoryId,
+                total_cases: total,
+                completed_cases: done,
+              });
+              navigation.navigate('DepartmentCases', { categoryId: dept.categoryId, categoryName: dept.name, userId });
+            }}
             style={{ opacity: 1 }}
           >
             <View
@@ -114,5 +122,4 @@ export default function DepartmentProgressList({ userId, themeColors, onStartCas
     </View>
   );
 }
-
 

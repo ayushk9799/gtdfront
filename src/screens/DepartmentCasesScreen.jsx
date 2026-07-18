@@ -24,6 +24,7 @@ import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { Skeleton } from '../components/Skeleton';
 import { styles } from './styles';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -55,12 +56,27 @@ export default function DepartmentCasesScreen() {
         // Check if case is locked (non-premium users can only access first 2 cases, but solved cases are always accessible)
         const isLocked = !isPremium && index >= 2 && caseItem.status !== 'completed';
         if (isLocked) {
+            trackEvent('premium_sheet_opened', {
+                trigger: 'department_case_locked',
+                case_id: caseId,
+                department_id: categoryId,
+                source_type: 'case',
+                is_premium: isPremium,
+            });
             premiumSheetRef.current?.present();
             return;
         }
 
         try {
             if (!isPremium && hearts <= 0) {
+                trackEvent('no_hearts_blocked_case', {
+                    case_id: caseId,
+                    department_id: categoryId,
+                    entry_point: 'department_cases',
+                    source_type: 'case',
+                    hearts_remaining: hearts,
+                    is_premium: isPremium,
+                });
                 ToastAndroid.show(t('departmentCases.noHearts'), ToastAndroid.SHORT);
                 navigation.navigate('Heart');
                 return;
@@ -116,6 +132,13 @@ export default function DepartmentCasesScreen() {
                             dispatch(setGameplay(completedGameplay));
 
                             // Navigate to ClinicalInsight
+                            trackEvent('case_insights_viewed', {
+                                case_id: caseId,
+                                department_id: categoryId,
+                                entry_point: 'department_cases',
+                                source_type: 'case',
+                                is_premium: isPremium,
+                            });
                             navigation.navigate('ClinicalInsight', { caseData, from: 'DepartmentCases' });
                             setLoadingCaseId(null);
                             return;
@@ -124,6 +147,14 @@ export default function DepartmentCasesScreen() {
                 }
 
                 // If not completed or gameplay fetch failed, go to ClinicalInfo
+                trackEvent('case_started', {
+                    case_id: caseId,
+                    department_id: categoryId,
+                    entry_point: 'department_cases',
+                    source_type: 'case',
+                    hearts_remaining: hearts,
+                    is_premium: isPremium,
+                });
                 navigation.navigate('ClinicalInfo');
             } else {
                 ToastAndroid.show(t('departmentCases.loadFailed'), ToastAndroid.SHORT);

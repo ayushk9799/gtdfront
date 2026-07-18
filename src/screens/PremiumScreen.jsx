@@ -10,6 +10,7 @@ import Purchases from 'react-native-purchases';
 import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTranslation, Trans } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const HERO_HEIGHT = 320;
 const HERO_GRADIENT_HEIGHT = 180;
@@ -118,17 +119,37 @@ export default function PremiumScreen() {
   const handlePurchase = async (pkg) => {
     try {
       setLoading(true);
+      trackEvent('purchase_started', {
+        package_id: pkg?.identifier,
+        product_id: pkg?.product?.identifier,
+        surface: 'premium_screen',
+      });
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       dispatch(setCustomerInfo(customerInfo));
       await checkEntitlements(); // Update entitlements after successful purchase
+      trackEvent('purchase_success', {
+        package_id: pkg?.identifier,
+        product_id: pkg?.product?.identifier,
+        surface: 'premium_screen',
+      });
     } catch (e) {
       if (e?.userCancelled) {
+        trackEvent('purchase_cancelled', {
+          package_id: pkg?.identifier,
+          product_id: pkg?.product?.identifier,
+          surface: 'premium_screen',
+        });
         if (Platform.OS === 'android') {
           ToastAndroid.show('Purchase cancelled', ToastAndroid.SHORT);
         } else {
           Alert.alert('Purchase cancelled');
         }
       } else {
+        trackEvent('purchase_failed', {
+          package_id: pkg?.identifier,
+          product_id: pkg?.product?.identifier,
+          surface: 'premium_screen',
+        });
       }
       return;
     } finally {

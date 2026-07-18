@@ -8,6 +8,7 @@ import premiumImage from '../../constants/premium-image.png';
 import Purchases from 'react-native-purchases';
 import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 import { useTranslation, Trans } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] }, ref) {
   const dispatch = useDispatch();
@@ -39,18 +40,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
     <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.4} />
   ), []);
 
-  useImperativeHandle(ref, () => ({
-    present: async () => {
-      try {
-        await getOfferingsAndEntitlements();
-      } finally {
-        sheetRef.current?.present();
-      }
-    },
-    dismiss: () => sheetRef.current?.dismiss(),
-  }), []);
-
-  const syncServerPremium = async (customerInfo) => {
+  const syncServerPremium = useCallback(async (customerInfo) => {
     try {
       const active = customerInfo?.entitlements?.active || {};
       const activeList = Object.values(active || {});
@@ -79,9 +69,9 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
       }));
     } catch (e) {
     }
-  };
+  }, [dispatch, selectedPlan, userData?._id, userData?.id, userData?.userId]);
 
-  const checkEntitlements = async () => {
+  const checkEntitlements = useCallback(async () => {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       dispatch(setCustomerInfo(customerInfo));
@@ -89,22 +79,42 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
       await syncServerPremium(customerInfo);
     } catch (e) {
     }
-  };
+  }, [dispatch, syncServerPremium]);
 
   const handlePurchase = async (pkg) => {
     try {
       setLoading(true);
+      trackEvent('purchase_started', {
+        package_id: pkg?.identifier,
+        product_id: pkg?.product?.identifier,
+        surface: 'premium_bottom_sheet',
+      });
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       dispatch(setCustomerInfo(customerInfo));
       await checkEntitlements();
+      trackEvent('purchase_success', {
+        package_id: pkg?.identifier,
+        product_id: pkg?.product?.identifier,
+        surface: 'premium_bottom_sheet',
+      });
     } catch (e) {
       if (e?.userCancelled) {
+        trackEvent('purchase_cancelled', {
+          package_id: pkg?.identifier,
+          product_id: pkg?.product?.identifier,
+          surface: 'premium_bottom_sheet',
+        });
         if (Platform.OS === 'android') {
           ToastAndroid.show('Purchase cancelled', ToastAndroid.SHORT);
         } else {
           Alert.alert('Purchase cancelled');
         }
       } else {
+        trackEvent('purchase_failed', {
+          package_id: pkg?.identifier,
+          product_id: pkg?.product?.identifier,
+          surface: 'premium_bottom_sheet',
+        });
       }
       return;
     } finally {
@@ -112,7 +122,7 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
     }
   };
 
-  const getOfferingsAndEntitlements = async () => {
+  const getOfferingsAndEntitlements = useCallback(async () => {
     try {
       setLoading(true);
       const o = await Purchases.getOfferings();
@@ -143,7 +153,18 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
     } finally {
       setLoading(false);
     }
-  };
+  }, [checkEntitlements]);
+
+  useImperativeHandle(ref, () => ({
+    present: async () => {
+      try {
+        await getOfferingsAndEntitlements();
+      } finally {
+        sheetRef.current?.present();
+      }
+    },
+    dismiss: () => sheetRef.current?.dismiss(),
+  }), [getOfferingsAndEntitlements]);
 
   const selectedPackage = offerings?.current?.availablePackages?.find(pkg => pkg.identifier === selectedPlan) || null;
   const isPremium = !!(useSelector(state => state.user).userData?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
@@ -457,5 +478,3 @@ const PremiumBottomSheet = forwardRef(function PremiumBottomSheet({ points = [] 
 });
 
 export default PremiumBottomSheet;
-
-

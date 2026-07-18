@@ -22,6 +22,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DepartmentIcons } from '../components/DepartmentIcons';
 import Video from 'react-native-video';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -142,6 +143,11 @@ export default function QuizzScreen() {
             totalQuizzCount = categories.reduce((sum, cat) => sum + (cat.quizzCount || 0), 0);
         }
 
+        trackEvent('quiz_started', {
+            category_id: category?._id || 'all',
+            attempted_count: initialAttemptedCount,
+            total_count: totalQuizzCount,
+        });
         navigation.navigate('QuizzPlay', {
             categoryId: category?._id || null,
             categoryName: category ? category.name : 'All Quizzes',

@@ -62,6 +62,7 @@ export default function AccountScreen() {
     { code: 'de', label: 'Deutsch', secondary: 'German', flag: '🇩🇪' },
     { code: 'fr', label: 'Français', secondary: 'French', flag: '🇫🇷' },
     { code: 'es', label: 'Español', secondary: 'Spanish', flag: '🇪🇸' },
+    { code: 'it', label: 'Italiano', secondary: 'Italian', flag: '🇮🇹' },
   ];
   const currentLangObj = LANGUAGES.find(l => l.code === currentLang) || LANGUAGES[0];
 
@@ -97,14 +98,8 @@ Join me 👉 https://diagnoseit.in`
   }, [storage]);
 
   // Notification status from persisted preference/decision
-  const notifDecided = useMemo(
-    () => (storage.getBoolean && storage.getBoolean('notifDecided')) || false,
-    [storage, refresh]
-  );
-  const notifEnabled = useMemo(
-    () => (storage.getBoolean && storage.getBoolean('notifEnabled')) || false,
-    [storage, refresh]
-  );
+  const notifDecided = (storage.getBoolean && storage.getBoolean('notifDecided')) || false;
+  const notifEnabled = (storage.getBoolean && storage.getBoolean('notifEnabled')) || false;
   const effectiveEnabled = notifEnabled && osPermissionEnabled;
 
   const computeOsPermission = useCallback(async () => {

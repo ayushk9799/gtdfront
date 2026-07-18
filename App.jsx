@@ -58,6 +58,7 @@ import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native
 import { loadCaseById } from './src/store/slices/currentGameSlice';
 import LifetimeOfferBanner from './src/components/LifetimeOfferBanner';
 import { getGamesPlayedCount } from './src/services/ratingService';
+import { identifyAnalyticsUser, trackScreen } from './src/services/analytics';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -305,6 +306,7 @@ export default function App() {
 
   // Ensure Purchases SDK is configured exactly once per app launch
   const purchasesConfiguredRef = React.useRef(false);
+  const routeNameRef = React.useRef(null);
   const initPurchases = React.useCallback(async () => {
     try {
       if (purchasesConfiguredRef.current) return;
@@ -320,6 +322,11 @@ export default function App() {
     }
   }, []);
 
+  const getCustomerInfo = React.useCallback(async () => {
+    const customerInfo = await Purchases.getCustomerInfo();
+    dispatch(setCustomerInfo(customerInfo));
+  }, [dispatch]);
+
   const identifyPurchasesUser = React.useCallback(async (appUserId) => {
     try {
       // Only attempt identification if SDK was configured
@@ -334,7 +341,7 @@ export default function App() {
     } catch (e) {
       // swallow; UI can still work, and Premium screen will retry fetching
     }
-  }, [initPurchases]);
+  }, [getCustomerInfo, initPurchases]);
 
   /* load stored credential once */
   useEffect(() => {
@@ -350,11 +357,6 @@ export default function App() {
       setLoading(false);
     }
   }, [dispatch]);
-
-  const getCustomerInfo = async () => {
-    const customerInfo = await Purchases.getCustomerInfo();
-    dispatch(setCustomerInfo(customerInfo));
-  }
 
   useEffect(() => {
     if (__DEV__) {
@@ -427,6 +429,12 @@ export default function App() {
     const uid = user?.email || null;
     identifyPurchasesUser(uid);
   }, [user, identifyPurchasesUser]);
+
+  useEffect(() => {
+    const uid = userData?._id || user?._id || user?.userId || user?.id || null;
+    identifyAnalyticsUser(uid);
+  }, [user, userData?._id]);
+
   // Listen for MMKV 'user' changes to react to logout/login instantly
   useEffect(() => {
     const listener = storage.addOnValueChangedListener((changedKey) => {
@@ -452,7 +460,7 @@ export default function App() {
     if (userData && userData?._id) {
       handleFCMTokenUpdate(dispatch, userData);
     }
-  }, [userData]);
+  }, [dispatch, userData]);
 
   // Handle token refresh to keep local and server in sync
   useEffect(() => {
@@ -639,13 +647,19 @@ export default function App() {
 
             // Check initial home status
             const route = navigationRef.getCurrentRoute();
+            routeNameRef.current = route?.name || null;
             setIsHomeActive(route?.name === 'Home');
+            trackScreen(route?.name);
           }}
           onStateChange={() => {
             const route = navigationRef.getCurrentRoute();
             // We check for "Home" screen specifically. 
             // Since Home is a tab, we check if route name is "Home"
             setIsHomeActive(route?.name === 'Home');
+            if (route?.name && routeNameRef.current !== route.name) {
+              routeNameRef.current = route.name;
+              trackScreen(route.name);
+            }
           }}
           theme={mergedTheme}
         >

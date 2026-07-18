@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -10,6 +10,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import LinearGradient from 'react-native-linear-gradient';
 import Purchases from 'react-native-purchases';
 import { MMKV } from 'react-native-mmkv';
+import { trackEvent } from '../services/analytics';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const storage = new MMKV();
@@ -29,6 +30,7 @@ export default function LifetimeOfferCard({ offerStartTime, onOfferExpired }) {
   const [remaining, setRemaining] = useState(TWO_HOURS_MS);
   const [lifetimePackage, setLifetimePackage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const viewedTrackedRef = useRef(false);
 
   // Countdown
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function LifetimeOfferCard({ offerStartTime, onOfferExpired }) {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [offerStartTime]);
+  }, [offerStartTime, onOfferExpired]);
 
   // Fetch offering for price display
   useEffect(() => {
@@ -68,8 +70,31 @@ export default function LifetimeOfferCard({ offerStartTime, onOfferExpired }) {
     fetchOffer();
   }, []);
 
+  useEffect(() => {
+    if (loading || remaining <= 0 || !lifetimePackage) return;
+    if (viewedTrackedRef.current) return;
+
+    trackEvent('lifetime_offer_card_viewed', {
+      surface: 'lifetime_offer_card',
+      package_id: lifetimePackage?.identifier,
+      product_id: lifetimePackage?.product?.identifier,
+      seconds_remaining: Math.floor(remaining / 1000),
+    });
+    viewedTrackedRef.current = true;
+  }, [lifetimePackage, loading, remaining]);
+
+  useEffect(() => {
+    viewedTrackedRef.current = false;
+  }, [offerStartTime]);
+
   // Tap → re-open the full-screen banner via MMKV signal
   const handlePress = () => {
+    trackEvent('lifetime_offer_card_tapped', {
+      surface: 'lifetime_offer_card',
+      package_id: lifetimePackage?.identifier,
+      product_id: lifetimePackage?.product?.identifier,
+      seconds_remaining: Math.floor(remaining / 1000),
+    });
     storage.set('lifetimeOfferDismissed', false);
   };
 

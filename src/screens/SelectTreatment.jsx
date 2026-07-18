@@ -12,11 +12,12 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import medImg from '../../constants/medicine.png';
 import surgImg from '../../constants/surgical.png';
-import { useHeart } from '../store/slices/userSlice';
+import { useHeart as consumeHeart } from '../store/slices/userSlice';
 import Sound from 'react-native-sound';
 import { checkAndRequestReview, incrementGamesPlayed, setFirstPlayedCaseId } from '../services/ratingService';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -71,7 +72,9 @@ export default function SelectTreatment() {
   const colorScheme = useColorScheme();
   const themeColors = Colors.light;
   const dispatch = useDispatch();
-  const { userId, caseId, selectedTreatmentIds, sourceType } = useSelector((s) => s.currentGame);
+  const { userId, caseId, dailyChallengeId, selectedTreatmentIds, sourceType } = useSelector((s) => s.currentGame);
+  const selectedTestIds = useSelector((s) => s.currentGame.selectedTestIds);
+  const selectedDiagnosisId = useSelector((s) => s.currentGame.selectedDiagnosisId);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
   const { t } = useTranslation();
@@ -128,6 +131,13 @@ export default function SelectTreatment() {
       ? selectedTreatmentIds.filter((t) => t !== id)
       : [...selectedTreatmentIds, id];
     dispatch(setSelectedTreatmentsAction(next));
+    trackEvent('treatment_selection_changed', {
+      case_id: caseId || caseData?._id,
+      daily_challenge_id: dailyChallengeId,
+      source_type: sourceType,
+      selected_count: next.length,
+      selected: !isCurrentlySelected,
+    });
     // Play tap sound only when selecting (not deselecting)
     if (!isCurrentlySelected) {
       playTapSound();
@@ -380,12 +390,38 @@ export default function SelectTreatment() {
               incrementGamesPlayed();
               // Save the first played case ID (only saves on first game, ignored after)
               setFirstPlayedCaseId(caseData?.caseId || caseData?._id);
+              trackEvent('case_submitted', {
+                case_id: caseId || caseData?._id,
+                daily_challenge_id: dailyChallengeId,
+                source_type: sourceType,
+                tests_count: selectedTestIds.length,
+                diagnosis_selected: !!selectedDiagnosisId,
+                treatments_count: selectedTreatmentIds.length,
+                is_premium: isPremium,
+              });
               navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan', from: 'SelectTreatment' });
-              await dispatch(submitGameplay());
+              const resultAction = await dispatch(submitGameplay());
+              if (submitGameplay.fulfilled.match(resultAction)) {
+                trackEvent('case_completed', {
+                  case_id: caseId || caseData?._id,
+                  daily_challenge_id: dailyChallengeId,
+                  source_type: sourceType,
+                  tests_count: selectedTestIds.length,
+                  diagnosis_selected: !!selectedDiagnosisId,
+                  treatments_count: selectedTreatmentIds.length,
+                  is_premium: isPremium,
+                });
+              } else {
+                trackEvent('case_submit_failed', {
+                  case_id: caseId || caseData?._id,
+                  daily_challenge_id: dailyChallengeId,
+                  source_type: sourceType,
+                });
+              }
               checkAndRequestReview();
             } catch (e) { }
             if (!isPremium) {
-              dispatch(useHeart());
+              dispatch(consumeHeart());
             }
           }}
           disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
@@ -615,4 +651,3 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
 });
-

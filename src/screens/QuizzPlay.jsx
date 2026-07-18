@@ -27,6 +27,7 @@ import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 import { API_BASE } from '../../constants/Api';
 import { Colors } from '../../constants/Colors';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const { width: screenWidth } = Dimensions.get('window');
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -1049,8 +1050,17 @@ export default function QuizzPlay({ route, navigation }) {
 
         if (!userId) return;
 
+        trackEvent('quiz_answer_submitted', {
+            quiz_id: quizId,
+            category_id: categoryId || selectedCategoryIdRef.current || 'all',
+            is_correct: index === quiz.correctOptionIndex,
+        });
         submitQuizzAttemptApi(quizId, index, index === quiz.correctOptionIndex).catch(error => {
             console.error('Error submitting attempt:', error);
+            trackEvent('quiz_answer_submit_failed', {
+                quiz_id: quizId,
+                category_id: categoryId || selectedCategoryIdRef.current || 'all',
+            });
             setSelections(prev => {
                 if (prev[quizId] !== index) return prev;
                 const next = { ...prev };
@@ -1059,7 +1069,7 @@ export default function QuizzPlay({ route, navigation }) {
             });
             Alert.alert('Unable to save answer', 'Please check your connection and try again.');
         });
-    }, [quizzes, selections, userId, submitQuizzAttemptApi]);
+    }, [categoryId, quizzes, selections, userId, submitQuizzAttemptApi]);
 
     // Pre-fetching for smoother images
     useEffect(() => {

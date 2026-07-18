@@ -12,6 +12,7 @@ import { setSelectedDiagnosis as setSelectedDiagnosisAction } from '../store/sli
 import Sound from 'react-native-sound';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 import { useTranslation } from 'react-i18next';
+import { trackEvent } from '../services/analytics';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -105,6 +106,8 @@ export default function SelectDiagnosis() {
   const themeColors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const dispatch = useDispatch();
   const selectedDiagnosisId = useSelector((s) => s.currentGame.selectedDiagnosisId);
+  const caseId = useSelector((s) => s.currentGame.caseId);
+  const dailyChallengeId = useSelector((s) => s.currentGame.dailyChallengeId);
   const voiceId = useSelector((s) => s.currentGame.voiceId);
   const sourceType = useSelector((s) => s.currentGame.sourceType);
   const audioPaused = useSelector((s) => s.currentGame.audioPaused);
@@ -154,6 +157,12 @@ export default function SelectDiagnosis() {
     const isCurrentlySelected = selectedDiagnosisId === id;
     const next = isCurrentlySelected ? null : id;
     dispatch(setSelectedDiagnosisAction(next));
+    trackEvent('diagnosis_selection_changed', {
+      case_id: caseId || caseData?._id,
+      daily_challenge_id: dailyChallengeId,
+      source_type: sourceType,
+      selected: !!next,
+    });
     // Play tap sound only when selecting (not deselecting)
     if (!isCurrentlySelected) {
       playTapSound();
@@ -354,6 +363,11 @@ export default function SelectDiagnosis() {
           onPress={() => {
             if (!selectedDiagnosisId) return;
             stopDiagnosisAudio();
+            trackEvent('diagnosis_submitted', {
+              case_id: caseId || caseData?._id,
+              daily_challenge_id: dailyChallengeId,
+              source_type: sourceType,
+            });
             navigation.navigate('SelectTreatment', { caseData });
           }}
           disabled={!selectedDiagnosisId}
@@ -566,5 +580,4 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
 });
-
 

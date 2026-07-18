@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -22,6 +22,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 import { Colors } from '../../constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { trackEvent } from '../services/analytics';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -72,6 +73,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
   const [origPriceWidth, setOrigPriceWidth] = useState(0);
   const [finalFade] = useState(() => new Animated.Value(0));
   const [finalScale] = useState(() => new Animated.Value(0.8));
+  const shownTrackedRef = useRef(false);
 
   // Countdown timer
   useEffect(() => {
@@ -82,6 +84,9 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
       const left = Math.max(TWO_HOURS_MS - elapsed, 0);
       setRemaining(left);
       if (left <= 0) {
+        trackEvent('lifetime_offer_expired', {
+          surface: 'lifetime_offer_banner',
+        });
         onDismiss?.();
       }
     };
@@ -89,7 +94,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [visible, offerStartTime]);
+  }, [onDismiss, visible, offerStartTime]);
 
   // Fetch both offerings from RevenueCat
   useEffect(() => {
@@ -132,11 +137,23 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
     };
 
     fetchOffer();
-  }, [visible]);
+  }, [onDismiss, visible]);
 
   // Animate in when visible
   useEffect(() => {
     if (visible && !fetchingOffer && lifetimePackage) {
+      if (!shownTrackedRef.current) {
+        const secondsRemaining = offerStartTime
+          ? Math.floor(Math.max(TWO_HOURS_MS - (Date.now() - offerStartTime), 0) / 1000)
+          : null;
+        trackEvent('lifetime_offer_shown', {
+          surface: 'lifetime_offer_banner',
+          package_id: lifetimePackage?.identifier,
+          product_id: lifetimePackage?.product?.identifier,
+          seconds_remaining: secondsRemaining,
+        });
+        shownTrackedRef.current = true;
+      }
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -191,6 +208,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
         }
       });
     } else {
+      shownTrackedRef.current = false;
       fadeAnim.setValue(0);
       slideAnim.setValue(SCREEN_HEIGHT);
       setPricePhase('initial');
@@ -199,9 +217,15 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
       finalFade.setValue(0);
       finalScale.setValue(0.8);
     }
-  }, [visible, fetchingOffer, lifetimePackage]);
+  }, [fadeAnim, fetchingOffer, finalFade, finalScale, lifetimePackage, offerStartTime, origFade, originalPriceString, slideAnim, strikeWidth, visible]);
 
   const handleDismiss = useCallback(() => {
+    trackEvent('lifetime_offer_dismissed', {
+      surface: 'lifetime_offer_banner',
+      package_id: lifetimePackage?.identifier,
+      product_id: lifetimePackage?.product?.identifier,
+      seconds_remaining: Math.floor(remaining / 1000),
+    });
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -216,7 +240,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
     ]).start(() => {
       onDismiss?.();
     });
-  }, [fadeAnim, slideAnim, onDismiss]);
+  }, [fadeAnim, lifetimePackage, onDismiss, remaining, slideAnim]);
 
   const syncServerPremium = async (customerInfo) => {
     try {
@@ -254,10 +278,21 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
     if (!lifetimePackage || loading) return;
     try {
       setLoading(true);
+      trackEvent('lifetime_offer_purchase_started', {
+        surface: 'lifetime_offer_banner',
+        package_id: lifetimePackage?.identifier,
+        product_id: lifetimePackage?.product?.identifier,
+        seconds_remaining: Math.floor(remaining / 1000),
+      });
       
       // Final check: Is the offering still there?
       const checkOfferings = await Purchases.getOfferings();
       if (!checkOfferings.all['lifetime_offer']) {
+        trackEvent('lifetime_offer_expired', {
+          surface: 'lifetime_offer_banner',
+          package_id: lifetimePackage?.identifier,
+          product_id: lifetimePackage?.product?.identifier,
+        });
         Alert.alert(t('lifetime.expiredTitle'), t('lifetime.expiredMsg'));
         handleDismiss();
         return;
@@ -266,6 +301,11 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
       const { customerInfo } = await Purchases.purchasePackage(lifetimePackage);
       dispatch(setCustomerInfo(customerInfo));
       await syncServerPremium(customerInfo);
+      trackEvent('lifetime_offer_purchase_success', {
+        surface: 'lifetime_offer_banner',
+        package_id: lifetimePackage?.identifier,
+        product_id: lifetimePackage?.product?.identifier,
+      });
       
       Alert.alert(
         t('lifetime.welcomeTitle'),
@@ -274,12 +314,22 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
       );
     } catch (e) {
       if (e?.userCancelled) {
+        trackEvent('lifetime_offer_purchase_cancelled', {
+          surface: 'lifetime_offer_banner',
+          package_id: lifetimePackage?.identifier,
+          product_id: lifetimePackage?.product?.identifier,
+        });
         if (Platform.OS === 'android') {
           ToastAndroid.show(t('lifetime.purchaseCancelled'), ToastAndroid.SHORT);
         } else {
           Alert.alert(t('lifetime.purchaseCancelled'));
         }
       } else {
+        trackEvent('lifetime_offer_purchase_failed', {
+          surface: 'lifetime_offer_banner',
+          package_id: lifetimePackage?.identifier,
+          product_id: lifetimePackage?.product?.identifier,
+        });
         Alert.alert(t('lifetime.purchaseError'), t('lifetime.purchaseErrorMsg'));
       }
     } finally {
