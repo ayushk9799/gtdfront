@@ -201,6 +201,7 @@
     "notificationsDesc": "Activez les notifications pour recevoir des rappels quotidiens et des mises à jour.",
     "allow": "Autoriser",
     "rateTheApp": "Noter l'application",
+    "contactUs": "Nous contacter",
     "privacyPolicy": "Politique de confidentialité",
     "termsOfService": "Conditions d'utilisation",
     "logOut": "Se déconnecter",
@@ -250,6 +251,11 @@
     "noParticipants": "Personne n'a encore terminé le défi du jour. Soyez le premier !",
     "participants_one": "{{count}} participant",
     "participants_other": "{{count}} participants",
+    "playerProfile": "Profil du joueur",
+    "casesPlayed": "Cas joués",
+    "memberSince": "Membre depuis",
+    "profileLoadError": "Impossible de charger ce profil.",
+    "tapPlayerHint": "Touchez un joueur pour afficher son profil",
     "inactiveMessage": "Résolvez un cas pour réactiver votre classement général ! Vous n'avez pas joué depuis 7 jours."
   },
   "learning": {

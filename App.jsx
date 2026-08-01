@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert, Text } from 'react-native';
+import { StyleSheet, useColorScheme, View, Platform, PermissionsAndroid, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import './src/i18n';
 import { BlurView } from '@react-native-community/blur';
@@ -199,16 +199,6 @@ function RootTabs() {
   const bottomExtra = Platform.OS === 'android' ? (insets.bottom || 0) : 0;
   const isAndroid12Plus = Platform.OS === 'android' && Number(Platform.Version) >= 31;
 
-  const [showQuizBadge, setShowQuizBadge] = useState(() => {
-    return !storage.getBoolean('quizBadgeHidden');
-  });
-
-  const hideQuizBadge = () => {
-    if (showQuizBadge) {
-      storage.set('quizBadgeHidden', true);
-      setShowQuizBadge(false);
-    }
-  };
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -264,11 +254,6 @@ function RootTabs() {
           return (
             <View style={{ width: size, height: size }}>
               <MaterialCommunityIcons name={icon} size={size} color={color} />
-              {route.name === 'Quizzes' && showQuizBadge && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>New</Text>
-                </View>
-              )}
             </View>
           );
         },
@@ -281,10 +266,6 @@ function RootTabs() {
         name="Quizzes"
         component={QuizzScreen}
         options={{ tabBarLabel: t('tabs.quizzes') }}
-        listeners={{
-          tabPress: () => hideQuizBadge(),
-          focus: () => hideQuizBadge(),
-        }}
       />
       <Tab.Screen name="Ranking" component={LeagueScreen} options={{ tabBarLabel: t('tabs.ranking') }} />
       <Tab.Screen name="Account" component={AccountScreen} options={{ tabBarLabel: t('tabs.account') }} />
@@ -806,31 +787,5 @@ export default function App() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  badgeContainer: {
-    position: 'absolute',
-    right: -10,
-    top: -8,
-    backgroundColor: Colors.brand.darkPink,
-    borderRadius: 8,
-    paddingHorizontal: 1,
-    paddingVertical: 1,
-    borderWidth: 1.5,
-    borderColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-    minWidth: 26,
-  },
-  badgeText: {
-    color: '#FFF',
-    fontSize: 7,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-  },
-});
 
 /* styles for screens are in src/screens/styles */

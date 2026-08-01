@@ -201,6 +201,7 @@
     "notificationsDesc": "Aktiviere Benachrichtigungen, um tägliche Erinnerungen und Updates zu erhalten.",
     "allow": "Erlauben",
     "rateTheApp": "App bewerten",
+    "contactUs": "Kontakt",
     "privacyPolicy": "Datenschutzrichtlinie",
     "termsOfService": "Nutzungsbedingungen",
     "logOut": "Abmelden",
@@ -250,6 +251,11 @@
     "noParticipants": "Noch niemand hat die heutige Herausforderung abgeschlossen. Sei der Erste!",
     "participants_one": "{{count}} Teilnehmer",
     "participants_other": "{{count}} Teilnehmer",
+    "playerProfile": "Spielerprofil",
+    "casesPlayed": "Gespielte Fälle",
+    "memberSince": "Mitglied seit",
+    "profileLoadError": "Dieses Profil konnte nicht geladen werden.",
+    "tapPlayerHint": "Tippe auf einen Spieler, um sein Profil anzusehen",
     "inactiveMessage": "Löse einen Fall, um dein Gesamtranking zu reaktivieren! Du hast seit 7 Tagen nicht gespielt."
   },
   "learning": {

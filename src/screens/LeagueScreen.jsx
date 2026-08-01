@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
@@ -12,8 +12,12 @@ import CloudBottom from '../components/CloudBottom';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
 import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { API_BASE } from '../../constants/Api';
+import { MMKV } from 'react-native-mmkv';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
+const storage = new MMKV();
 
 // Helper function to get initials from name
 const getInitials = (name) => {
@@ -50,6 +54,27 @@ export default function LeagueScreen() {
     const navigation = useNavigation();
     const route = useRoute();
     const openedFromClinicalInsight = route?.params?.fromClinicalInsight === true;
+    const profileSheetRef = useRef(null);
+    const profileRequestRef = useRef(0);
+    const profileSnapPoints = useMemo(() => ['42%'], []);
+    const [selectedProfile, setSelectedProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileError, setProfileError] = useState(null);
+    const [showProfileHint, setShowProfileHint] = useState(
+        () => !storage.getBoolean('leagueProfileHintSeen')
+    );
+
+    const renderProfileBackdrop = useCallback(
+        (props) => (
+            <BottomSheetBackdrop
+                {...props}
+                disappearsOnIndex={-1}
+                appearsOnIndex={0}
+                opacity={0.45}
+            />
+        ),
+        []
+    );
 
     // Tab state: 0 = Overall, 1 = Daily Challenge
     const [activeTab, setActiveTab] = useState(0);
@@ -82,6 +107,68 @@ export default function LeagueScreen() {
             dispatch(fetchTodayDailyLeaderboard({ userId: currentUserId }));
         }
     }, [activeTab, dailyStatus, dispatch, currentUserId]);
+
+    const handleOpenProfile = async (player) => {
+        const userId = player?.userId;
+        if (!userId) return;
+
+        if (showProfileHint) {
+            setShowProfileHint(false);
+            storage.set('leagueProfileHintSeen', true);
+        }
+
+        const requestId = profileRequestRef.current + 1;
+        profileRequestRef.current = requestId;
+        setSelectedProfile({
+            name: player?.name || '',
+            points: Math.round(player?.score ?? 0),
+            casesPlayed: null,
+            createdAt: null,
+        });
+        setProfileError(null);
+        setProfileLoading(true);
+        profileSheetRef.current?.present();
+
+        try {
+            const response = await fetch(`${API_BASE}/api/users/${encodeURIComponent(userId)}`);
+            const user = await response.json();
+            if (!response.ok || user?.error) {
+                throw new Error(user?.error || 'Unable to load player profile');
+            }
+            if (profileRequestRef.current !== requestId) return;
+
+            const regularCases = Array.isArray(user?.completedCases) ? user.completedCases.length : 0;
+            const dailyCases = Array.isArray(user?.completedDailyChallenges)
+                ? user.completedDailyChallenges.length
+                : 0;
+
+            setSelectedProfile({
+                name: user?.name || player?.name || '',
+                points: Math.round(user?.cumulativePoints?.total ?? player?.score ?? 0),
+                casesPlayed: regularCases + dailyCases,
+                createdAt: user?.createdAt || null,
+            });
+        } catch {
+            if (profileRequestRef.current === requestId) {
+                setProfileError(t('league.profileLoadError', { defaultValue: 'Unable to load this profile.' }));
+            }
+        } finally {
+            if (profileRequestRef.current === requestId) {
+                setProfileLoading(false);
+            }
+        }
+    };
+
+    const formatMemberSince = (createdAt) => {
+        if (!createdAt) return '—';
+        const date = new Date(createdAt);
+        if (Number.isNaN(date.getTime())) return '—';
+        return date.toLocaleDateString(undefined, {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+        });
+    };
 
     // Share daily challenge with friends
     const handleShareChallenge = async () => {
@@ -134,7 +221,14 @@ export default function LeagueScreen() {
         const fontSize = isCenter ? 12 : 11;
 
         return (
-            <View style={[styles.podiumItem, isCenter && styles.podiumItemCenter]}>
+            <TouchableOpacity
+                style={[styles.podiumItem, isCenter && styles.podiumItemCenter]}
+                onPress={() => handleOpenProfile(player)}
+                activeOpacity={0.75}
+                disabled={!player?.userId}
+                accessibilityRole="button"
+                accessibilityLabel={player?.name || t('league.player')}
+            >
                 <Text style={{ fontSize: isCenter ? 24 : 20, marginBottom: 4 }}>{config.emoji}</Text>
                 <LinearGradient
                     colors={config.gradient}
@@ -158,7 +252,7 @@ export default function LeagueScreen() {
                         {Math.round(player.score ?? 0)}
                     </Text>
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 
@@ -172,8 +266,8 @@ export default function LeagueScreen() {
         const avatarBg = avatarColors[(rank - 1) % avatarColors.length];
 
         return (
-            <View
-                key={idx}
+            <TouchableOpacity
+                key={item?.userId || `${item?.rank || rank}-${idx}`}
                 style={[
                     styles.leaderboardCard,
                     {
@@ -182,6 +276,11 @@ export default function LeagueScreen() {
                         borderWidth: isMe ? 2 : 0,
                     },
                 ]}
+                onPress={() => handleOpenProfile(item)}
+                activeOpacity={0.75}
+                disabled={!item?.userId}
+                accessibilityRole="button"
+                accessibilityLabel={item?.name || t('league.player')}
             >
                 <View style={styles.leaderboardCardInner}>
                     {/* Rank Badge */}
@@ -213,8 +312,14 @@ export default function LeagueScreen() {
                             {Math.round(item.score ?? 0)}
                         </Text>
                     </View>
+                    <MaterialCommunityIcons
+                        name="chevron-right"
+                        size={17}
+                        color="#B8C0CC"
+                        style={styles.profileChevron}
+                    />
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 
@@ -343,6 +448,31 @@ export default function LeagueScreen() {
                     <Text style={[styles.listHeaderText, { flex: 1, marginLeft: 60 }]}>{t('league.player')}</Text>
                     <Text style={styles.listHeaderText}>{t('league.score')}</Text>
                 </View>
+
+                {showProfileHint && status !== 'loading' && restLeaderboard.length > 0 && (
+                    <View style={styles.profileHintWrap}>
+                        <View style={styles.profileHintBubble}>
+                            <MaterialCommunityIcons name="gesture-tap" size={19} color="#9D3156" />
+                            <Text style={styles.profileHintText}>
+                                {t('league.tapPlayerHint', {
+                                    defaultValue: 'Tap any player to view their profile',
+                                })}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setShowProfileHint(false);
+                                    storage.set('leagueProfileHintSeen', true);
+                                }}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                accessibilityRole="button"
+                                accessibilityLabel={t('common.close')}
+                            >
+                                <MaterialCommunityIcons name="close" size={18} color="#9D3156" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.profileHintArrow} />
+                    </View>
+                )}
 
                 {/* List Items */}
                 {restLeaderboard.map((item, idx) => {
@@ -479,6 +609,79 @@ export default function LeagueScreen() {
                     <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.25 }} />
                 </ScrollView>
             </View>
+
+            <BottomSheetModal
+                ref={profileSheetRef}
+                index={0}
+                snapPoints={profileSnapPoints}
+                backdropComponent={renderProfileBackdrop}
+                enablePanDownToClose
+                handleIndicatorStyle={styles.profileSheetIndicator}
+                backgroundStyle={styles.profileSheetBackground}
+            >
+                <BottomSheetView style={styles.profileSheetContent}>
+                    <View style={styles.profileAvatar}>
+                        <Text style={styles.profileAvatarText}>
+                            {getInitials(selectedProfile?.name)}
+                        </Text>
+                    </View>
+                    <Text style={styles.profileName} numberOfLines={2}>
+                        {selectedProfile?.name || t('league.player')}
+                    </Text>
+                    <Text style={styles.profileHeading}>
+                        {t('league.playerProfile', { defaultValue: 'Player profile' })}
+                    </Text>
+
+                    {profileLoading ? (
+                        <View style={styles.profileStateContainer}>
+                            <ActivityIndicator size="small" color="#FF407D" />
+                        </View>
+                    ) : profileError ? (
+                        <View style={styles.profileStateContainer}>
+                            <MaterialCommunityIcons name="alert-circle-outline" size={22} color="#B45309" />
+                            <Text style={styles.profileErrorText}>{profileError}</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.profileStatsRow}>
+                            <View style={styles.profileStatCard}>
+                                <View style={styles.profileStatIconWrap}>
+                                    <Image source={coinIcon} style={styles.profileCoinIcon} />
+                                </View>
+                                <Text style={styles.profileStatValue}>
+                                    {selectedProfile?.points ?? 0}
+                                </Text>
+                                <Text style={styles.profileStatLabel}>
+                                    {t('league.points')}
+                                </Text>
+                            </View>
+
+                            <View style={styles.profileStatCard}>
+                                <View style={styles.profileStatIconWrap}>
+                                    <MaterialCommunityIcons name="clipboard-check-outline" size={22} color="#FF407D" />
+                                </View>
+                                <Text style={styles.profileStatValue}>
+                                    {selectedProfile?.casesPlayed ?? 0}
+                                </Text>
+                                <Text style={styles.profileStatLabel}>
+                                    {t('league.casesPlayed', { defaultValue: 'Cases played' })}
+                                </Text>
+                            </View>
+
+                            <View style={styles.profileStatCard}>
+                                <View style={styles.profileStatIconWrap}>
+                                    <MaterialCommunityIcons name="calendar-outline" size={22} color="#FF407D" />
+                                </View>
+                                <Text style={styles.profileDateValue}>
+                                    {formatMemberSince(selectedProfile?.createdAt)}
+                                </Text>
+                                <Text style={styles.profileStatLabel}>
+                                    {t('league.memberSince', { defaultValue: 'Member since' })}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+                </BottomSheetView>
+            </BottomSheetModal>
         </SafeAreaView>
     );
 }
@@ -786,6 +989,41 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
         letterSpacing: 0.5,
     },
+    profileHintWrap: {
+        marginBottom: 8,
+        alignItems: 'flex-start',
+    },
+    profileHintBubble: {
+        alignSelf: 'stretch',
+        minHeight: 42,
+        paddingHorizontal: 12,
+        paddingVertical: 9,
+        borderRadius: 13,
+        backgroundColor: '#FFF0F5',
+        borderWidth: 1,
+        borderColor: '#FFD6E5',
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    profileHintText: {
+        flex: 1,
+        marginHorizontal: 8,
+        color: '#9D3156',
+        fontSize: 12,
+        lineHeight: 17,
+        fontWeight: '700',
+    },
+    profileHintArrow: {
+        width: 12,
+        height: 12,
+        marginTop: -6,
+        marginLeft: 54,
+        backgroundColor: '#FFF0F5',
+        borderRightWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#FFD6E5',
+        transform: [{ rotate: '45deg' }],
+    },
     leaderboardCard: {
         borderRadius: 12,
         marginBottom: 8,
@@ -865,6 +1103,9 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#D97706',
     },
+    profileChevron: {
+        marginLeft: 5,
+    },
     ellipsisContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -896,5 +1137,111 @@ const styles = StyleSheet.create({
         color: '#B45309',
         flex: 1,
         lineHeight: 16,
+    },
+    profileSheetIndicator: {
+        width: 40,
+        backgroundColor: '#D1D5DB',
+    },
+    profileSheetBackground: {
+        borderRadius: 28,
+        backgroundColor: '#FFFFFF',
+    },
+    profileSheetContent: {
+        flex: 1,
+        alignItems: 'center',
+        paddingHorizontal: 22,
+        paddingBottom: 28,
+    },
+    profileAvatar: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        marginTop: 4,
+        backgroundColor: '#FFF0F5',
+        borderWidth: 2,
+        borderColor: '#FFD6E5',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileAvatarText: {
+        color: '#FF407D',
+        fontSize: 20,
+        fontWeight: '900',
+    },
+    profileName: {
+        marginTop: 10,
+        color: '#1F2937',
+        fontSize: 20,
+        lineHeight: 25,
+        fontWeight: '900',
+        textAlign: 'center',
+    },
+    profileHeading: {
+        marginTop: 2,
+        color: '#9CA3AF',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    profileStateContainer: {
+        minHeight: 112,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileErrorText: {
+        marginTop: 8,
+        color: '#B45309',
+        fontSize: 13,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    profileStatsRow: {
+        alignSelf: 'stretch',
+        marginTop: 20,
+        flexDirection: 'row',
+    },
+    profileStatCard: {
+        flex: 1,
+        minHeight: 112,
+        marginHorizontal: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 12,
+        borderRadius: 16,
+        backgroundColor: '#FFF8FB',
+        borderWidth: 1,
+        borderColor: '#FFE4ED',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileStatIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        marginBottom: 7,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileCoinIcon: {
+        width: 22,
+        height: 22,
+    },
+    profileStatValue: {
+        color: '#1F2937',
+        fontSize: 19,
+        fontWeight: '900',
+    },
+    profileDateValue: {
+        color: '#1F2937',
+        fontSize: 14,
+        lineHeight: 19,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    profileStatLabel: {
+        marginTop: 3,
+        color: '#6B7280',
+        fontSize: 11,
+        fontWeight: '700',
+        textAlign: 'center',
     },
 });

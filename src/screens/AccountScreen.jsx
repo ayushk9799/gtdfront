@@ -27,6 +27,7 @@ import { useSelector } from 'react-redux';
 import CloudBottom from '../components/CloudBottom';
 import { requestInAppReview, isReviewAvailable } from '../services/ratingService';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import LinearGradient from 'react-native-linear-gradient';
 
 export default function AccountScreen() {
   const colorScheme = useColorScheme();
@@ -42,7 +43,7 @@ export default function AccountScreen() {
   const [currentLang, setCurrentLang] = useState(getLanguage());
   const langSheetRef = useRef(null);
 
-  const snapPoints = useMemo(() => ['50%'], []);
+  const snapPoints = useMemo(() => ['85%'], []);
 
   const renderBackdrop = useCallback(
     (props) => (
@@ -68,6 +69,14 @@ export default function AccountScreen() {
   const handleLanguageChange = useCallback(() => {
     langSheetRef.current?.present();
   }, []);
+
+  const handleContactUs = useCallback(async () => {
+    try {
+      await Linking.openURL('mailto:admin@thethousandways.com');
+    } catch {
+      Alert.alert(t('account.contactUs'), 'admin@thethousandways.com');
+    }
+  }, [t]);
 
   const user = useMemo(() => {
     try {
@@ -396,6 +405,52 @@ export default function AccountScreen() {
           </View>
         )}
 
+        {!isPremium && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Premium', { source: 'account_upgrade_card' })}
+            activeOpacity={0.85}
+            style={{
+              alignSelf: 'stretch',
+              marginBottom: 16,
+              paddingHorizontal: 18,
+              paddingVertical: 17,
+              borderRadius: 18,
+              overflow: 'hidden',
+              backgroundColor: '#FF407D',
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t('premium.unlockAllCases')}
+          >
+            <LinearGradient
+              colors={['#FF407D', '#FB7185']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1, paddingRight: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
+                  <MaterialCommunityIcons name="crown" size={18} color="#FFF4B8" />
+                  <Text style={{ marginLeft: 7, color: '#FFFFFF', fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    {t('premium.title')}
+                  </Text>
+                </View>
+                <Text style={{ color: '#FFFFFF', fontSize: 19, lineHeight: 24, fontWeight: '900' }}>
+                  {t('premium.unlockAllCases')}
+                </Text>
+                <Text style={{ marginTop: 5, color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 18, fontWeight: '600' }}>
+                  {t('premium.unlimitedAccessDesc')}
+                </Text>
+              </View>
+
+              <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                <MaterialCommunityIcons name="arrow-right" size={22} color="#FFFFFF" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Notification Banner */}
         {!effectiveEnabled && (
           <View style={{
@@ -563,6 +618,38 @@ export default function AccountScreen() {
           {/* Divider */}
           <View style={{ height: 1, backgroundColor: '#F0F0F2', marginLeft: 72 }} />
 
+          {/* Contact Us */}
+          <TouchableOpacity
+            onPress={handleContactUs}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 16,
+              paddingHorizontal: 18,
+              backgroundColor: '#FFFFFF',
+            }}
+            activeOpacity={0.6}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: '#F0F8FF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}>
+              <MaterialCommunityIcons name="email-outline" size={22} color="#3B82F6" />
+            </View>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>
+              {t('account.contactUs')}
+            </Text>
+            <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#F0F0F2', marginLeft: 72 }} />
+
           {/* Privacy Policy */}
           <TouchableOpacity
             onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
@@ -623,27 +710,6 @@ export default function AccountScreen() {
 
         {/* Action Buttons */}
         <View style={{ paddingHorizontal: 0, gap: 12, marginBottom: 160 }}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('GetReadyForCase')}
-            activeOpacity={0.75}
-            style={{
-              alignSelf: 'stretch',
-              backgroundColor: '#FFF0F5',
-              paddingVertical: 15,
-              borderRadius: 14,
-              borderWidth: 1.5,
-              borderStyle: 'dashed',
-              borderColor: Colors.brand.darkPink,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <MaterialCommunityIcons name="flask-outline" size={20} color={Colors.brand.darkPink} />
-              <Text style={{ color: Colors.brand.darkPink, fontWeight: '800', fontSize: 15, marginLeft: 10 }}>
-                Preview Get Ready Screen (Temporary)
-              </Text>
-            </View>
-          </TouchableOpacity>
-
           <TouchableOpacity
             onPress={handleLogout}
             activeOpacity={0.85}

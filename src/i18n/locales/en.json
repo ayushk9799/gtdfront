@@ -201,6 +201,7 @@
     "notificationsDesc": "Turn on notifications to receive daily reminders and updates.",
     "allow": "Allow",
     "rateTheApp": "Rate the App",
+    "contactUs": "Contact us",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
     "logOut": "Log out",
@@ -250,6 +251,11 @@
     "noParticipants": "No one has completed today's challenge yet. Be the first!",
     "participants_one": "{{count}} participant",
     "participants_other": "{{count}} participants",
+    "playerProfile": "Player profile",
+    "casesPlayed": "Cases played",
+    "memberSince": "Member since",
+    "profileLoadError": "Unable to load this profile.",
+    "tapPlayerHint": "Tap any player to view their profile",
     "inactiveMessage": "Solve a case to reactivate your overall ranking! You haven't played since last 7 days."
   },
   "learning": {
