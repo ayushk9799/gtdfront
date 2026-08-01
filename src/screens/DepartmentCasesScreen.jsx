@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -20,11 +20,11 @@ import { fetchCategoryCases } from '../store/slices/progressSlice';
 import { API_BASE } from '../../constants/Api';
 import { loadCaseById, clearCurrentGame, setCaseData, setSelectedTests, setSelectedDiagnosis, setSelectedTreatments, setGameplay } from '../store/slices/currentGameSlice';
 import CloudBottom from '../components/CloudBottom';
-import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { Skeleton } from '../components/Skeleton';
 import { styles } from './styles';
 import { useTranslation } from 'react-i18next';
 import { trackEvent } from '../services/analytics';
+import { hasReachedFreeCaseLimit } from '../services/caseAccess';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -38,10 +38,9 @@ export default function DepartmentCasesScreen() {
     const { t, i18n } = useTranslation();
 
     const [loadingCaseId, setLoadingCaseId] = useState(null);
-    const premiumSheetRef = useRef(null);
-
     const { departmentCases, departmentCasesStatus, error } = useSelector((state) => state.progress);
-    const { hearts, isPremium } = useSelector((state) => state.user);
+    const { userData, isPremium } = useSelector((state) => state.user);
+    const isFreeCaseLimitReached = !isPremium && hasReachedFreeCaseLimit(userData);
 
     useEffect(() => {
         if (userId && categoryId) {
@@ -53,35 +52,23 @@ export default function DepartmentCasesScreen() {
         if (loadingCaseId) return;
         const caseId = caseItem.caseId;
 
-        // Check if case is locked (non-premium users can only access first 2 cases, but solved cases are always accessible)
-        const isLocked = !isPremium && index >= 2 && caseItem.status !== 'completed';
+        const isPremiumCase = !isPremium && index >= 2;
+        const isLocked = (isPremiumCase || isFreeCaseLimitReached)
+            && caseItem.status !== 'completed';
         if (isLocked) {
-            trackEvent('premium_sheet_opened', {
-                trigger: 'department_case_locked',
+            const premiumSource = isPremiumCase ? 'premium_case' : 'case_limit';
+            trackEvent('premium_screen_opened', {
+                trigger: premiumSource,
                 case_id: caseId,
                 department_id: categoryId,
                 source_type: 'case',
                 is_premium: isPremium,
             });
-            premiumSheetRef.current?.present();
+            navigation.navigate('Premium', { source: premiumSource, caseId, departmentId: categoryId });
             return;
         }
 
         try {
-            if (!isPremium && hearts <= 0) {
-                trackEvent('no_hearts_blocked_case', {
-                    case_id: caseId,
-                    department_id: categoryId,
-                    entry_point: 'department_cases',
-                    source_type: 'case',
-                    hearts_remaining: hearts,
-                    is_premium: isPremium,
-                });
-                ToastAndroid.show(t('departmentCases.noHearts'), ToastAndroid.SHORT);
-                navigation.navigate('Heart');
-                return;
-            }
-
             setLoadingCaseId(caseId);
             dispatch(clearCurrentGame());
 
@@ -152,7 +139,6 @@ export default function DepartmentCasesScreen() {
                     department_id: categoryId,
                     entry_point: 'department_cases',
                     source_type: 'case',
-                    hearts_remaining: hearts,
                     is_premium: isPremium,
                 });
                 navigation.navigate('ClinicalInfo');
@@ -167,7 +153,11 @@ export default function DepartmentCasesScreen() {
         }
     };
 
-    const renderCaseItem = ({ item, index }) => (
+    const renderCaseItem = ({ item, index }) => {
+        const isPremiumCase = !isPremium && index >= 2;
+        const isLocked = isPremiumCase && item.status !== 'completed';
+
+        return (
         <TouchableOpacity
             style={[
                 styles.card,
@@ -231,7 +221,7 @@ export default function DepartmentCasesScreen() {
                                     <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 'bold', opacity: 0.6 }}>{t('departmentCases.solved')}</Text>
                                 </View>
                             )}
-                            {!isPremium && index >= 2 && item.status !== 'completed' && (
+                            {isLocked && (
                                 <View style={{
                                     position: 'absolute',
                                     top: 0,
@@ -250,7 +240,7 @@ export default function DepartmentCasesScreen() {
                     ) : (
                         <View style={[localStyles.thumbnail, { backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center' }]}>
                             <MaterialCommunityIcons name="medical-bag" size={24} color="#BDC3C7" />
-                            {!isPremium && index >= 2 && item.status !== 'completed' && (
+                            {isLocked && (
                                 <View style={{
                                     position: 'absolute',
                                     top: 0,
@@ -270,7 +260,8 @@ export default function DepartmentCasesScreen() {
                 </View>
             </View>
         </TouchableOpacity>
-    );
+        );
+    };
 
     return (
         <View style={{ flex: 1 }}>
@@ -333,14 +324,6 @@ export default function DepartmentCasesScreen() {
                     </ScrollView>
                 )}
             </SafeAreaView>
-            <PremiumBottomSheet
-                ref={premiumSheetRef}
-                points={[
-                    t('premium.premiumPoint1'),
-                    t('premium.premiumPoint2'),
-                    t('premium.premiumPoint3')
-                ]}
-            />
         </View>
     );
 }

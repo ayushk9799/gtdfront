@@ -33,7 +33,6 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPermission from './src/screens/NotificationPermission';
 import GetReadyForCaseScreen from './src/screens/GetReadyForCaseScreen';
 
-import HeartScreen from './src/screens/HeartScreen';
 import EditAccountScreen from './src/screens/EditAccountScreen';
 import PastChallengesScreen from './src/screens/PastChallengesScreen';
 import DepartmentCasesScreen from './src/screens/DepartmentCasesScreen';
@@ -57,8 +56,9 @@ import { setCustomerInfo } from './src/store/slices/userSlice';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import { loadCaseById } from './src/store/slices/currentGameSlice';
 import LifetimeOfferBanner from './src/components/LifetimeOfferBanner';
-import { getGamesPlayedCount } from './src/services/ratingService';
 import { identifyAnalyticsUser, trackScreen } from './src/services/analytics';
+import { hasReachedFreeCaseLimit } from './src/services/caseAccess';
+import { getCurrentLifetimeOfferStart } from './src/services/lifetimeOffer';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
@@ -298,7 +298,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showLifetimeOffer, setShowLifetimeOffer] = useState(false);
   const [offerStartTime, setOfferStartTime] = useState(null);
-  const [isHomeActive, setIsHomeActive] = useState(false);
   const themeColors = Colors.light;
   const dispatch = useDispatch();
   const { userData, isPremium } = useSelector(state => state.user);
@@ -307,6 +306,9 @@ export default function App() {
   // Ensure Purchases SDK is configured exactly once per app launch
   const purchasesConfiguredRef = React.useRef(false);
   const routeNameRef = React.useRef(null);
+  const previousRouteRef = React.useRef(null);
+  const lifetimeOfferDelayRef = React.useRef(null);
+  const lifetimeOfferLaunchCheckedUserRef = React.useRef(null);
   const initPurchases = React.useCallback(async () => {
     try {
       if (purchasesConfiguredRef.current) return;
@@ -523,64 +525,41 @@ export default function App() {
     };
   }, [dispatch]);
 
-  // Show lifetime offer banner for non-premium users, once per 24 hours
-  // The offer has a 2-hour validity window from when it first appears
-  // UPDATED: Now waits until user is on Home screen for 5 seconds
-  useEffect(() => {
-    if (!user || isPremium || !isHomeActive || getGamesPlayedCount() < 1) return;
+  const scheduleLifetimeOffer = React.useCallback(() => {
+    if (!user || isPremium || userData?.isPremium || !hasReachedFreeCaseLimit(userData)) return;
 
-    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-    const TWO_HOURS = 2 * 60 * 60 * 1000;
-    const OFFER_DELAY = 3000; // 5 seconds on Home screen
-    const now = Date.now();
-
-    const triggerOffer = async (startTimeValue) => {
-      try {
-        const offerings = await Purchases.getOfferings();
-        if (!offerings.all['lifetime_offer']) return;
-
-        setOfferStartTime(startTimeValue);
-        setShowLifetimeOffer(true);
-      } catch (e) {}
-    };
-
-    // Check if there's an active offer from a previous app session
-    const existingStart = storage.getNumber('lifetimeOfferStartTime') || 0;
-    if (existingStart > 0) {
-      const elapsed = now - existingStart;
-      if (elapsed < TWO_HOURS) {
-        const wasDismissed = storage.getBoolean('lifetimeOfferDismissed');
-        if (!wasDismissed) {
-          const timer = setTimeout(() => triggerOffer(existingStart), OFFER_DELAY);
-          return () => clearTimeout(timer);
-        }
-        return;
-      }
-      storage.delete('lifetimeOfferStartTime');
-      storage.delete('lifetimeOfferDismissed');
+    if (lifetimeOfferDelayRef.current) {
+      clearTimeout(lifetimeOfferDelayRef.current);
     }
 
-    // Check 24h cooldown from last offer event
-    const lastEventTime = storage.getNumber('lifetimeOfferLastEvent') || 0;
-    if (now - lastEventTime < TWENTY_FOUR_HOURS) return;
+    lifetimeOfferDelayRef.current = setTimeout(() => {
+      const storedStart = storage.getNumber('lifetimeOfferStartTime') || 0;
+      const startTime = getCurrentLifetimeOfferStart(storedStart) || Date.now();
 
-    // Start a new offer event
-    const timer = setTimeout(async () => {
-      try {
-        const offerings = await Purchases.getOfferings();
-        if (!offerings.all['lifetime_offer']) return;
+      storage.set('lifetimeOfferStartTime', startTime);
+      storage.set('lifetimeOfferDismissed', false);
+      storage.delete('lifetimeOfferLastEvent');
+      setOfferStartTime(startTime);
+      setShowLifetimeOffer(true);
+      lifetimeOfferDelayRef.current = null;
+    }, 3000);
+  }, [isPremium, user, userData]);
 
-        const startTime = Date.now();
-        storage.set('lifetimeOfferStartTime', startTime);
-        storage.set('lifetimeOfferLastEvent', startTime);
-        storage.delete('lifetimeOfferDismissed');
-        setOfferStartTime(startTime);
-        setShowLifetimeOffer(true);
-      } catch (e) {}
-    }, OFFER_DELAY);
+  useEffect(() => () => {
+    if (lifetimeOfferDelayRef.current) {
+      clearTimeout(lifetimeOfferDelayRef.current);
+    }
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [user, isPremium, isHomeActive]);
+  useEffect(() => {
+    const userId = userData?.userId || userData?._id || userData?.id;
+    if (!user || !userId || lifetimeOfferLaunchCheckedUserRef.current === userId) return;
+
+    lifetimeOfferLaunchCheckedUserRef.current = userId;
+    if (!isPremium && !userData?.isPremium && hasReachedFreeCaseLimit(userData)) {
+      scheduleLifetimeOffer();
+    }
+  }, [isPremium, scheduleLifetimeOffer, user, userData]);
 
   const handleDismissLifetimeOffer = () => {
     setShowLifetimeOffer(false);
@@ -588,10 +567,9 @@ export default function App() {
   };
 
   const handleOfferExpired = () => {
-    setShowLifetimeOffer(false);
-    setOfferStartTime(null);
-    storage.delete('lifetimeOfferStartTime');
-    storage.delete('lifetimeOfferDismissed');
+    const startTime = Date.now();
+    storage.set('lifetimeOfferStartTime', startTime);
+    setOfferStartTime(startTime);
   };
 
   // Listen for the card tap to re-open the banner
@@ -648,14 +626,18 @@ export default function App() {
             // Check initial home status
             const route = navigationRef.getCurrentRoute();
             routeNameRef.current = route?.name || null;
-            setIsHomeActive(route?.name === 'Home');
+            previousRouteRef.current = route || null;
             trackScreen(route?.name);
           }}
           onStateChange={() => {
             const route = navigationRef.getCurrentRoute();
-            // We check for "Home" screen specifically. 
-            // Since Home is a tab, we check if route name is "Home"
-            setIsHomeActive(route?.name === 'Home');
+            const previousRoute = previousRouteRef.current;
+
+            if (previousRoute?.name === 'Premium' && route?.name !== 'Premium') {
+              scheduleLifetimeOffer();
+            }
+
+            previousRouteRef.current = route || null;
             if (route?.name && routeNameRef.current !== route.name) {
               routeNameRef.current = route.name;
               trackScreen(route.name);
@@ -747,18 +729,8 @@ export default function App() {
                 name="Premium"
                 component={PremiumScreen}
                 options={{
-                  animation: 'slide_from_right',
-                  presentation: 'card',
-                  contentStyle: { backgroundColor: 'transparent' },
-                }}
-              />
-              <Stack.Screen
-                name="Heart"
-                component={HeartScreen}
-                options={{
-                  animation: 'slide_from_right',
-                  presentation: 'card',
-                  contentStyle: { backgroundColor: 'transparent' },
+                  animation: 'slide_from_bottom',
+                  presentation: 'fullScreenModal',
                 }}
               />
               <Stack.Screen
@@ -826,6 +798,7 @@ export default function App() {
           <LifetimeOfferBanner
             visible={showLifetimeOffer}
             onDismiss={handleDismissLifetimeOffer}
+            onExpired={handleOfferExpired}
             offerStartTime={offerStartTime}
           />
         )}

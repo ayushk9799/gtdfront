@@ -15,15 +15,15 @@ import { loadTodaysChallenge, selectCurrentChallenge, selectIsChallengeLoading, 
 import { fetchCategories } from '../store/slices/categoriesSlice';
 import departmentIcon from '../../constants/department.png';
 import calendarIcon from '../../constants/calendar.png';
-import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { API_BASE } from '../../constants/Api';
 import CloudBottom from '../components/CloudBottom';
 import { useResponsive } from '../hooks/useResponsive';
 import { Skeleton } from '../components/Skeleton';
 import LifetimeOfferCard from '../components/LifetimeOfferCard';
-import { getGamesPlayedCount } from '../services/ratingService';
 import { useTranslation } from 'react-i18next';
 import { trackEvent } from '../services/analytics';
+import { hasReachedFreeCaseLimit } from '../services/caseAccess';
+import { getCurrentLifetimeOfferStart } from '../services/lifetimeOffer';
 
 export default function HomeScreen() {
   const themeColors = Colors.light;
@@ -31,7 +31,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { isTablet } = useResponsive();
   const { status: categoriesLoading, error: categoriesError } = useSelector(state => state.categories);
-  const { hearts, isPremium } = useSelector(state => state.user);
+  const { userData, isPremium } = useSelector(state => state.user);
+  const isFreeCaseLimitReached = !isPremium && hasReachedFreeCaseLimit(userData);
   const { t } = useTranslation();
   const [currentUserId, setCurrentUserId] = useState(undefined);
   const [isDailyChallengeLoading, setIsDailyChallengeLoading] = useState(false);
@@ -44,10 +45,13 @@ export default function HomeScreen() {
   const [offerStartTime, setOfferStartTime] = useState(() => {
     try {
       const mmkv = new MMKV();
-      const TWO_HOURS = 2 * 60 * 60 * 1000;
-      const startTime = mmkv.getNumber('lifetimeOfferStartTime') || 0;
+      const storedStart = mmkv.getNumber('lifetimeOfferStartTime') || 0;
+      const startTime = getCurrentLifetimeOfferStart(storedStart);
       const wasDismissed = mmkv.getBoolean('lifetimeOfferDismissed');
-      if (startTime > 0 && wasDismissed && (Date.now() - startTime < TWO_HOURS)) {
+      if (startTime && wasDismissed) {
+        if (startTime !== storedStart) {
+          mmkv.set('lifetimeOfferStartTime', startTime);
+        }
         return startTime;
       }
       return null;
@@ -59,11 +63,14 @@ export default function HomeScreen() {
     const listener = storage.addOnValueChangedListener((changedKey) => {
       if (changedKey !== 'lifetimeOfferDismissed') return;
       try {
-        const TWO_HOURS = 2 * 60 * 60 * 1000;
-        const startTime = storage.getNumber('lifetimeOfferStartTime') || 0;
+        const storedStart = storage.getNumber('lifetimeOfferStartTime') || 0;
+        const startTime = getCurrentLifetimeOfferStart(storedStart);
         const wasDismissed = storage.getBoolean('lifetimeOfferDismissed');
         // Only react when modal is dismissed (show card), don't hide when banner reopens
-        if (startTime > 0 && wasDismissed && (Date.now() - startTime < TWO_HOURS)) {
+        if (startTime && wasDismissed) {
+          if (startTime !== storedStart) {
+            storage.set('lifetimeOfferStartTime', startTime);
+          }
           setOfferStartTime(startTime);
         }
       } catch {}
@@ -72,11 +79,11 @@ export default function HomeScreen() {
   }, [storage]);
 
   const handleOfferExpired = useCallback(() => {
-    setOfferStartTime(null);
+    const startTime = Date.now();
     try {
-      storage.delete('lifetimeOfferStartTime');
-      storage.delete('lifetimeOfferDismissed');
+      storage.set('lifetimeOfferStartTime', startTime);
     } catch {}
+    setOfferStartTime(startTime);
   }, [storage]);
 
   // Responsive image height: 300 for iPad/tablet, 200 for iPhone/mobile
@@ -113,7 +120,6 @@ export default function HomeScreen() {
   });
 
   const dispatch = useDispatch();
-  const premiumSheetRef = React.useRef(null);
 
   // Progress selector for getting next case from departments
   const { status: progressStatus, items: departmentProgress } = useSelector(state => state.progress);
@@ -219,7 +225,6 @@ export default function HomeScreen() {
       );
 
       if (deptsWithAnyCases.length > 0) {
-        // Step 2: Try to find free cases for non-premium users
         let deptsWithSuggestions = deptsWithAnyCases;
         let pickingPremiumFallback = false;
 
@@ -231,7 +236,6 @@ export default function HomeScreen() {
           if (deptsWithFreeCases.length > 0) {
             deptsWithSuggestions = deptsWithFreeCases;
           } else {
-            // No free cases left in any department! Suggest a premium case instead
             pickingPremiumFallback = true;
           }
         }
@@ -239,13 +243,9 @@ export default function HomeScreen() {
         // Pick a random department from available suggestions
         const randomDept = deptsWithSuggestions[Math.floor(Math.random() * deptsWithSuggestions.length)];
 
-        // Pick the case
-        let nextCase;
-        if (!isPremium && !pickingPremiumFallback) {
-          nextCase = randomDept.unsolvedCases.find(c => c.originalIndex < 2);
-        } else {
-          nextCase = randomDept.unsolvedCases[0];
-        }
+        const nextCase = !isPremium && !pickingPremiumFallback
+          ? randomDept.unsolvedCases.find(c => c.originalIndex < 2)
+          : randomDept.unsolvedCases[0];
 
         if (nextCase) {
           const newSuggestedCase = {
@@ -253,7 +253,8 @@ export default function HomeScreen() {
             caseTitle: nextCase.caseTitle || 'Medical Case',
             mainimage: nextCase.mainimage || null,
             departmentName: randomDept.name || 'Department',
-            isPremiumCase: (!isPremium && (nextCase.originalIndex >= 2 || pickingPremiumFallback)),
+            isPremiumCase: !isPremium
+              && (nextCase.originalIndex >= 2 || pickingPremiumFallback),
             savedAt: Date.now(), // Timestamp for expiration
           };
 
@@ -314,10 +315,13 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       try {
-        const TWO_HOURS = 2 * 60 * 60 * 1000;
-        const startTime = storage.getNumber('lifetimeOfferStartTime') || 0;
+        const storedStart = storage.getNumber('lifetimeOfferStartTime') || 0;
+        const startTime = getCurrentLifetimeOfferStart(storedStart);
         const wasDismissed = storage.getBoolean('lifetimeOfferDismissed');
-        if (startTime > 0 && wasDismissed && (Date.now() - startTime < TWO_HOURS)) {
+        if (startTime && wasDismissed) {
+          if (startTime !== storedStart) {
+            storage.set('lifetimeOfferStartTime', startTime);
+          }
           setOfferStartTime(startTime);
         } else {
           setOfferStartTime(null);
@@ -328,23 +332,21 @@ export default function HomeScreen() {
 
   const openCaseById = async (caseId, entryPoint = 'home') => {
     try {
-      if (!isPremium && hearts <= 0) {
-        trackEvent('no_hearts_blocked_case', {
+      if (isFreeCaseLimitReached) {
+        trackEvent('free_case_limit_reached', {
           case_id: caseId,
           entry_point: entryPoint,
           source_type: 'case',
-          hearts_remaining: hearts,
           is_premium: isPremium,
         });
-        ToastAndroid.show('You have no hearts left', ToastAndroid.SHORT);
-        navigation.navigate('Heart');
+        navigation.navigate('Premium', { source: 'case_limit', caseId });
         return;
       }
+
       trackEvent('case_started', {
         case_id: caseId,
         entry_point: entryPoint,
         source_type: 'case',
-        hearts_remaining: hearts,
         is_premium: isPremium,
       });
       dispatch(clearCurrentGame()); // Clear old data to prevent stale flash
@@ -356,33 +358,6 @@ export default function HomeScreen() {
   // Handle daily challenge press - check if already completed
   const handleDailyChallengePress = async () => {
     if (!currentChallenge?._id || !currentUserId) {
-      // Fallback to normal flow if no challenge or user
-      trackEvent('daily_challenge_started', {
-        daily_challenge_id: currentChallenge?._id,
-        entry_point: 'home_fallback',
-        source_type: 'dailyChallenge',
-        hearts_remaining: hearts,
-        is_premium: isPremium,
-      });
-      dispatch(setCaseData({
-        dailyChallengeId: currentChallenge?._id,
-        caseData: currentChallenge?.caseData,
-        sourceType: 'dailyChallenge'
-      }));
-      navigation.navigate('ClinicalInfo');
-      return;
-    }
-
-    // Check hearts before starting (will be skipped for already-completed challenges below)
-    if (!isPremium && hearts <= 0) {
-      trackEvent('no_hearts_blocked_case', {
-        daily_challenge_id: currentChallenge?._id,
-        entry_point: 'daily_challenge',
-        source_type: 'dailyChallenge',
-        hearts_remaining: hearts,
-        is_premium: isPremium,
-      });
-      navigation.navigate('Heart');
       return;
     }
 
@@ -450,11 +425,18 @@ export default function HomeScreen() {
         ToastAndroid.show('You\'ve already completed today\'s challenge!', ToastAndroid.SHORT);
       } else {
         // Not completed - proceed with normal flow
+        if (isFreeCaseLimitReached) {
+          navigation.navigate('Premium', {
+            source: 'case_limit',
+            dailyChallengeId: currentChallenge?._id,
+          });
+          return;
+        }
+
         trackEvent('daily_challenge_started', {
           daily_challenge_id: currentChallenge?._id,
           entry_point: 'home',
           source_type: 'dailyChallenge',
-          hearts_remaining: hearts,
           is_premium: isPremium,
         });
         dispatch(setCaseData({
@@ -465,21 +447,7 @@ export default function HomeScreen() {
         navigation.navigate('ClinicalInfo');
       }
     } catch (error) {
-      // On error, fallback to normal flow
       console.warn('Error checking daily challenge status:', error);
-      trackEvent('daily_challenge_started', {
-        daily_challenge_id: currentChallenge?._id,
-        entry_point: 'home_status_check_failed',
-        source_type: 'dailyChallenge',
-        hearts_remaining: hearts,
-        is_premium: isPremium,
-      });
-      dispatch(setCaseData({
-        dailyChallengeId: currentChallenge?._id,
-        caseData: currentChallenge?.caseData,
-        sourceType: 'dailyChallenge'
-      }));
-      navigation.navigate('ClinicalInfo');
     } finally {
       setIsDailyChallengeLoading(false);
     }
@@ -489,8 +457,8 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       <LeagueHeader onPressPro={() => { }} />
       <ScrollView contentContainerStyle={styles.screenScroll} showsVerticalScrollIndicator={false}>
-        {/* Lifetime offer card — shown after playing at least 1 case, after modal is dismissed, while 2h window is active */}
-        {!isPremium && offerStartTime && getGamesPlayedCount() >= 1 && (
+        {/* Lifetime offer card — shown after the two-case limit and after the exit offer is dismissed */}
+        {!isPremium && isFreeCaseLimitReached && offerStartTime && (
           <LifetimeOfferCard
             offerStartTime={offerStartTime}
             onOfferExpired={handleOfferExpired}
@@ -692,14 +660,17 @@ export default function HomeScreen() {
                 style={styles.primaryButton}
                 activeOpacity={0.9}
                 onPress={() => {
-                  if (suggestedNextCase.isPremiumCase) {
-                    trackEvent('premium_sheet_opened', {
+                  if (isFreeCaseLimitReached || suggestedNextCase.isPremiumCase) {
+                    trackEvent('premium_screen_opened', {
                       trigger: 'suggested_case_locked',
                       case_id: suggestedNextCase.caseId,
                       source_type: 'case',
                       is_premium: isPremium,
                     });
-                    premiumSheetRef.current?.present();
+                    navigation.navigate('Premium', {
+                      source: suggestedNextCase.isPremiumCase ? 'premium_case' : 'case_limit',
+                      caseId: suggestedNextCase.caseId,
+                    });
                   } else {
                     openCaseById(suggestedNextCase.caseId, 'suggested_case');
                   }
@@ -710,7 +681,9 @@ export default function HomeScreen() {
                     <MaterialCommunityIcons name="lock" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                   )}
                   <Text style={styles.primaryButtonText}>
-                    {suggestedNextCase.isPremiumCase ? t('home.unlockPremium') : t('home.solveTheCase')}
+                    {suggestedNextCase.isPremiumCase
+                      ? t('home.unlockPremium')
+                      : t('home.solveTheCase')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -737,7 +710,6 @@ export default function HomeScreen() {
             />
           )}
         </View>
-        <PremiumBottomSheet ref={premiumSheetRef} />
 
 
         <CloudBottom height={160} bottomOffset={insets?.bottom + 56} color={"#FF407D"} style={{ opacity: 0.35 }} />

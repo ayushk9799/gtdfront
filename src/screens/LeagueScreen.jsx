@@ -11,6 +11,7 @@ import coinIcon from '../../constants/coin.png';
 import CloudBottom from '../components/CloudBottom';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
+import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -46,6 +47,9 @@ export default function LeagueScreen() {
     const dispatch = useDispatch();
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
+    const navigation = useNavigation();
+    const route = useRoute();
+    const openedFromClinicalInsight = route?.params?.fromClinicalInsight === true;
 
     // Tab state: 0 = Overall, 1 = Daily Challenge
     const [activeTab, setActiveTab] = useState(0);
@@ -93,6 +97,15 @@ export default function LeagueScreen() {
             });
         } catch (error) {
         }
+    };
+
+    const handleBackToHome = () => {
+        navigation.dispatch(
+            CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+            })
+        );
     };
 
     // Separate top 3 for podium display
@@ -361,11 +374,17 @@ export default function LeagueScreen() {
                 <View style={styles.challengeFriendsContainer}>
                     <TouchableOpacity
                         style={styles.shareButton}
-                        onPress={handleShareChallenge}
+                        onPress={openedFromClinicalInsight ? handleBackToHome : handleShareChallenge}
                         activeOpacity={0.7}
                     >
-                        <MaterialCommunityIcons name="share-variant" size={18} color="#FFFFFF" />
-                        <Text style={styles.shareButtonText}>{t('league.challengeFriends')}</Text>
+                        <MaterialCommunityIcons
+                            name={openedFromClinicalInsight ? 'home-outline' : 'share-variant'}
+                            size={18}
+                            color="#FFFFFF"
+                        />
+                        <Text style={styles.shareButtonText}>
+                            {openedFromClinicalInsight ? t('league.backToHome') : t('league.challengeFriends')}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -415,11 +434,17 @@ export default function LeagueScreen() {
                             <Text style={styles.encouragementSubtext}>{t('league.challengeToBeat')}</Text>
                             <TouchableOpacity
                                 style={styles.shareButton}
-                                onPress={handleShareChallenge}
+                                onPress={openedFromClinicalInsight ? handleBackToHome : handleShareChallenge}
                                 activeOpacity={0.7}
                             >
-                                <MaterialCommunityIcons name="share-variant" size={18} color="#FFFFFF" />
-                                <Text style={styles.shareButtonText}>{t('league.challengeFriends')}</Text>
+                                <MaterialCommunityIcons
+                                    name={openedFromClinicalInsight ? 'home-outline' : 'share-variant'}
+                                    size={18}
+                                    color="#FFFFFF"
+                                />
+                                <Text style={styles.shareButtonText}>
+                                    {openedFromClinicalInsight ? t('league.backToHome') : t('league.challengeFriends')}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     )}

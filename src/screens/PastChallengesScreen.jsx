@@ -17,7 +17,6 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { MMKV } from 'react-native-mmkv';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import LinearGradient from 'react-native-linear-gradient';
-import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { Skeleton } from '../components/Skeleton';
 import { Colors } from '../../constants/Colors';
 import { API_BASE } from '../../constants/Api';
@@ -49,7 +48,6 @@ export default function PastChallengesScreen() {
 
     // Bottom sheet for already completed challenges
     const completedSheetRef = useRef(null);
-    const premiumSheetRef = useRef(null);
     const [completedChallengeData, setCompletedChallengeData] = useState(null);
     const [completedGameplayData, setCompletedGameplayData] = useState(null);
     const snapPoints = useMemo(() => ['40%'], []);
@@ -190,7 +188,7 @@ export default function PastChallengesScreen() {
                         completedSheetRef.current?.present();
                     }, 100);
                 } else if (data.premiumRequired) {
-                    premiumSheetRef.current?.present();
+                    navigation.navigate('Premium', { source: 'past_challenge' });
                 } else {
                     alert(data.message || 'Unable to load challenge');
                 }
@@ -484,11 +482,6 @@ export default function PastChallengesScreen() {
                 </BottomSheetView>
             </BottomSheetModal>
 
-            {/* Premium Bottom Sheet for backdate access */}
-            <PremiumBottomSheet
-                ref={premiumSheetRef}
-                points={['To play past cases get premium']}
-            />
         </View>
     );
 }

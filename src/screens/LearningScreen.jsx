@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable, ActivityIndicator, Animated } from 'react-native';
+import { useColorScheme, View, Text, ScrollView, Image, StyleSheet, Pressable, ActivityIndicator, Animated, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import inappicon from '../../constants/inappicon.png';
@@ -34,7 +34,7 @@ const SkeletonLoader = ({ width, height, borderRadius = 8, style }) => {
     );
     shimmer.start();
     return () => shimmer.stop();
-  }, []);
+  }, [shimmerAnim]);
 
   const opacity = shimmerAnim.interpolate({
     inputRange: [0, 1],
@@ -110,6 +110,7 @@ export default function LearningScreen() {
   const [userId, setUid] = React.useState(undefined);
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [openingGameplayId, setOpeningGameplayId] = React.useState(null);
   const [error, setError] = React.useState(null);
   const detailSheetRef = React.useRef(null);
 
@@ -170,7 +171,7 @@ export default function LearningScreen() {
     return Array.from(map.entries())
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([, v]) => v);
-  }, [items]);
+  }, [i18n.language, items]);
 
   // Helper to get title based on sourceType
   const getItemTitle = (it) => {
@@ -209,6 +210,11 @@ export default function LearningScreen() {
   };
 
   const openGameplay = async (gameplayId) => {
+    if (openingGameplayId !== null) return;
+
+    const selectedGameplayId = String(gameplayId);
+    setOpeningGameplayId(selectedGameplayId);
+
     try {
       const res = await fetch(`${API_BASE}/api/gameplays/${encodeURIComponent(gameplayId)}?lang=${i18n.language}`);
       if (!res.ok) {
@@ -276,8 +282,16 @@ export default function LearningScreen() {
       dispatch(setSelectedTreatments(selectedTreatmentIds));
       dispatch(setGameplay(gp));
 
-      navigation.navigate('ClinicalInsight', { caseData });
-    } catch (_) { }
+      navigation.navigate('ClinicalInsight', { caseData, from: 'Learning' });
+    } catch (e) {
+      console.warn('Failed to open gameplay:', e);
+      Alert.alert(
+        t('common.error'),
+        e?.message || t('departmentCases.loadFailed')
+      );
+    } finally {
+      setOpeningGameplayId(null);
+    }
   };
 
   return (
@@ -302,12 +316,15 @@ export default function LearningScreen() {
             <Text style={[styles.learnDate, { color: themeColors.text }]}>{group.label}</Text>
             {group.items.map((it) => {
               const isDailyChallenge = it.sourceType === 'dailyChallenge';
+              const isOpening = openingGameplayId === String(it.gameplayId);
               return (
                 <Pressable
                   key={String(it.gameplayId)}
                   onPress={() => openGameplay(it.gameplayId)}
+                  disabled={openingGameplayId !== null}
                   style={[
                     styles.learnCard,
+                    openingGameplayId !== null && !isOpening && styles.learnCardDisabled,
                     {
                       backgroundColor: themeColors.card,
                       borderColor: isDailyChallenge ? '#FFA726' : themeColors.border,
@@ -351,7 +368,11 @@ export default function LearningScreen() {
                         )}
                       </View>
                     </View>
-                    {getItemMainImage(it) ? (
+                    {isOpening ? (
+                      <View style={[styles.learnThumb, styles.learnThumbLoader]}>
+                        <ActivityIndicator size="small" color={Colors.brand.darkPink} />
+                      </View>
+                    ) : getItemMainImage(it) ? (
                       <Image
                         source={{ uri: getItemMainImage(it) }}
                         style={styles.learnThumb}
@@ -396,6 +417,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   learnCardRow: { flexDirection: 'row', alignItems: 'center' },
+  learnCardDisabled: { opacity: 0.65 },
   learnCardTextWrap: { flex: 1, paddingRight: 12 },
   learnTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
   learnSummary: { fontSize: 14, lineHeight: 21, color: '#3F5161', opacity: 0.95 },
@@ -406,6 +428,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     resizeMode: 'cover',
     backgroundColor: '#F3F6FA',
+  },
+  learnThumbLoader: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dailyBadge: {
     backgroundColor: '#FF9800',

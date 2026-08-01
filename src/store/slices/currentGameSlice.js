@@ -155,7 +155,7 @@ const currentGameSlice = createSlice({
 // Supports both Case and DailyChallenge gameplays
 export const submitGameplay = createAsyncThunk(
   'currentGame/submitGameplay',
-  async (_, { getState }) => {
+  async (_, { getState, rejectWithValue }) => {
     const state = getState();
     const {
       userId,
@@ -249,11 +249,13 @@ export const submitGameplay = createAsyncThunk(
       body: JSON.stringify(requestBody),
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `Failed to submit gameplay (${res.status})`);
-    }
     const data = await res.json();
+    if (!res.ok) {
+      return rejectWithValue({
+        code: data?.code,
+        message: data?.error || `Failed to submit gameplay (${res.status})`,
+      });
+    }
     return {
       gameplay: data?.gameplay || null,
       updatedUser: data?.updatedUser || null,

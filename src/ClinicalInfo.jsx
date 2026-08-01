@@ -16,7 +16,6 @@ import AudioAura from './components/AudioAura';
 import ComingSoonImage from './components/ComingSoonImage';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { BlurView } from '@react-native-community/blur';
-import PremiumBottomSheet from './components/PremiumBottomSheet';
 import QuitConfirmationSheet from './components/QuitConfirmationSheet';
 import Markdown from 'react-native-markdown-display';
 import { useTranslation } from 'react-i18next';
@@ -204,7 +203,6 @@ export default function ClinicalInfo() {
   const [selectedPhysImageIndex, setSelectedPhysImageIndex] = useState(0);
   const [isImageSheetOpen, setIsImageSheetOpen] = useState(false);
   const imageSheetRef = useRef(null);
-  const premiumSheetRef = useRef(null);
   const quitSheetRef = useRef(null);
   const imageSnapPoints = useMemo(() => ['45%'], []);
   const renderImageBackdrop = useCallback(
@@ -891,7 +889,7 @@ export default function ClinicalInfo() {
                                 <Text style={styles.premiumOverlayText}>{t('clinical.premiumImageOnly')}</Text>
                                 <TouchableOpacity
                                   style={styles.premiumCtaButton}
-                                  onPress={() => premiumSheetRef.current?.present()}
+                                  onPress={() => navigation.navigate('Premium', { source: 'clinical_image' })}
                                   activeOpacity={0.9}
                                 >
                                   <Text style={styles.premiumCtaButtonText}>{t('clinical.unlockNow')}</Text>
@@ -1092,7 +1090,6 @@ export default function ClinicalInfo() {
         ) : <View style={{ width: 48 }} />}
       </View>
 
-      <PremiumBottomSheet ref={premiumSheetRef} />
       <QuitConfirmationSheet ref={quitSheetRef} onConfirmQuit={confirmQuit} />
     </SafeAreaView>
   );
@@ -1471,4 +1468,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-

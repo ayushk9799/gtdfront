@@ -116,8 +116,8 @@ export const checkAndRequestReview = async () => {
   // and if we haven't already requested a review
   if (gamesPlayed === 1 && !hasRequestedReview()) {
 
-    // Add a small delay to let the user see their results first
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Give the user time to review their case results before showing the prompt.
+    await new Promise(resolve => setTimeout(resolve, 7000));
 
     return await requestInAppReview();
   }
@@ -133,4 +133,3 @@ export const resetRatingState = () => {
   storage.delete(HAS_REQUESTED_REVIEW_KEY);
   storage.delete(FIRST_PLAYED_CASE_ID_KEY);
 };
-

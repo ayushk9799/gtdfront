@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Pressable, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, useWindowDimensions } from 'react-native';
 import coinIcon from '../../constants/coin.png';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -7,49 +7,46 @@ import { useSelector } from 'react-redux';
 
 export default function LeagueHeader() {
   const navigation = useNavigation();
-  const { isPremium, userData, hearts } = useSelector(state => state.user);
-
-
+  const { isPremium, userData } = useSelector(state => state.user);
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 360;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 10, flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 10 }}>
-
-        {/* <Image source={inappicon} style={{ width: 36, height: 36 }} /> */}
-        <Text style={{ fontSize: 24, fontWeight: '800', color: '#FF407D' }}>Diagnose it</Text>
-        <View style={{ marginLeft: 6 }}>
-          {isPremium ? (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate('Premium')}
-              style={styles.premiumButton}
-            >
-              <Text style={styles.premiumText}>Pro</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.upgradeButton}>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate('Premium')}
-                style={styles.upgradeButtonInner}
-              >
-                <Text style={styles.upgradeText}>Upgrade</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+    <View style={styles.container}>
+      <View style={styles.brandWrap}>
+        <Text style={styles.brandText} numberOfLines={1}>Diagnose it</Text>
       </View>
 
-      <Pressable onPress={() => navigation.navigate('Heart')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 5, flexWrap: 'nowrap', zIndex: 10, elevation: 4 }}>
-        <View style={[pillStyle(), { flexShrink: 1 }]}>
-          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#FFD1E1", alignItems: 'center', justifyContent: 'center' }}>
-            <MaterialCommunityIcons name={'heart'} size={12} color="#FF0000" />
-          </View>
-          <Text style={pillText()}>{hearts}</Text>
-          <Image source={coinIcon} style={{ width: 18, height: 18, marginLeft: 6 }} />
-          <Text style={pillText()}>{parseInt(userData?.cumulativePoints?.total || 0)}</Text>
+      <View style={styles.headerActions}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Premium')}
+          style={[
+            styles.membershipButton,
+            isPremium ? styles.premiumButton : styles.upgradeButton,
+            isNarrow && styles.membershipButtonNarrow,
+          ]}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          accessibilityRole="button"
+          accessibilityLabel={isPremium ? 'Pro membership' : 'Upgrade to Pro'}
+        >
+          <MaterialCommunityIcons
+            name="crown"
+            size={15}
+            color={isPremium ? '#FFFFFF' : '#08A82E'}
+          />
+          {!isNarrow && (
+            <Text style={isPremium ? styles.premiumText : styles.upgradeText}>
+              {isPremium ? 'Pro' : 'Upgrade'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={pillStyle()}>
+          <Image source={coinIcon} style={styles.coinIcon} />
+          <Text style={pillText()}>{parseInt(userData?.cumulativePoints?.total || 0, 10)}</Text>
         </View>
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -70,6 +67,7 @@ function pillStyle() {
     flexDirection: 'row',
     alignItems: 'center',
     minWidth: 0,
+    flexShrink: 1,
   };
 }
 
@@ -78,10 +76,47 @@ function pillText() {
 }
 
 const styles = StyleSheet.create({
+  coinIcon: {
+    width: 18,
+    height: 18,
+  },
+  container: {
+    zIndex: 10,
+    elevation: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  brandWrap: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 10,
+  },
+  brandText: {
+    color: '#FF407D',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  membershipButton: {
+    minHeight: 32,
+    minWidth: 32,
+    marginRight: 8,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  membershipButtonNarrow: {
+    paddingHorizontal: 8,
+  },
   premiumButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 999,
     backgroundColor: '#08C634',
     shadowColor: '#00C4B3',
     shadowOpacity: 0.2,
@@ -90,23 +125,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   premiumText: {
+    marginLeft: 5,
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 12,
+    fontSize: 13,
   },
   upgradeButton: {
-    borderRadius: 999,
     borderWidth: 1,
     borderColor: '#08C634',
-    backgroundColor: 'transparent',
-  },
-  upgradeButtonInner: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: '#F4FFF6',
   },
   upgradeText: {
-    color: '#08C634',
+    marginLeft: 5,
+    color: '#08A82E',
     fontWeight: '800',
-    fontSize: 12,
+    fontSize: 13,
   },
 });

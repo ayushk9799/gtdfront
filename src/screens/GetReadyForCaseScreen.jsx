@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
+  Animated,
   Image,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -21,30 +24,41 @@ import loginDoctor from '../../constants/logindoctor.png';
 import { clearCurrentGame, loadCaseById } from '../store/slices/currentGameSlice';
 
 const storage = new MMKV();
-const CASE_CARDS = [
+const CASE_STEPS = [
   {
     key: 'story',
-    icon: 'clipboard-text-outline',
     titleKey: 'getReady.cardStoryTitle',
-    title: 'Read patient story',
+    title: 'Meet the patient',
     descKey: 'getReady.cardStoryDesc',
-    desc: 'Review history, symptoms and vital signs.',
+    desc: 'Review symptoms, history and vital signs.',
   },
   {
     key: 'tests',
-    icon: 'test-tube',
     titleKey: 'getReady.cardTestsTitle',
     title: 'Order key tests',
     descKey: 'getReady.cardTestsDesc',
-    desc: 'Select the right tests to narrow down possibilities.',
+    desc: 'Narrow down the possibilities.',
   },
   {
     key: 'diagnosis',
-    icon: 'brain',
     titleKey: 'getReady.cardDiagnosisTitle',
     title: 'Make your diagnosis',
     descKey: 'getReady.cardDiagnosisDesc',
-    desc: 'Analyze results and choose your final diagnosis.',
+    desc: 'Choose the most likely condition.',
+  },
+  {
+    key: 'treatment',
+    titleKey: 'getReady.cardTreatmentTitle',
+    title: 'Choose treatment',
+    descKey: 'getReady.cardTreatmentDesc',
+    desc: 'Build the right treatment plan.',
+  },
+  {
+    key: 'insights',
+    titleKey: 'getReady.cardInsightsTitle',
+    title: 'Review clinical insights',
+    descKey: 'getReady.cardInsightsDesc',
+    desc: 'Learn from detailed feedback.',
   },
 ];
 
@@ -55,6 +69,89 @@ export default function GetReadyForCaseScreen() {
   const [loading, setLoading] = useState(false);
   const { height } = useWindowDimensions();
   const isCompact = height < 760;
+  const heroAnimation = useRef(new Animated.Value(0)).current;
+  const stepAnimations = useRef(CASE_STEPS.map(() => new Animated.Value(0))).current;
+  const footerAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let cancelled = false;
+    let entranceAnimation;
+
+    const startEntranceAnimation = async () => {
+      let reduceMotion = false;
+      try {
+        reduceMotion = await AccessibilityInfo.isReduceMotionEnabled();
+      } catch { }
+      if (cancelled) return;
+
+      if (reduceMotion) {
+        heroAnimation.setValue(1);
+        stepAnimations.forEach(animation => animation.setValue(1));
+        footerAnimation.setValue(1);
+        return;
+      }
+
+      entranceAnimation = Animated.sequence([
+        Animated.timing(heroAnimation, {
+          toValue: 1,
+          duration: 320,
+          useNativeDriver: true,
+        }),
+        Animated.sequence(
+          stepAnimations.map(animation =>
+            Animated.timing(animation, {
+              toValue: 1,
+              duration: 170,
+              useNativeDriver: true,
+            })
+          )
+        ),
+        Animated.timing(footerAnimation, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]);
+
+      entranceAnimation.start();
+    };
+
+    startEntranceAnimation();
+
+    return () => {
+      cancelled = true;
+      entranceAnimation?.stop();
+    };
+  }, [footerAnimation, heroAnimation, stepAnimations]);
+
+  const heroAnimatedStyle = {
+    opacity: heroAnimation,
+    transform: [
+      {
+        translateY: heroAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [12, 0],
+        }),
+      },
+      {
+        scale: heroAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.98, 1],
+        }),
+      },
+    ],
+  };
+  const footerAnimatedStyle = {
+    opacity: footerAnimation,
+    transform: [
+      {
+        translateY: footerAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [18, 0],
+        }),
+      },
+    ],
+  };
 
   const handleStartCase = async () => {
     if (loading) return;
@@ -87,56 +184,82 @@ export default function GetReadyForCaseScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#FFF8FB', '#FFF0F6', '#FFFFFF']}
+        colors={['#FFF7FA', '#FFFFFF', '#FFFFFF']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <Image source={loginDoctor} style={styles.backgroundImage} />
-      <LinearGradient
-        colors={[
-          'rgba(255,248,251,0.0)',
-          'rgba(255,248,251,0.15)',
-          'rgba(255,255,255,0.75)',
-          '#FFFFFF',
-        ]}
-        locations={[0, 0.4, 0.65, 1]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
 
-      <View style={[styles.content, isCompact && styles.contentCompact]}>
-        <Text style={styles.title}>
-          {t('getReady.title', { defaultValue: 'Ready for your first case?' })}
-        </Text>
-        <Text style={styles.subtitle}>
-          {t('getReady.subtitle', {
-            defaultValue: 'Meet the patient, choose tests, diagnose, then learn from feedback.',
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.content, isCompact && styles.contentCompact]}
+        showsVerticalScrollIndicator={false}
+        bounces
+      >
+        <Animated.View style={[styles.hero, heroAnimatedStyle]}>
+          <View style={styles.heroImageWrap}>
+            <Image source={loginDoctor} style={styles.heroImage} />
+            <LinearGradient
+              colors={['rgba(255,247,250,0.05)', 'rgba(255,247,250,0.35)', '#FFF9FB']}
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            <Text style={[styles.title, styles.heroTitle]}>
+              {t('getReady.title', { defaultValue: 'Your first clinical case' })}
+            </Text>
+          </View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.subtitle}>
+              {t('getReady.subtitle', {
+                defaultValue: 'Think like a doctor—from symptoms to treatment.',
+              })}
+            </Text>
+          </View>
+        </Animated.View>
+
+        <View style={styles.timeline}>
+          {CASE_STEPS.map((step, index) => {
+            const isFirst = index === 0;
+            const isLast = index === CASE_STEPS.length - 1;
+
+            const stepAnimatedStyle = {
+              opacity: stepAnimations[index],
+              transform: [
+                {
+                  translateY: stepAnimations[index].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [12, 0],
+                  }),
+                },
+              ],
+            };
+
+            return (
+              <Animated.View key={step.key} style={[styles.stepRow, stepAnimatedStyle]}>
+                <View style={styles.stepRail}>
+                  <View style={[styles.stepNumber, isFirst && styles.stepNumberActive]}>
+                    <Text style={[styles.stepNumberText, isFirst && styles.stepNumberTextActive]}>
+                      {index + 1}
+                    </Text>
+                  </View>
+                  {!isLast && <View style={styles.stepLine} />}
+                </View>
+                <View style={[styles.stepContent, isFirst && styles.stepContentActive]}>
+                  <Text style={styles.stepTitle}>
+                    {t(step.titleKey, { defaultValue: step.title })}
+                  </Text>
+                  <Text style={styles.stepDesc}>
+                    {t(step.descKey, { defaultValue: step.desc })}
+                  </Text>
+                </View>
+              </Animated.View>
+            );
           })}
-        </Text>
-
-        <View style={styles.cardList}>
-          {CASE_CARDS.map(card => (
-            <View key={card.key} style={styles.infoCard}>
-              <View style={styles.cardIconWrap}>
-                <MaterialCommunityIcons name={card.icon} size={22} color={Colors.brand.darkPink} />
-              </View>
-              <View style={styles.cardTextWrap}>
-                <Text style={styles.cardTitle}>
-                  {t(card.titleKey, { defaultValue: card.title })}
-                </Text>
-                <Text style={styles.cardDesc}>
-                  {t(card.descKey, { defaultValue: card.desc })}
-                </Text>
-              </View>
-
-            </View>
-          ))}
         </View>
+      </ScrollView>
 
-      </View>
-
-      <View style={styles.footer}>
+      <Animated.View style={[styles.footer, footerAnimatedStyle]}>
         <TouchableOpacity
           style={[styles.primaryButton, loading && styles.primaryButtonLoading]}
           onPress={handleStartCase}
@@ -151,29 +274,33 @@ export default function GetReadyForCaseScreen() {
           />
           <View style={styles.buttonGlow} />
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <View style={styles.primaryButtonInner}>
+              <ActivityIndicator color="#FFFFFF" size="small" />
+              <Text style={styles.loadingButtonText}>
+                {t('getReady.preparingCase', { defaultValue: 'Preparing your case…' })}
+              </Text>
+            </View>
           ) : (
             <View style={styles.primaryButtonInner}>
               <Text style={styles.primaryButtonText}>
-                {t('getReady.startCase', { defaultValue: 'Start case' })}
+                {t('getReady.startCase', { defaultValue: 'Start first case' })}
               </Text>
               <MaterialCommunityIcons name="arrow-right" size={21} color="#FFFFFF" />
             </View>
           )}
         </TouchableOpacity>
 
-        {!loading && (
-          <TouchableOpacity
-            style={styles.laterButton}
-            onPress={() => navigation.replace('Tabs')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.laterButtonText}>
-              {t('getReady.maybeLater', { defaultValue: 'Maybe later' })}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+        <TouchableOpacity
+          style={[styles.laterButton, loading && styles.laterButtonDisabled]}
+          onPress={() => navigation.replace('Tabs')}
+          activeOpacity={0.7}
+          disabled={loading}
+        >
+          <Text style={styles.laterButtonText}>
+            {t('getReady.maybeLater', { defaultValue: 'Maybe later' })}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -183,89 +310,146 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  backgroundImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    aspectRatio: 1,
-    resizeMode: 'contain',
-    opacity: 0.42,
+  scrollView: {
+    flex: 1,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
-    justifyContent: 'flex-end',
-    paddingBottom: 14,
+    paddingTop: 10,
+    paddingBottom: 18,
   },
   contentCompact: {
-    paddingBottom: 8,
+    paddingTop: 4,
+  },
+  hero: {
+    alignItems: 'center',
+  },
+  heroImageWrap: {
+    alignSelf: 'stretch',
+    height: 245,
+    marginHorizontal: -24,
+    marginTop: -10,
+    overflow: 'hidden',
+  },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  heroCopy: {
+    marginTop: 2,
+    paddingHorizontal: 4,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 26,
-    lineHeight: 31,
-    fontWeight: '800',
-    color: '#11181C',
+    fontSize: 27,
+    lineHeight: 32,
+    fontWeight: '900',
+    color: '#172033',
     textAlign: 'center',
-    letterSpacing: 0,
+    letterSpacing: -0.3,
+  },
+  heroTitle: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 2,
   },
   subtitle: {
-    marginTop: 10,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 21,
     fontWeight: '600',
     color: '#64748B',
     textAlign: 'center',
   },
-  cardList: {
-    marginTop: 22,
+  timeline: {
+    marginTop: 23,
+    paddingHorizontal: 3,
   },
-  infoCard: {
-    minHeight: 64,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EEF2F7',
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    marginBottom: 8,
+  stepRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    alignItems: 'stretch',
   },
-  cardIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  stepRail: {
+    width: 36,
+    alignItems: 'center',
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF0F5',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#DDE3EC',
   },
-  cardTextWrap: {
+  stepNumberActive: {
+    backgroundColor: Colors.brand.darkPink,
+    borderColor: Colors.brand.darkPink,
+    shadowColor: Colors.brand.darkPink,
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  stepNumberText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  stepNumberTextActive: {
+    color: '#FFFFFF',
+  },
+  stepLine: {
     flex: 1,
-    marginLeft: 12,
-    marginRight: 10,
+    width: 2,
+    minHeight: 24,
+    backgroundColor: '#E7EAF0',
   },
-  cardTitle: {
-    color: '#11181C',
+  stepContent: {
+    flex: 1,
+    marginLeft: 13,
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: 17,
+    borderRadius: 13,
+  },
+  stepContentActive: {
+    marginBottom: 8,
+    paddingTop: 9,
+    paddingBottom: 9,
+    backgroundColor: '#FFF3F7',
+    borderWidth: 1,
+    borderColor: '#FFE0EA',
+  },
+  stepTitle: {
+    color: '#172033',
     fontSize: 16,
     lineHeight: 20,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  cardDesc: {
-    marginTop: 3,
+  stepDesc: {
+    marginTop: 2,
     color: '#64748B',
     fontSize: 13,
-    lineHeight: 17,
+    lineHeight: 18,
     fontWeight: '600',
   },
   footer: {
+    paddingTop: 10,
     paddingHorizontal: 22,
-    paddingBottom: 22,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EEF1F5',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
   },
   primaryButton: {
     minHeight: 58,
@@ -301,10 +485,19 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginRight: 9,
   },
+  loadingButtonText: {
+    marginLeft: 9,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
   laterButton: {
     alignSelf: 'center',
     paddingHorizontal: 18,
     paddingVertical: 13,
+  },
+  laterButtonDisabled: {
+    opacity: 0.45,
   },
   laterButtonText: {
     color: '#94A3B8',

@@ -11,8 +11,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import Purchases from 'react-native-purchases';
 import { MMKV } from 'react-native-mmkv';
 import { trackEvent } from '../services/analytics';
+import { LIFETIME_OFFER_DURATION_MS } from '../services/lifetimeOffer';
 
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const storage = new MMKV();
 
 // Format remaining ms to HH:MM:SS
@@ -27,7 +27,7 @@ function formatCountdown(ms) {
 
 export default function LifetimeOfferCard({ offerStartTime, onOfferExpired }) {
   const { t } = useTranslation();
-  const [remaining, setRemaining] = useState(TWO_HOURS_MS);
+  const [remaining, setRemaining] = useState(LIFETIME_OFFER_DURATION_MS);
   const [lifetimePackage, setLifetimePackage] = useState(null);
   const [loading, setLoading] = useState(true);
   const viewedTrackedRef = useRef(false);
@@ -38,7 +38,7 @@ export default function LifetimeOfferCard({ offerStartTime, onOfferExpired }) {
 
     const tick = () => {
       const elapsed = Date.now() - offerStartTime;
-      const left = Math.max(TWO_HOURS_MS - elapsed, 0);
+      const left = Math.max(LIFETIME_OFFER_DURATION_MS - elapsed, 0);
       setRemaining(left);
       if (left <= 0) {
         onOfferExpired?.();

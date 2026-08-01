@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, Animated, StyleSheet, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TouchableOpacity, Pressable, Image, Platform, Alert, ToastAndroid, Animated, StyleSheet, Linking, StatusBar } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -18,15 +18,20 @@ const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 10;
 
 export default function PremiumScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const { userData } = useSelector(state => state.user);
   const [selectedPlan, setSelectedPlan] = useState(null); // 'weekly' | 'monthly' | 'sixMonth' | 'lifetime'
-  const [offerings, setOfferings] = useState(null);
+  const [offering, setOffering] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const theme = Colors.light;
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const headerTopInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
+  );
   const scrollY = useRef(new Animated.Value(0)).current;
   const heroOpacity = useMemo(
     () =>
@@ -161,37 +166,39 @@ export default function PremiumScreen() {
 
     try {
       setLoading(true);
-      const o = await Purchases.getOfferings();
-      if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
-        setOfferings(o);
+      const offerings = await Purchases.getOfferings();
+      const mainOffering = offerings?.all?.main_product || null;
+
+      if (mainOffering && Array.isArray(mainOffering.availablePackages) && mainOffering.availablePackages.length > 0) {
+        setOffering(mainOffering);
         // pick default: prefer lifetime, else sixMonth, else monthly
-        if (o.current.lifetime) {
-          setSelectedPlan(o.current.lifetime.identifier);
-        } else if (o.current.sixMonth) {
-          setSelectedPlan(o.current.sixMonth.identifier);
-        } else if (o.current.monthly) {
-          setSelectedPlan(o.current.monthly.identifier);
-        } else if (o.current.weekly) {
-          setSelectedPlan(o.current.weekly.identifier);
-        } else if (o.current.availablePackages.length > 0) {
-          setSelectedPlan(o.current.availablePackages[0].identifier);
+        if (mainOffering.lifetime) {
+          setSelectedPlan(mainOffering.lifetime.identifier);
+        } else if (mainOffering.sixMonth) {
+          setSelectedPlan(mainOffering.sixMonth.identifier);
+        } else if (mainOffering.monthly) {
+          setSelectedPlan(mainOffering.monthly.identifier);
+        } else if (mainOffering.weekly) {
+          setSelectedPlan(mainOffering.weekly.identifier);
+        } else if (mainOffering.availablePackages.length > 0) {
+          setSelectedPlan(mainOffering.availablePackages[0].identifier);
         } else {
           setSelectedPlan(null);
         }
       } else {
-        setOfferings(null);
+        setOffering(null);
         setSelectedPlan(null);
       }
       await checkEntitlements();
     } catch (e) {
-      setOfferings(null);
+      setOffering(null);
       setSelectedPlan(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedPackage = offerings?.current?.availablePackages?.find(pkg => pkg.identifier === selectedPlan) || null;
+  const selectedPackage = offering?.availablePackages?.find(pkg => pkg.identifier === selectedPlan) || null;
   const isPremium = !!(userData?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
   const premiumPlan = userData?.premiumPlan || null;
   const premiumExpiresAt = userData?.premiumExpiresAt || null;
@@ -218,55 +225,14 @@ export default function PremiumScreen() {
     }
   };
 
-  // Round price for display:
-  // - Small prices (<100): end in .99 (e.g., $14.99)
-  // - Large prices (>=100): round up, end in .00 (e.g., ₹1499.00)
-  const roundPriceForDisplay = (price) => {
-    if (price < 100) {
-      return Math.floor(price) + 0.99;
-    } else {
-      return Math.ceil(price);
-    }
-  };
-
-  // Helper to format price with currency symbol
-  const formatCurrencyPrice = (price, currencyCode, shouldRound = false) => {
-    try {
-      if (!price || !currencyCode) return '';
-      const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
-      // Use i18n.language for locale or undefined for device default
-      // narrowSymbol: use "$" instead of "US$", "₹" instead of "INR", etc.
-      return new Intl.NumberFormat(i18n.language || undefined, {
-        style: 'currency',
-        currency: currencyCode,
-        currencyDisplay: 'narrowSymbol',
-        minimumFractionDigits: finalPrice % 1 === 0 ? 0 : 2, // No decimals if whole number
-        maximumFractionDigits: 2,
-      }).format(finalPrice);
-    } catch {
-      const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
-      // Better looking fallback
-      const fmtPrice = finalPrice.toFixed(finalPrice % 1 === 0 ? 0 : 2);
-      return `${currencyCode} ${fmtPrice}`;
-    }
-  };
-
-  // Calculate strikethrough price dynamically
-  const getStrikethroughPrice = (pkg) => {
-    if (!pkg?.product?.price || !pkg?.product?.currencyCode) return null;
-    const price = pkg.product.price;
-    const originalPrice = price * 2.0; // 100% higher as "original" price
-    return formatCurrencyPrice(originalPrice, pkg.product.currencyCode, true);
-  };
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <View style={{ flex: 1 }}>
         <Animated.View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: 0,
+            top: headerTopInset,
             left: 0,
             right: 0,
             height: HERO_HEIGHT,
@@ -319,7 +285,7 @@ export default function PremiumScreen() {
         <View
           style={{
             position: 'absolute',
-            top: 0,
+            top: headerTopInset + 12,
             left: 0,
             right: 0,
             flexDirection: 'row',
@@ -331,6 +297,8 @@ export default function PremiumScreen() {
         >
           <TouchableOpacity
             onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
             style={{
               width: 36,
               height: 36,
@@ -348,7 +316,7 @@ export default function PremiumScreen() {
               marginRight: 6,
             }}
           >
-            <MaterialCommunityIcons name="arrow-left" size={22} color="#222222" />
+            <MaterialCommunityIcons name="close" size={22} color="#222222" />
           </TouchableOpacity>
         </View>
 
@@ -359,7 +327,7 @@ export default function PremiumScreen() {
           scrollEventThrottle={16}
           onScroll={onScroll}
         >
-          <View style={{ height: HERO_PLACEHOLDER_HEIGHT }} />
+          <View style={{ height: HERO_PLACEHOLDER_HEIGHT + headerTopInset }} />
           <View
             style={{
               backgroundColor: '#FFFFFF',
@@ -491,8 +459,8 @@ export default function PremiumScreen() {
             {/* Plan cards */}
             {!isPremium && (
               <View style={{ paddingHorizontal: 12, marginTop: 10 }}>
-                {offerings?.current?.availablePackages?.length > 0 ? (
-                  offerings.current.availablePackages.map((pkg) => {
+                {offering?.availablePackages?.length > 0 ? (
+                  offering.availablePackages.map((pkg) => {
                     const isSelected = selectedPlan === pkg.identifier;
                     const isLifetime = pkg.identifier === '$rc_lifetime' || pkg.packageType === 'LIFETIME';
                     const isSixMonth = pkg.identifier === '$rc_six_month' || pkg.packageType === 'SIX_MONTH';
@@ -563,11 +531,6 @@ export default function PremiumScreen() {
                             <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E1E1E' }}>
                               {pkg.product.priceString}
                             </Text>
-                            {getStrikethroughPrice(pkg) && (
-                              <Text style={{ fontSize: 12, color: '#9AA3AB', textDecorationLine: 'line-through' }}>
-                                {getStrikethroughPrice(pkg)}
-                              </Text>
-                            )}
                           </View>
                         </View>
                       </Pressable>

@@ -14,13 +14,13 @@ import { BlurView } from '@react-native-community/blur';
 import { useSelector, useDispatch } from 'react-redux';
 import { loadCaseById, setCaseData, setIsReattempt, clearCurrentGame } from '../store/slices/currentGameSlice';
 import { computeGameplayScoreNormalized } from '../services/scoring';
-import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import Sound from 'react-native-sound';
 import Video from 'react-native-video';
 import Pdf from 'react-native-pdf';
 import Markdown from 'react-native-markdown-display';
 import { getGamesPlayedCount, getFirstPlayedCaseId } from '../services/ratingService';
 import { useTranslation } from 'react-i18next';
+import CloudBottom from '../components/CloudBottom';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -156,7 +156,6 @@ export default function ClinicalInsight() {
   const navigation = useNavigation();
   const initialTabParam = route?.params?.initialTab;
   const caseDataFromRoute = route?.params?.caseData;
-  const premiumSheetRef = React.useRef(null);
   const scrollViewRef = React.useRef(null);
   const { t, i18n } = useTranslation();
 
@@ -241,6 +240,39 @@ export default function ClinicalInsight() {
       twinkleSoundRef.current = null;
     };
   }, [openedFromTreatment]);
+  const handleBackToHome = React.useCallback(() => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Tabs',
+            state: {
+              routes: [{ name: 'Home' }],
+            },
+          },
+        ],
+      })
+    );
+  }, [navigation]);
+
+  const handleViewRanking = React.useCallback(() => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Tabs',
+            state: {
+              index: 0,
+              routes: [{ name: 'Ranking', params: { fromClinicalInsight: true } }],
+            },
+          },
+        ],
+      })
+    );
+  }, [navigation]);
+
   const handleBackPress = React.useCallback(() => {
     const fromParam =
       route?.params?.from ||
@@ -263,19 +295,7 @@ export default function ClinicalInsight() {
       (fromStr.includes('learning')) ||
       prevRouteName === 'Learning';
     if (openedFromSelectTreatment) {
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            {
-              name: 'Tabs',
-              state: {
-                routes: [{ name: 'Home' }],
-              },
-            },
-          ],
-        })
-      );
+      handleBackToHome();
       return;
     }
     if (openedFromLearning) {
@@ -283,7 +303,7 @@ export default function ClinicalInsight() {
       return;
     }
     navigation.goBack();
-  }, [navigation, route]);
+  }, [handleBackToHome, navigation, route]);
 
   // Handle Android hardware back button
   useFocusEffect(
@@ -329,23 +349,23 @@ export default function ClinicalInsight() {
   const { effectiveTestIds, effectiveDiagnosisId, effectiveTreatmentIds } = React.useMemo(() => {
     // If not overriding, or gameplay is missing, use Redux state directly
     if (viewedAttemptIndex === -1 || !gameplay) {
-      return { 
-        effectiveTestIds: reduxSelectedTestIds, 
-        effectiveDiagnosisId: reduxSelectedDiagnosisId, 
-        effectiveTreatmentIds: reduxSelectedTreatmentIds 
+      return {
+        effectiveTestIds: reduxSelectedTestIds,
+        effectiveDiagnosisId: reduxSelectedDiagnosisId,
+        effectiveTreatmentIds: reduxSelectedTreatmentIds
       };
     }
 
     // Extract selections: 0 is Original (Main gameplay doc), 1 is Attempts[0], etc.
-    const selections = viewedAttemptIndex === 0 
-      ? gameplay.selections 
+    const selections = viewedAttemptIndex === 0
+      ? gameplay.selections
       : gameplay.attempts?.[viewedAttemptIndex - 1]?.selections;
-      
+
     if (!selections) {
-       return { 
-        effectiveTestIds: reduxSelectedTestIds, 
-        effectiveDiagnosisId: reduxSelectedDiagnosisId, 
-        effectiveTreatmentIds: reduxSelectedTreatmentIds 
+      return {
+        effectiveTestIds: reduxSelectedTestIds,
+        effectiveDiagnosisId: reduxSelectedDiagnosisId,
+        effectiveTreatmentIds: reduxSelectedTreatmentIds
       };
     }
 
@@ -431,7 +451,7 @@ export default function ClinicalInsight() {
           const data = await res.json();
           effectiveCaseId = data?.caseItem?._id || null;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (effectiveCaseId) {
@@ -444,11 +464,11 @@ export default function ClinicalInsight() {
 
   const handleReattempt = React.useCallback(() => {
     if (!hasPremiumAccess) {
-      premiumSheetRef.current?.present?.();
+      navigation.navigate('Premium', { source: 'reattempt' });
       return;
     }
     openReattemptDialog();
-  }, [hasPremiumAccess, openReattemptDialog]);
+  }, [hasPremiumAccess, navigation, openReattemptDialog]);
 
   // Get games played count and first played case ID - re-read when screen comes into focus
   const [gamesPlayed, setGamesPlayed] = React.useState(0);
@@ -499,7 +519,7 @@ export default function ClinicalInsight() {
     Math.max(0, TABS.indexOf(normalizedInitialTabKey))
   );
 
-  const routes = React.useMemo(() => 
+  const routes = React.useMemo(() =>
     TABS.map((tabKey) => ({ key: tabKey, title: t(`insight.${tabKey}`) })),
     [t]
   );
@@ -695,14 +715,6 @@ export default function ClinicalInsight() {
     return caseData?.steps?.[4]?.data || null;
   }, [caseData]);
 
-  // Header diagnosis values
-  const headerDx = React.useMemo(() => {
-    const diags = caseData?.steps?.[2]?.data?.diagnosisOptions || [];
-    const correct = diags.find((d) => d.isCorrect)?.diagnosisName || null;
-    const mine = selectedDiagnosisId ? diags.find((d) => d.diagnosisId === selectedDiagnosisId)?.diagnosisName : null;
-    return { correct, mine };
-  }, [caseData, selectedDiagnosisId]);
-
   return (
     <SafeAreaView style={styles.flex1} edges={['top', 'left', 'right']}>
       <LinearGradient
@@ -711,6 +723,41 @@ export default function ClinicalInsight() {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+
+      <View style={styles.fixedHeader}>
+        <View style={styles.fixedHeaderLeft}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
+            onPress={handleBackPress}
+            style={({ pressed }) => [
+              styles.headerBackButton,
+              pressed && { opacity: 0.75, transform: [{ scale: 0.94 }] },
+            ]}
+            hitSlop={8}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={21} color={Colors.brand.darkPink} />
+          </Pressable>
+
+          <Text style={styles.fixedHeaderTitle}>{t('insight.clinicalInsight')}</Text>
+        </View>
+
+        {!openedFromTreatment && (
+          <Pressable
+            onPress={handleReattempt}
+            style={({ pressed }) => [
+              styles.reattemptTopBtn,
+              pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+            ]}
+          >
+            <View style={styles.reattemptTopContent}>
+              <MaterialCommunityIcons name="refresh" size={16} color="#D96A00" />
+              <Text style={styles.reattemptTopBtnText}>{t('insight.reattempt')}</Text>
+            </View>
+          </Pressable>
+        )}
+      </View>
+
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.container}
@@ -718,34 +765,6 @@ export default function ClinicalInsight() {
         maxToRenderPerBatch={5}
         windowSize={5}
       >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, marginTop: 10 }}>
-          <Pressable
-            onPress={handleBackPress}
-            style={styles.backBtnInline}
-            hitSlop={10}
-          >
-            <MaterialCommunityIcons name="chevron-left" size={26} color="#ffffff" />
-          </Pressable>
-
-          <Pressable
-            onPress={handleReattempt}
-            style={({ pressed }) => [
-              styles.reattemptTopBtn,
-              pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
-            ]}
-          >
-            <View style={styles.reattemptTopContent}>
-              <MaterialCommunityIcons 
-                name="refresh" 
-                size={16} 
-                color="#FF8A00" 
-              />
-              <Text style={styles.reattemptTopBtnText}>
-                {t('insight.reattempt')}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
         <View style={styles.scoreSection}>
           <AnimatedNumber
             style={styles.scoreBoardText}
@@ -754,45 +773,30 @@ export default function ClinicalInsight() {
             animate={openedFromTreatment}
             formatter={(v) => t('insight.score', { score: Math.round(v) }) + " / 100"}
           />
-          {headerDx.correct ? (
-            <View style={[styles.dxPill, styles.dxPillCorrect, { marginTop: 16, marginHorizontal: 16 }]}>
-              <MaterialCommunityIcons name="check-circle" size={18} color={SUCCESS_COLOR} style={{ marginRight: 8 }} />
-              <Markdown style={{ ...markdownStyles, body: { ...styles.dxPillText, ...styles.dxPillTextCorrect } }}>{headerDx.correct}</Markdown>
-            </View>
-          ) : null}
-
-        </View>
-        <View style={styles.topWrap}>
-          {headerDx.mine && headerDx.mine !== headerDx.correct ? (
-            <View style={[styles.dxPill, styles.dxPillMine]}>
-              <MaterialCommunityIcons name="alert-circle" size={18} color={ERROR_COLOR} style={{ marginRight: 8 }} />
-              <Markdown style={{ ...markdownStyles, body: { ...styles.dxPillText, ...styles.dxPillTextMine } }}>{headerDx.mine}</Markdown>
-            </View>
-          ) : null}
         </View>
         {/* Attempt History Chrome-like Tabs */}
         {gameplay?.attempts && gameplay.attempts.length > 0 && (
           <View style={{ marginTop: 16, zIndex: 2 }}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'flex-end' }}
             >
               {/* Attempt 1 (Original) Tab */}
-              <Pressable 
+              <Pressable
                 onPress={() => setViewedAttemptIndex(0)}
-                style={({pressed}) => [
-                  { 
-                    marginRight: 4, 
-                    paddingHorizontal: 16, 
-                    paddingVertical: 10, 
-                    borderTopLeftRadius: 10, 
-                    borderTopRightRadius: 10, 
-                    borderWidth: 1, 
+                style={({ pressed }) => [
+                  {
+                    marginRight: 4,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderTopLeftRadius: 10,
+                    borderTopRightRadius: 10,
+                    borderWidth: 1,
                     borderBottomWidth: 1,
-                    borderColor: viewedAttemptIndex === 0 ? themeColors.border : 'rgba(0,0,0,0.08)', 
+                    borderColor: viewedAttemptIndex === 0 ? themeColors.border : 'rgba(0,0,0,0.08)',
                     borderBottomColor: viewedAttemptIndex === 0 ? themeColors.card : themeColors.border,
-                    backgroundColor: viewedAttemptIndex === 0 ? themeColors.card : 'rgba(0,0,0,0.03)', 
+                    backgroundColor: viewedAttemptIndex === 0 ? themeColors.card : 'rgba(0,0,0,0.03)',
                     opacity: pressed ? 0.8 : 1,
                     transform: [{ translateY: viewedAttemptIndex === 0 ? 1 : 0 }], // Pull active tab down 1px to overlap border
                     zIndex: viewedAttemptIndex === 0 ? 10 : 1
@@ -803,24 +807,24 @@ export default function ClinicalInsight() {
                   {t('insight.attempt', { number: 1 })}
                 </Text>
               </Pressable>
-              
+
               {/* Reattempts */}
               {gameplay.attempts.map((att, i) => (
                 <Pressable
-                  key={i} 
+                  key={i}
                   onPress={() => setViewedAttemptIndex(i + 1)}
-                  style={({pressed}) => [
-                    { 
-                      marginRight: 4, 
-                      paddingHorizontal: 16, 
-                      paddingVertical: 10, 
-                      borderTopLeftRadius: 10, 
-                      borderTopRightRadius: 10, 
-                      borderWidth: 1, 
+                  style={({ pressed }) => [
+                    {
+                      marginRight: 4,
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderTopLeftRadius: 10,
+                      borderTopRightRadius: 10,
+                      borderWidth: 1,
                       borderBottomWidth: 1,
-                      borderColor: viewedAttemptIndex === i + 1 ? themeColors.border : 'rgba(0,0,0,0.08)', 
+                      borderColor: viewedAttemptIndex === i + 1 ? themeColors.border : 'rgba(0,0,0,0.08)',
                       borderBottomColor: viewedAttemptIndex === i + 1 ? themeColors.card : themeColors.border,
-                      backgroundColor: viewedAttemptIndex === i + 1 ? themeColors.card : 'rgba(0,0,0,0.03)', 
+                      backgroundColor: viewedAttemptIndex === i + 1 ? themeColors.card : 'rgba(0,0,0,0.03)',
                       opacity: pressed ? 0.8 : 1,
                       transform: [{ translateY: viewedAttemptIndex === i + 1 ? 1 : 0 }], // Pull active tab down 1px to overlap border
                       zIndex: viewedAttemptIndex === i + 1 ? 10 : 1
@@ -836,7 +840,7 @@ export default function ClinicalInsight() {
           </View>
         )}
 
-        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, borderTopWidth: gameplay?.attempts?.length > 0 ? 1 : 0, marginTop: gameplay?.attempts?.length > 0 ? 0 : -14, zIndex: 1 }]}>
+        <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border, borderTopWidth: gameplay?.attempts?.length > 0 ? 1 : 0, marginTop: gameplay?.attempts?.length > 0 ? 0 : 16, zIndex: 1 }]}>
           <View style={styles.caseHeader}>
             <View style={styles.caseIconWrap}>
               <MaterialCommunityIcons name="clipboard-plus-outline" size={18} color="#3B5B87" />
@@ -1045,7 +1049,7 @@ export default function ClinicalInsight() {
                     <View style={styles.premiumOverlay}>
                       <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
-                      <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium', { source: 'clinical_insight' })}>
                         <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
@@ -1089,7 +1093,7 @@ export default function ClinicalInsight() {
                     <View style={styles.premiumOverlay}>
                       <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
-                      <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium', { source: 'clinical_insight' })}>
                         <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
@@ -1133,7 +1137,7 @@ export default function ClinicalInsight() {
                     <View style={styles.premiumOverlay}>
                       <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
-                      <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium', { source: 'clinical_insight' })}>
                         <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
@@ -1177,7 +1181,7 @@ export default function ClinicalInsight() {
                     <View style={styles.premiumOverlay}>
                       <Text style={styles.premiumOverlayText}>{t('insight.premiumAnalysisOnly')}</Text>
                       <PremiumBenefitsTable />
-                      <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                      <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium', { source: 'clinical_insight' })}>
                         <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremiumUnlock')}</Text>
                       </Pressable>
                     </View>
@@ -1213,7 +1217,7 @@ export default function ClinicalInsight() {
                   <View style={styles.premiumOverlay}>
                     <MaterialCommunityIcons name="image-multiple-outline" size={40} color="#14919B" />
                     <Text style={[styles.premiumOverlayText, { fontSize: 16, marginTop: 8 }]}>{t('insight.unlockWithPremium')}</Text>
-                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                    <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium', { source: 'clinical_insight' })}>
                       <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremium')}</Text>
                     </Pressable>
                   </View>
@@ -1279,7 +1283,7 @@ export default function ClinicalInsight() {
                     {/* <Text style={{ color: '#5B2E91', fontSize: 13, marginTop: 4, textAlign: 'center', fontWeight: '600' }}>
                       Watch full video to unlock premium
                     </Text> */}
-                    <Pressable style={[styles.premiumCtaButton, { marginTop: 8 }]} onPress={() => premiumSheetRef.current?.present()}>
+                    <Pressable style={[styles.premiumCtaButton, { marginTop: 8 }]} onPress={() => navigation.navigate('Premium', { source: 'clinical_insight' })}>
                       <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremium')}</Text>
                     </Pressable>
                     <Pressable
@@ -1317,7 +1321,7 @@ export default function ClinicalInsight() {
                   // Check if user is premium
                   if (shouldShowPremiumBlur) {
                     // Show premium purchase sheet for non-premium users
-                    premiumSheetRef.current?.present();
+                    navigation.navigate('Premium', { source: 'clinical_insight' });
                     return;
                   }
 
@@ -1407,7 +1411,7 @@ export default function ClinicalInsight() {
                     <Text style={{ color: '#6E4A13', fontSize: 13, marginTop: 4, textAlign: 'center' }}>
                       {pdfTotalPages > 4 ? t('insight.slidesMoreAvailable', { count: pdfTotalPages - 4 }) : t('insight.slidesContentAvailable')}
                     </Text>
-                    <Pressable style={styles.premiumCtaButton} onPress={() => premiumSheetRef.current?.present()}>
+                    <Pressable style={styles.premiumCtaButton} onPress={() => navigation.navigate('Premium', { source: 'clinical_insight' })}>
                       <Text style={styles.premiumCtaButtonText}>{t('insight.buyPremium')}</Text>
                     </Pressable>
                   </View>
@@ -1450,6 +1454,25 @@ export default function ClinicalInsight() {
 
 
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleViewRanking}
+          style={({ pressed }) => [
+            styles.viewRankingButton,
+            pressed && styles.viewRankingButtonPressed,
+          ]}
+        >
+          <MaterialCommunityIcons name="trophy-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.viewRankingText}>{t('insight.viewYourRanking')}</Text>
+        </Pressable>
+
+        <View style={styles.cloudSpacer} />
+        <CloudBottom
+          height={160}
+          bottomOffset={0}
+          color="#FF407D"
+          style={{ opacity: 0.25 }}
+        />
       </ScrollView>
 
       {/* Floating scroll-to-insights button */}
@@ -1476,7 +1499,6 @@ export default function ClinicalInsight() {
       >
         <MaterialCommunityIcons name="chevron-down" size={48} color="#FFFFFF" />
       </Pressable>
-      <PremiumBottomSheet ref={premiumSheetRef} />
 
       {/* Reattempt Confirmation Dialog */}
       <Modal
@@ -1490,7 +1512,7 @@ export default function ClinicalInsight() {
           style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.65)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}
           onPress={closeReattemptDialog}
         >
-          <Pressable onPress={() => {}} style={{ width: '100%', maxWidth: 340 }}>
+          <Pressable onPress={() => { }} style={{ width: '100%', maxWidth: 340 }}>
             <Animated.View
               style={{
                 transform: [
@@ -1515,13 +1537,13 @@ export default function ClinicalInsight() {
                 <Text style={{ fontSize: 22, fontWeight: '900', color: '#0F172A', textAlign: 'center', letterSpacing: -0.5 }}>
                   {t('insight.reattemptTitle')}
                 </Text>
-                
+
                 <View style={{ height: 1.5, width: 40, backgroundColor: '#F1F5F9', alignSelf: 'center', marginVertical: 16 }} />
 
                 <Text style={{ fontSize: 15, color: '#475569', textAlign: 'center', lineHeight: 22, fontWeight: '500' }}>
                   {t('insight.reattemptDescription')}
                 </Text>
-                
+
                 <View style={{ marginTop: 12, backgroundColor: '#FFF1F2', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, alignSelf: 'center' }}>
                   <Text style={{ fontSize: 12, color: Colors.brand.darkPink, fontWeight: '700', textAlign: 'center' }}>
                     {t('insight.reattemptNote')}
@@ -1868,7 +1890,6 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   container: { paddingHorizontal: 8, paddingBottom: 120 },
   screenWrap: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
-  topWrap: { alignItems: 'center', paddingTop: 0, paddingBottom: 8, marginBottom: 16, marginHorizontal: 16 },
   scoreSection: { alignItems: 'center', paddingTop: 12, paddingBottom: 4, width: '100%' },
   topImage: {
     width: 96,
@@ -1905,21 +1926,45 @@ const styles = StyleSheet.create({
   sectionIconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '800' },
   bulletText: { fontSize: 16, color: '#223148', marginVertical: 2, marginLeft: 4 },
-  // removed fixed-position back button
-  backBtnInline: {
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    marginLeft: 2,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.brand.darkPink,
+  fixedHeader: {
+    zIndex: 10,
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(215,37,102,0.16)',
+    backgroundColor: 'transparent',
+    shadowColor: '#4A1028',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  fixedHeaderTitle: {
+    color: '#2C1C23',
+    fontSize: 17,
+    fontWeight: '900',
+    marginLeft: 8,
+  },
+  fixedHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  headerBackButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: '#4A1028',
     shadowOpacity: 0.1,
     shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   scoreBoardWrap: { width: '100%' },
   scoreBoardBg: { width: '100%', aspectRatio: 1, maxHeight: 450 },
@@ -2449,22 +2494,52 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   reattemptTopBtn: {
-    borderRadius: 20,
+    borderRadius: 21,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#FF8A00',
-    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#FFD5AA',
+    backgroundColor: '#FFF5EA',
   },
   reattemptTopContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
     gap: 6,
   },
   reattemptTopBtnText: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#FF8A00',
+    color: '#D96A00',
+  },
+  viewRankingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#FF407D',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 24,
+    gap: 6,
+    shadowColor: '#FF407D',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  viewRankingButtonPressed: {
+    opacity: 0.8,
+  },
+  viewRankingText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  cloudSpacer: {
+    height: 60,
   },
 });

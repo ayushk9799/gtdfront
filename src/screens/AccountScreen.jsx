@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState, useRef } from 'react';
-import { useColorScheme, View, Text, ScrollView, TouchableOpacity, Alert, Platform, PermissionsAndroid, Linking, Share, StyleSheet } from 'react-native';
+import { useColorScheme, View, Text, ScrollView, TouchableOpacity, Alert, Platform, PermissionsAndroid, Linking, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { styles } from './styles';
@@ -38,7 +38,6 @@ export default function AccountScreen() {
   const [refresh, setRefresh] = useState(0);
   const [osPermissionEnabled, setOsPermissionEnabled] = useState(true);
   const { isPremium, customerInfo, userData } = useSelector(state => state.user);
-  const referralCode = userData?.referralCode || '';
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState(getLanguage());
   const langSheetRef = useRef(null);
@@ -69,24 +68,6 @@ export default function AccountScreen() {
   const handleLanguageChange = useCallback(() => {
     langSheetRef.current?.present();
   }, []);
-
-  const onShareWithFriend = useCallback(async () => {
-    try {
-      const shareMessage = referralCode
-        ? `🩺 Learning medicine the real way!
-Diagnose It lets you treat patients step-by-step like real OPD cases.
-Use my referral code ${referralCode} while signing up ❤️
-Join me 👉 https://diagnoseit.in`
-        : '🎯 Hey! I\'m solving real clinical cases with Diagnose It! It is real and fun - you can treat patients like a real doctor. Join here: https://diagnoseit.in';
-
-      await Share.share({
-        message: shareMessage,
-        title: 'Invite to Diagnose It',
-      });
-    } catch (error) {
-      // Handle error silently
-    }
-  }, [referralCode]);
 
   const user = useMemo(() => {
     try {
@@ -510,49 +491,6 @@ Join me 👉 https://diagnoseit.in`
           elevation: 4,
           overflow: 'hidden',
         }}>
-          {/* Refer a Friend */}
-          <TouchableOpacity
-            onPress={onShareWithFriend}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 16,
-              paddingHorizontal: 18,
-              backgroundColor: '#FFFFFF',
-            }}
-            activeOpacity={0.6}
-          >
-            <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              backgroundColor: '#FFF0F0',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 14,
-            }}>
-              <MaterialCommunityIcons name="gift-outline" size={22} color="#ff4d4f" />
-            </View>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>{t('account.referAFriend')}</Text>
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#FFF0F0',
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 10,
-                marginLeft: 8,
-              }}>
-                <MaterialCommunityIcons name="heart" size={12} color="#ff4d4f" />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#ff4d4f', marginLeft: 3 }}>+1</Text>
-              </View>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
-          </TouchableOpacity>
-
-          <View style={{ height: 1, backgroundColor: '#F0F0F2', marginLeft: 72 }} />
-
           {/* Language Picker */}
           <TouchableOpacity
             onPress={handleLanguageChange}
@@ -685,6 +623,27 @@ Join me 👉 https://diagnoseit.in`
 
         {/* Action Buttons */}
         <View style={{ paddingHorizontal: 0, gap: 12, marginBottom: 160 }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('GetReadyForCase')}
+            activeOpacity={0.75}
+            style={{
+              alignSelf: 'stretch',
+              backgroundColor: '#FFF0F5',
+              paddingVertical: 15,
+              borderRadius: 14,
+              borderWidth: 1.5,
+              borderStyle: 'dashed',
+              borderColor: Colors.brand.darkPink,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialCommunityIcons name="flask-outline" size={20} color={Colors.brand.darkPink} />
+              <Text style={{ color: Colors.brand.darkPink, fontWeight: '800', fontSize: 15, marginLeft: 10 }}>
+                Preview Get Ready Screen (Temporary)
+              </Text>
+            </View>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={handleLogout}
             activeOpacity={0.85}

@@ -1,264 +1,224 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  Animated,
-  Platform,
+  ActivityIndicator,
   Alert,
-  ToastAndroid,
+  BackHandler,
+  Platform,
   StyleSheet,
-  Dimensions,
-  StatusBar,
-  ScrollView,
-  Linking,
+  Text,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from 'react-native';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
+import LottieView from 'lottie-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import Purchases from 'react-native-purchases';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
-import { Colors } from '../../constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 import { trackEvent } from '../services/analytics';
+import { LIFETIME_OFFER_DURATION_MS } from '../services/lifetimeOffer';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const LIFETIME_OFFERING_ID = 'lifetime_offer';
+const REGULAR_OFFERING_ID = 'main_product';
 
-const FEATURES = [
-  { key: 'unlimitedCases', free: false, pro: true },
-  { key: 'dailyChallenge', free: true, pro: true },
-  { key: 'pastDailyChallenge', free: false, pro: true },
-  { key: 'unlimitedQuizzes', free: false, pro: true },
-  { key: 'clinicalImages', free: false, pro: true },
-  { key: 'clinicalInsights', free: false, pro: true },
-];
-
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-
-// Format remaining ms to HH:MM:SS
 function formatCountdown(ms) {
-  if (ms <= 0) return '00:00:00';
-  const totalSec = Math.floor(ms / 1000);
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const sec = totalSec % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
-export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime }) {
+function getLifetimePackage(offering) {
+  if (offering?.lifetime) return offering.lifetime;
+
+  const packages = offering?.availablePackages || [];
+  return packages.find(pkg => (
+    pkg?.packageType === 'LIFETIME'
+    || pkg?.identifier === '$rc_lifetime'
+    || String(pkg?.product?.identifier || '').toLowerCase().includes('lifetime')
+  )) || packages[0] || null;
+}
+
+export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, offerStartTime }) {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { userData } = useSelector(state => state.user);
   const insets = useSafeAreaInsets();
-  const topInset = Math.max(
-    insets.top,
-    Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0
-  );
-  const [lifetimePackage, setLifetimePackage] = useState(null);
-  const [originalPriceString, setOriginalPriceString] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [fetchingOffer, setFetchingOffer] = useState(true);
-  const [remaining, setRemaining] = useState(TWO_HOURS_MS);
-
-  // Animation values
-  const [fadeAnim] = useState(() => new Animated.Value(0));
-  const [slideAnim] = useState(() => new Animated.Value(SCREEN_HEIGHT));
-
-  // Price animation: 'initial' = show original, 'transitioning' = crossfade, 'done' = final
-  const [pricePhase, setPricePhase] = useState('initial');
-  const [origFade] = useState(() => new Animated.Value(1));
-  const [strikeWidth] = useState(() => new Animated.Value(0));
-  const [origPriceWidth, setOrigPriceWidth] = useState(0);
-  const [finalFade] = useState(() => new Animated.Value(0));
-  const [finalScale] = useState(() => new Animated.Value(0.8));
+  const { height } = useWindowDimensions();
+  const bottomSheetRef = useRef(null);
+  const hasPresentedRef = useRef(false);
   const shownTrackedRef = useRef(false);
+  const loadingOfferingRef = useRef(false);
+  const [lifetimePackage, setLifetimePackage] = useState(null);
+  const [regularLifetimePackage, setRegularLifetimePackage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [remaining, setRemaining] = useState(LIFETIME_OFFER_DURATION_MS);
 
-  // Countdown timer
+  const sheetMaxHeight = Math.min(height * 0.68, 610);
+  const offerPrice = lifetimePackage?.product?.priceString || '';
+  const regularPrice = regularLifetimePackage?.product?.priceString || '';
+  const discountPercentage = useMemo(() => {
+    const offerAmount = Number(lifetimePackage?.product?.price);
+    const regularAmount = Number(regularLifetimePackage?.product?.price);
+    const offerCurrency = lifetimePackage?.product?.currencyCode;
+    const regularCurrency = regularLifetimePackage?.product?.currencyCode;
+
+    if (
+      !Number.isFinite(offerAmount)
+      || !Number.isFinite(regularAmount)
+      || regularAmount <= 0
+      || offerAmount >= regularAmount
+      || (offerCurrency && regularCurrency && offerCurrency !== regularCurrency)
+    ) {
+      return null;
+    }
+
+    return Math.round(((regularAmount - offerAmount) / regularAmount) * 100);
+  }, [lifetimePackage, regularLifetimePackage]);
+
   useEffect(() => {
-    if (!visible || !offerStartTime) return;
+    if (!visible || !offerStartTime) return undefined;
 
     const tick = () => {
-      const elapsed = Date.now() - offerStartTime;
-      const left = Math.max(TWO_HOURS_MS - elapsed, 0);
+      const left = Math.max(
+        LIFETIME_OFFER_DURATION_MS - (Date.now() - offerStartTime),
+        0,
+      );
       setRemaining(left);
       if (left <= 0) {
         trackEvent('lifetime_offer_expired', {
-          surface: 'lifetime_offer_banner',
+          surface: 'lifetime_offer_bottom_sheet',
         });
-        onDismiss?.();
+        onExpired?.();
       }
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [onDismiss, visible, offerStartTime]);
+  }, [offerStartTime, onExpired, visible]);
 
-  // Fetch both offerings from RevenueCat
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || lifetimePackage || loadingOfferingRef.current || loadFailed) return undefined;
 
+    let cancelled = false;
     const fetchOffer = async () => {
+      loadingOfferingRef.current = true;
       try {
-        setFetchingOffer(true);
         const offerings = await Purchases.getOfferings();
+        const offerPackage = getLifetimePackage(offerings?.all?.[LIFETIME_OFFERING_ID]);
+        const regularPackage = getLifetimePackage(offerings?.all?.[REGULAR_OFFERING_ID]);
 
-        // Get discounted price from lifetime_offer offering
-        const lifetimeOffering = offerings?.all?.['lifetime_offer'];
-        if (lifetimeOffering?.lifetime) {
-          setLifetimePackage(lifetimeOffering.lifetime);
-        } else if (lifetimeOffering?.availablePackages?.[0]) {
-          setLifetimePackage(lifetimeOffering.availablePackages[0]);
-        } else {
-          onDismiss?.();
-          return;
-        }
-
-        // Get original price from default offering's lifetime package
-        const defaultOffering = offerings?.current;
-        if (defaultOffering?.lifetime) {
-          setOriginalPriceString(defaultOffering.lifetime.product?.priceString || null);
-        } else if (defaultOffering?.availablePackages) {
-          const ltPkg = defaultOffering.availablePackages.find(
-            p => p.packageType === 'LIFETIME' || p.identifier === '$rc_lifetime'
-          );
-          if (ltPkg) {
-            setOriginalPriceString(ltPkg.product?.priceString || null);
+        if (!cancelled) {
+          if (offerPackage) {
+            setLifetimePackage(offerPackage);
+            setRegularLifetimePackage(regularPackage);
+          } else {
+            setLoadFailed(true);
           }
         }
-      } catch (e) {
-        console.warn('Failed to fetch lifetime offering', e);
-        onDismiss?.();
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to fetch lifetime offering', error);
+          setLoadFailed(true);
+        }
       } finally {
-        setFetchingOffer(false);
+        loadingOfferingRef.current = false;
       }
     };
 
     fetchOffer();
-  }, [onDismiss, visible]);
+    return () => {
+      cancelled = true;
+    };
+  }, [lifetimePackage, loadFailed, visible]);
 
-  // Animate in when visible
   useEffect(() => {
-    if (visible && !fetchingOffer && lifetimePackage) {
-      if (!shownTrackedRef.current) {
-        const secondsRemaining = offerStartTime
-          ? Math.floor(Math.max(TWO_HOURS_MS - (Date.now() - offerStartTime), 0) / 1000)
-          : null;
-        trackEvent('lifetime_offer_shown', {
-          surface: 'lifetime_offer_banner',
-          package_id: lifetimePackage?.identifier,
-          product_id: lifetimePackage?.product?.identifier,
-          seconds_remaining: secondsRemaining,
-        });
-        shownTrackedRef.current = true;
-      }
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 50,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        if (originalPriceString) {
-          // Wait showing original price
-          setTimeout(() => {
-            // Draw strikethrough line
-            Animated.timing(strikeWidth, {
-              toValue: 1,
-              duration: 350,
-              useNativeDriver: false,
-            }).start(() => {
-              // Wait briefly before fading out the crossed-out price
-              setTimeout(() => {
-                setPricePhase('transitioning');
-                // Fade out original price
-                Animated.timing(origFade, {
-                  toValue: 0,
-                  duration: 300,
-                  useNativeDriver: true,
-                }).start(() => {
-                  // Fade + pop in final price layout
-                  Animated.parallel([
-                    Animated.timing(finalFade, {
-                      toValue: 1,
-                      duration: 350,
-                      useNativeDriver: true,
-                    }),
-                    Animated.spring(finalScale, {
-                      toValue: 1,
-                      tension: 100,
-                      friction: 8,
-                      useNativeDriver: true,
-                    }),
-                  ]).start(() => setPricePhase('done'));
-                });
-              }, 150);
-            });
-          }, 1200);
-        } else {
-          setPricePhase('done');
-        }
-      });
-    } else {
+    if (!visible) {
       shownTrackedRef.current = false;
-      fadeAnim.setValue(0);
-      slideAnim.setValue(SCREEN_HEIGHT);
-      setPricePhase('initial');
-      origFade.setValue(1);
-      strikeWidth.setValue(0);
-      finalFade.setValue(0);
-      finalScale.setValue(0.8);
+      if (hasPresentedRef.current) {
+        bottomSheetRef.current?.dismiss();
+      }
+      return undefined;
     }
-  }, [fadeAnim, fetchingOffer, finalFade, finalScale, lifetimePackage, offerStartTime, origFade, originalPriceString, slideAnim, strikeWidth, visible]);
 
-  const handleDismiss = useCallback(() => {
-    trackEvent('lifetime_offer_dismissed', {
-      surface: 'lifetime_offer_banner',
+    const animationFrame = requestAnimationFrame(() => {
+      hasPresentedRef.current = true;
+      bottomSheetRef.current?.present();
+    });
+    return () => cancelAnimationFrame(animationFrame);
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible || !lifetimePackage || shownTrackedRef.current) return;
+
+    trackEvent('lifetime_offer_shown', {
+      surface: 'lifetime_offer_bottom_sheet',
       package_id: lifetimePackage?.identifier,
       product_id: lifetimePackage?.product?.identifier,
       seconds_remaining: Math.floor(remaining / 1000),
     });
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: SCREEN_HEIGHT,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onDismiss?.();
-    });
-  }, [fadeAnim, lifetimePackage, onDismiss, remaining, slideAnim]);
+    shownTrackedRef.current = true;
+  }, [lifetimePackage, remaining, visible]);
 
-  const syncServerPremium = async (customerInfo) => {
+  const closeSheet = useCallback(() => {
+    bottomSheetRef.current?.dismiss();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeSheet();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [closeSheet, visible]);
+
+  const handleSheetDismiss = useCallback(() => {
+    hasPresentedRef.current = false;
+    if (!visible) return;
+
+    trackEvent('lifetime_offer_dismissed', {
+      surface: 'lifetime_offer_bottom_sheet',
+      package_id: lifetimePackage?.identifier,
+      product_id: lifetimePackage?.product?.identifier,
+      seconds_remaining: Math.floor(remaining / 1000),
+    });
+    onDismiss?.();
+  }, [lifetimePackage, onDismiss, remaining, visible]);
+
+  const syncServerPremium = async customerInfo => {
     try {
       const active = customerInfo?.entitlements?.active || {};
-      const activeList = Object.values(active || {});
+      const activeList = Object.values(active);
       const hasActive = activeList.length > 0;
       let premiumExpiresAt = null;
       let premiumPlan = null;
+
       if (hasActive) {
-        const maxDate = activeList.reduce((acc, e) => {
-          const d = e?.expirationDate ? new Date(e.expirationDate) : null;
-          if (!d) return acc;
-          if (!acc) return d;
-          return d > acc ? d : acc;
+        const maxDate = activeList.reduce((acc, entitlement) => {
+          const date = entitlement?.expirationDate
+            ? new Date(entitlement.expirationDate)
+            : null;
+          if (!date) return acc;
+          return !acc || date > acc ? date : acc;
         }, null);
         premiumExpiresAt = maxDate ? maxDate.toISOString() : null;
         premiumPlan = activeList[0]?.productIdentifier || 'lifetime';
       }
+
       const uid = userData?.userId || userData?._id || userData?.id;
       if (!uid) return;
       await dispatch(updateUser({
@@ -267,34 +227,34 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
           isPremium: hasActive,
           premiumExpiresAt: hasActive ? premiumExpiresAt : null,
           premiumPlan: hasActive ? premiumPlan : null,
-        }
+        },
       }));
-    } catch (e) {
-      // no-op
+    } catch (error) {
+      // CustomerInfo remains the local source of truth if server sync fails.
     }
   };
 
   const handlePurchase = async () => {
     if (!lifetimePackage || loading) return;
+
     try {
       setLoading(true);
       trackEvent('lifetime_offer_purchase_started', {
-        surface: 'lifetime_offer_banner',
+        surface: 'lifetime_offer_bottom_sheet',
         package_id: lifetimePackage?.identifier,
         product_id: lifetimePackage?.product?.identifier,
         seconds_remaining: Math.floor(remaining / 1000),
       });
-      
-      // Final check: Is the offering still there?
-      const checkOfferings = await Purchases.getOfferings();
-      if (!checkOfferings.all['lifetime_offer']) {
+
+      const latestOfferings = await Purchases.getOfferings();
+      if (!latestOfferings?.all?.[LIFETIME_OFFERING_ID]) {
         trackEvent('lifetime_offer_expired', {
-          surface: 'lifetime_offer_banner',
+          surface: 'lifetime_offer_bottom_sheet',
           package_id: lifetimePackage?.identifier,
           product_id: lifetimePackage?.product?.identifier,
         });
         Alert.alert(t('lifetime.expiredTitle'), t('lifetime.expiredMsg'));
-        handleDismiss();
+        closeSheet();
         return;
       }
 
@@ -302,20 +262,20 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
       dispatch(setCustomerInfo(customerInfo));
       await syncServerPremium(customerInfo);
       trackEvent('lifetime_offer_purchase_success', {
-        surface: 'lifetime_offer_banner',
+        surface: 'lifetime_offer_bottom_sheet',
         package_id: lifetimePackage?.identifier,
         product_id: lifetimePackage?.product?.identifier,
       });
-      
+
       Alert.alert(
         t('lifetime.welcomeTitle'),
         t('lifetime.welcomeMsg'),
-        [{ text: t('lifetime.startExploring'), onPress: () => handleDismiss() }]
+        [{ text: t('lifetime.startExploring'), onPress: closeSheet }],
       );
-    } catch (e) {
-      if (e?.userCancelled) {
+    } catch (error) {
+      if (error?.userCancelled) {
         trackEvent('lifetime_offer_purchase_cancelled', {
-          surface: 'lifetime_offer_banner',
+          surface: 'lifetime_offer_bottom_sheet',
           package_id: lifetimePackage?.identifier,
           product_id: lifetimePackage?.product?.identifier,
         });
@@ -326,7 +286,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
         }
       } else {
         trackEvent('lifetime_offer_purchase_failed', {
-          surface: 'lifetime_offer_banner',
+          surface: 'lifetime_offer_bottom_sheet',
           package_id: lifetimePackage?.identifier,
           product_id: lifetimePackage?.product?.identifier,
         });
@@ -337,471 +297,398 @@ export default function LifetimeOfferBanner({ visible, onDismiss, offerStartTime
     }
   };
 
-  if (!visible || fetchingOffer || !lifetimePackage) return null;
+  const retryOffering = () => {
+    setLoadFailed(false);
+    setLifetimePackage(null);
+    setRegularLifetimePackage(null);
+  };
 
-  const offerPriceStr = lifetimePackage?.product?.priceString || '';
+  const renderBackdrop = useCallback(backdropProps => (
+    <BottomSheetBackdrop
+      {...backdropProps}
+      appearsOnIndex={0}
+      disappearsOnIndex={-1}
+      opacity={0.52}
+      pressBehavior="close"
+      accessibilityLabel={t('common.close')}
+    />
+  ), [t]);
 
   return (
-    <Modal
-      transparent
-      visible={visible}
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={handleDismiss}
+    <BottomSheetModal
+      ref={bottomSheetRef}
+      enableDynamicSizing
+      enablePanDownToClose
+      maxDynamicContentSize={sheetMaxHeight}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={s.sheetBackground}
+      handleComponent={null}
+      onDismiss={handleSheetDismiss}
     >
-      <StatusBar barStyle="light-content" />
-      <Animated.View
-        style={[
-          s.fullScreen,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
+      <LinearGradient
+        pointerEvents="none"
+        colors={['#FFF3F7', '#FFFFFF', '#FFF8FA']}
+        locations={[0, 0.56, 1]}
+        style={s.sheetGradient}
+      />
+
+      <View style={s.handle} />
+      {discountPercentage ? (
+        <View style={s.discountBadge}>
+          <Text style={s.discountText}>−{discountPercentage}%</Text>
+        </View>
+      ) : null}
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={t('common.close')}
+        activeOpacity={0.8}
+        onPress={closeSheet}
+        style={s.closeButton}
+      >
+        <MaterialCommunityIcons name="close" size={22} color="#B51D55" />
+      </TouchableOpacity>
+
+      <BottomSheetScrollView
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          s.content,
+          { paddingBottom: Math.max(insets.bottom, 14) + 16 },
         ]}
       >
-        {/* Full-screen gradient background */}
-        <LinearGradient
-          colors={['#1A0A12', '#2D0F1E', '#3D1028', '#2D0F1E', '#1A0A12']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        <View style={s.animationWrap}>
+          <View style={s.pinkGlow} />
+          <LottieView
+            source={require('../../assets/box-offer.lottie')}
+            autoPlay
+            loop
+            resizeMode="contain"
+            style={s.lottie}
+          />
+          <View style={[s.sparkle, s.sparkleLeft]} />
+          <View style={[s.sparkle, s.sparkleRight]} />
+        </View>
 
-        {/* Close button */}
-        <TouchableOpacity
-          style={[s.closeBtn, { top: topInset + 12 }]}
-          onPress={handleDismiss}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="close" size={24} color="rgba(255,255,255,0.7)" />
-        </TouchableOpacity>
+        <View style={s.badge}>
+          <MaterialCommunityIcons name="lightning-bolt" size={12} color="#B51D55" />
+          <Text style={s.badgeText}>{t('lifetime.badge')}</Text>
+        </View>
 
-        <ScrollView
-          contentContainerStyle={[
-            s.scrollContent,
-            {
-              paddingTop: topInset + 64,
-              paddingBottom: insets.bottom + 24,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
-          {/* Badge */}
-          <View style={s.badge}>
-            <MaterialCommunityIcons name="lightning-bolt" size={11} color="#FFD700" />
-            <Text style={s.badgeText}>{t('lifetime.badge')}</Text>
+        <Text style={s.title}>{t('lifetime.title')}</Text>
+
+        {loadFailed ? (
+          <View style={s.offerStatusCard}>
+            <Text style={s.offerStatusTitle}>{t('lifetime.purchaseError')}</Text>
+            <Text style={s.offerStatusText}>{t('lifetime.purchaseErrorMsg')}</Text>
+            <TouchableOpacity onPress={retryOffering} style={s.retryButton}>
+              <Text style={s.retryButtonText}>{t('common.retry')}</Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Countdown timer */}
-          <View style={s.countdownContainer}>
-            <MaterialCommunityIcons name="clock-outline" size={16} color="#FF6B9D" />
-            <Text style={s.countdownLabel}>{t('lifetime.expiresIn')}</Text>
-            <Text style={s.countdownTime}>{formatCountdown(remaining)}</Text>
-          </View>
-
-          {/* Crown icon */}
-          <View style={s.crownCircle}>
-            <LinearGradient
-              colors={['rgba(255,64,125,0.3)', 'rgba(255,64,125,0.1)']}
-              style={StyleSheet.absoluteFill}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <MaterialCommunityIcons name="crown" size={36} color="#FFD700" />
-          </View>
-
-          {/* Title */}
-          <Text style={s.title}>{t('lifetime.title')}</Text>
-          <Text style={s.subtitle}>{t('lifetime.subtitle')}</Text>
-
-          {/* Feature comparison table */}
-          <View style={s.tableContainer}>
-            {/* Header row */}
-            <View style={s.tableHeaderRow}>
-              <View style={{ flex: 1 }} />
-              <View style={s.tableColHeader}>
-                <Text style={s.tableHeaderText}>{t('premium.freeCaps')}</Text>
-              </View>
-              <View style={s.tableColHeader}>
-                <View style={s.proBadge}>
-                  <Text style={s.proBadgeText}>{t('premium.proCaps')}</Text>
-                </View>
-              </View>
-            </View>
-            {/* Feature rows */}
-            {FEATURES.map((f, idx) => (
-              <View
-                key={f.key}
-                style={[
-                  s.tableRow,
-                  idx > 0 && { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
-                ]}
-              >
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={s.tableLabel}>{t(`premium.${f.key}`)}</Text>
-                </View>
-                <View style={s.tableColCell}>
-                  {f.free ? (
-                    <MaterialCommunityIcons name="check" size={18} color="#4CAF50" />
-                  ) : (
-                    <MaterialCommunityIcons name="minus" size={18} color="rgba(255,255,255,0.2)" />
-                  )}
-                </View>
-                <View style={s.tableColCell}>
-                  {f.pro ? (
-                    <MaterialCommunityIcons name="check" size={18} color="#00C4B3" />
-                  ) : (
-                    <MaterialCommunityIcons name="minus" size={18} color="rgba(255,255,255,0.2)" />
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* Price section */}
+        ) : lifetimePackage ? (
           <View style={s.priceSection}>
-            {originalPriceString && pricePhase !== 'done' ? (
-              <View style={s.priceAnimContainer}>
-                {/* Original price — gets crossed out then fades out */}
-                <Animated.View style={{ opacity: origFade, position: 'relative', alignSelf: 'center' }}>
-                  <Text
-                    style={s.animOrigPrice}
-                    onLayout={(e) => setOrigPriceWidth(e.nativeEvent.layout.width)}
-                  >
-                    {originalPriceString}
-                  </Text>
-                  {origPriceWidth > 0 && (
-                    <Animated.View
-                      style={[
-                        s.strikeLine,
-                        {
-                          width: strikeWidth.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, origPriceWidth + 30], // +20 for enough overhang
-                          }),
-                        },
-                      ]}
-                    />
-                  )}
-                </Animated.View>
-                {/* Final layout — fades + scales in (overlaid) */}
-                <Animated.View
-                  style={[
-                    s.finalPriceOverlay,
-                    {
-                      opacity: finalFade,
-                      transform: [{ scale: finalScale }],
-                    },
-                  ]}
+            <View style={s.priceRow}>
+              {discountPercentage && regularPrice ? (
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  numberOfLines={1}
+                  style={s.regularPrice}
                 >
-                  <Text style={s.strikePrice}>{originalPriceString}</Text>
-                  <Text style={s.actualPrice}>{offerPriceStr}</Text>
-                </Animated.View>
-              </View>
-            ) : (
-              <View style={s.priceRow}>
-                {originalPriceString && (
-                  <Text style={s.strikePrice}>{originalPriceString}</Text>
-                )}
-                <Text style={s.actualPrice}>{offerPriceStr}</Text>
-              </View>
-            )}
+                  {regularPrice}
+                </Text>
+              ) : null}
+              <Text
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                numberOfLines={1}
+                style={s.offerPrice}
+              >
+                {offerPrice}
+              </Text>
+            </View>
             <Text style={s.priceNote}>{t('lifetime.foreverAccess')}</Text>
           </View>
-
-          {/* CTA Button */}
-          <TouchableOpacity
-            style={s.ctaButton}
-            activeOpacity={0.85}
-            onPress={handlePurchase}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={['#FF407D', '#FF1A5E']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={s.ctaContent}>
-              <MaterialCommunityIcons name="crown" size={18} color="#FFD700" style={{ marginRight: 8 }} />
-              <Text style={s.ctaText}>
-                {loading ? t('lifetime.processing') : t('lifetime.getPass')}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Skip link */}
-          <TouchableOpacity onPress={handleDismiss} style={s.skipBtn} activeOpacity={0.6}>
-            <Text style={s.skipText}>{t('lifetime.maybeLater')}</Text>
-          </TouchableOpacity>
-
-          {/* Legal Links */}
-          <View style={s.legalContainer}>
-            <Text style={s.legalText}>
-              {t('premium.footerAgreement').split('<terms>')[0]}
-              <Text
-                style={s.legalLink}
-                onPress={() => Linking.openURL('https://www.diagnoseit.in/terms')}
-              >
-                {t('premium.termsOfUse')}
-              </Text>
-              {t('premium.footerAgreement').split('</terms>')[1]?.split('<privacy>')[0] || ' & '}
-              <Text
-                style={s.legalLink}
-                onPress={() => Linking.openURL('https://www.diagnoseit.in/privacy')}
-              >
-                {t('premium.privacyPolicy')}
-              </Text>
-              .
-            </Text>
+        ) : (
+          <View style={s.offerStatusCard}>
+            <ActivityIndicator size="small" color="#D72566" />
+            <Text style={s.loadingText}>{t('common.loading')}</Text>
           </View>
-        </ScrollView>
-      </Animated.View>
-    </Modal>
+        )}
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          activeOpacity={0.88}
+          disabled={loading || !lifetimePackage || loadFailed}
+          onPress={handlePurchase}
+          style={[
+            s.ctaButton,
+            (loading || !lifetimePackage || loadFailed) && s.disabled,
+          ]}
+        >
+          <LinearGradient
+            colors={['#FF407D', '#D72566']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <View style={s.ctaContent}>
+              <Text style={s.ctaText}>{t('lifetime.getPass')}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <View style={s.countdownRow}>
+          <MaterialCommunityIcons name="clock-outline" size={15} color="#D72566" />
+          <Text style={s.countdownLabel}>{t('lifetime.expiresIn')}</Text>
+          <Text style={s.countdownValue}>{formatCountdown(remaining)}</Text>
+        </View>
+
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 
 const s = StyleSheet.create({
-  fullScreen: {
-    flex: 1,
+  sheetGradient: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
   },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: 28,
+  sheetBackground: {
+    overflow: 'hidden',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    backgroundColor: '#FFF8FA',
+    shadowColor: '#47152A',
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 20,
   },
-  closeBtn: {
+  handle: {
+    alignSelf: 'center',
+    width: 48,
+    height: 5,
+    marginTop: 12,
+    borderRadius: 3,
+    backgroundColor: '#DED5D9',
+  },
+  closeButton: {
     position: 'absolute',
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    top: 18,
+    right: 18,
+    zIndex: 3,
+    width: 42,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    borderRadius: 21,
+    backgroundColor: '#FFE7EF',
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: '#D72566',
+  },
+  discountText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  content: {
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingHorizontal: 22,
+  },
+  animationWrap: {
+    width: 190,
+    height: 142,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pinkGlow: {
+    position: 'absolute',
+    width: 125,
+    height: 125,
+    borderRadius: 63,
+    backgroundColor: '#FFE3ED',
+    shadowColor: '#FF407D',
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  lottie: {
+    width: 190,
+    height: 190,
+  },
+  sparkle: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#FFD76A',
+  },
+  sparkleLeft: {
+    left: 4,
+    top: 36,
+  },
+  sparkleRight: {
+    right: 5,
+    bottom: 25,
+    backgroundColor: '#FF407D',
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,215,0,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    marginBottom: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#FFE7EF',
   },
   badgeText: {
+    marginLeft: 5,
+    color: '#B51D55',
     fontSize: 10,
     fontWeight: '900',
-    color: '#FFD700',
-    marginLeft: 6,
-    letterSpacing: 1,
-  },
-  countdownContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,64,125,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,64,125,0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginBottom: 18,
-  },
-  countdownLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
-    marginLeft: 6,
-    marginRight: 8,
-  },
-  countdownTime: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FF6B9D',
-    fontVariant: ['tabular-nums'],
-  },
-  crownCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,64,125,0.3)',
+    letterSpacing: 0.8,
   },
   title: {
-    fontSize: 24,
+    marginTop: 9,
+    color: '#2E1520',
+    fontSize: 23,
+    lineHeight: 28,
     fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
     textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  tableContainer: {
+  offerStatusCard: {
     width: '100%',
-    marginTop: 20,
-    borderRadius: 14,
+    minHeight: 76,
+    marginTop: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    marginBottom: 16,
+    borderColor: '#F1DDE4',
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
   },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-  },
-  tableColHeader: {
-    width: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tableHeaderText: {
-    fontSize: 10,
+  offerStatusTitle: {
+    color: '#2E1520',
+    fontSize: 15,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.4)',
   },
-  proBadge: {
-    backgroundColor: '#FF407D',
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+  offerStatusText: {
+    marginTop: 4,
+    color: '#75636B',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
   },
-  proBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#FFFFFF',
+  retryButton: {
+    marginTop: 9,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: '#FFE7EF',
   },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-  },
-  tableLabel: {
-    color: 'rgba(255,255,255,0.85)',
+  retryButtonText: {
+    color: '#B51D55',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  tableColCell: {
-    width: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+  loadingText: {
+    marginTop: 8,
+    color: '#75636B',
+    fontSize: 13,
   },
   priceSection: {
+    width: '100%',
+    marginTop: 13,
     alignItems: 'center',
-    marginBottom: 8,
   },
   priceRow: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    justifyContent: 'center',
   },
-  strikePrice: {
-    fontSize: 16,
+  regularPrice: {
+    flexShrink: 1,
+    marginRight: 10,
+    color: '#A8999F',
+    fontSize: 18,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.35)',
     textDecorationLine: 'line-through',
-    marginRight: 12,
   },
-  actualPrice: {
-    fontSize: 32,
+  offerPrice: {
+    flexShrink: 1,
+    color: '#2E1520',
+    fontSize: 31,
+    lineHeight: 36,
     fontWeight: '900',
-    color: '#FFFFFF',
   },
   priceNote: {
-    fontSize: 12,
+    marginTop: 1,
+    color: '#75636B',
+    fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 6,
   },
   ctaButton: {
     width: '100%',
-    marginTop: 20,
-    borderRadius: 16,
+    minHeight: 52,
+    marginTop: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: '#FF407D',
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    borderRadius: 16,
+    shadowColor: '#D72566',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  disabled: {
+    opacity: 0.55,
   },
   ctaContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 15,
   },
   ctaText: {
-    fontSize: 15,
-    fontWeight: '900',
     color: '#FFFFFF',
-  },
-  skipBtn: {
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  skipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
-  },
-  priceAnimContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 48,
-    position: 'relative',
-  },
-  animOrigPrice: {
-    fontSize: 32,
+    fontSize: 16,
     fontWeight: '900',
-    color: '#FFFFFF',
   },
-  strikeLine: {
-    position: 'absolute',
-    top: '50%',
-    left: '-5%',
-    height: 3,
-    backgroundColor: '#FF407D',
-    borderRadius: 2,
-  },
-  finalPriceOverlay: {
-    position: 'absolute',
+  countdownRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#FFF0F5',
   },
-  legalContainer: {
-    marginTop: 4,
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  legalText: {
-    textAlign: 'center',
-    color: 'rgba(255,255,255,0.4)',
+  countdownLabel: {
+    marginLeft: 5,
+    marginRight: 7,
+    color: '#75636B',
     fontSize: 11,
-    lineHeight: 16,
+    fontWeight: '600',
   },
-  legalLink: {
-    color: '#FF6B9D',
-    fontWeight: '800',
-    textDecorationLine: 'underline',
+  countdownValue: {
+    color: '#D72566',
+    fontSize: 13,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
   },
 });

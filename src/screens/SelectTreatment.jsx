@@ -12,12 +12,12 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import medImg from '../../constants/medicine.png';
 import surgImg from '../../constants/surgical.png';
-import { useHeart as consumeHeart } from '../store/slices/userSlice';
 import Sound from 'react-native-sound';
 import { checkAndRequestReview, incrementGamesPlayed, setFirstPlayedCaseId } from '../services/ratingService';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
 import { useTranslation } from 'react-i18next';
 import { trackEvent } from '../services/analytics';
+import { FREE_CASE_LIMIT_CODE } from '../services/caseAccess';
 
 const SUBTLE_PINK_GRADIENT = ['#FFF7FA', '#FFEAF2', '#FFD6E5'];
 
@@ -82,6 +82,7 @@ export default function SelectTreatment() {
   // Use default voice ID for daily challenges since they don't have a voiceId
   const effectiveVoiceId = voiceId || (sourceType === 'dailyChallenge' ? DEFAULT_VOICE_ID : null);
   const { isPremium } = useSelector(state => state.user);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
   const treatmentSoundRef = useRef(null);
   const tapSoundRef = useRef(null);
@@ -383,13 +384,10 @@ export default function SelectTreatment() {
         <TouchableOpacity
           accessibilityRole="button"
           onPress={async () => {
-            if (!selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
+            if (isSubmitting || !selectedTreatmentIds || selectedTreatmentIds.length === 0) return;
+            setIsSubmitting(true);
             stopTreatmentAudio();
             try {
-              // Increment games played BEFORE navigating so ClinicalInsight reads the updated count
-              incrementGamesPlayed();
-              // Save the first played case ID (only saves on first game, ignored after)
-              setFirstPlayedCaseId(caseData?.caseId || caseData?._id);
               trackEvent('case_submitted', {
                 case_id: caseId || caseData?._id,
                 daily_challenge_id: dailyChallengeId,
@@ -399,8 +397,11 @@ export default function SelectTreatment() {
                 treatments_count: selectedTreatmentIds.length,
                 is_premium: isPremium,
               });
+              incrementGamesPlayed();
+              setFirstPlayedCaseId(caseData?.caseId || caseData?._id);
+              const submission = dispatch(submitGameplay());
               navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan', from: 'SelectTreatment' });
-              const resultAction = await dispatch(submitGameplay());
+              const resultAction = await submission;
               if (submitGameplay.fulfilled.match(resultAction)) {
                 trackEvent('case_completed', {
                   case_id: caseId || caseData?._id,
@@ -417,15 +418,18 @@ export default function SelectTreatment() {
                   daily_challenge_id: dailyChallengeId,
                   source_type: sourceType,
                 });
+                if (resultAction.payload?.code === FREE_CASE_LIMIT_CODE) {
+                  navigation.navigate('Premium', { source: 'case_limit' });
+                }
               }
               checkAndRequestReview();
             } catch (e) { }
-            if (!isPremium) {
-              dispatch(consumeHeart());
+            finally {
+              setIsSubmitting(false);
             }
           }}
-          disabled={!selectedTreatmentIds || selectedTreatmentIds.length === 0}
-          style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, (!selectedTreatmentIds || selectedTreatmentIds.length === 0) && { opacity: 0.5 }]}
+          disabled={isSubmitting || !selectedTreatmentIds || selectedTreatmentIds.length === 0}
+          style={[styles.primaryButton, styles.navRightCta, { bottom: Math.max(22, insets.bottom + 25) }, (isSubmitting || !selectedTreatmentIds || selectedTreatmentIds.length === 0) && { opacity: 0.5 }]}
           activeOpacity={0.9}
         >
           <LinearGradient
@@ -587,22 +591,6 @@ const styles = StyleSheet.create({
   },
   selectedCheck: {
     marginTop: 2,
-  },
-  primaryButton: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    minHeight: 50,
-    borderRadius: 999,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
   },
   primaryButtonGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
   shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 120, opacity: 0.8 },

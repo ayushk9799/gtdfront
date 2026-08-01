@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated, Easing, useWindowDimensions, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Dimensions, TouchableOpacity, Image, Animated, Easing, useWindowDimensions, BackHandler, Platform } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -15,7 +15,6 @@ import Sound from 'react-native-sound';
 import Markdown from 'react-native-markdown-display';
 import { BlurView } from '@react-native-community/blur';
 import QuitConfirmationSheet from '../components/QuitConfirmationSheet';
-import PremiumBottomSheet from '../components/PremiumBottomSheet';
 import { useTranslation } from 'react-i18next';
 import { trackEvent } from '../services/analytics';
 
@@ -92,7 +91,6 @@ export default function SelectTests() {
   // Track if this screen is focused (to prevent audio from unfocused instances)
   const isFocusedRef = useRef(true);
   const quitSheetRef = useRef(null);
-  const premiumSheetRef = useRef(null);
 
   const { isPremium } = useSelector((s) => s.user);
 
@@ -502,7 +500,7 @@ export default function SelectTests() {
                                     <Text style={styles.premiumOverlayText}>{t('clinical.premiumImageOnly')}</Text>
                                     <TouchableOpacity
                                       style={styles.premiumCtaButton}
-                                      onPress={() => premiumSheetRef.current?.present()}
+                                      onPress={() => navigation.navigate('Premium', { source: 'test_result_image' })}
                                       activeOpacity={0.9}
                                     >
                                       <Text style={styles.premiumCtaButtonText}>{t('clinical.unlockNow')}</Text>
@@ -632,7 +630,6 @@ export default function SelectTests() {
           }}
         />
 
-        <PremiumBottomSheet ref={premiumSheetRef} />
       </View>
     </SafeAreaView >
   );

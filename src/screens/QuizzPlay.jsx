@@ -451,7 +451,7 @@ const PremiumLimitCard = ({ onBack }) => {
                 <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
                         <MaterialCommunityIcons name="checkbox-marked-circle" size={18} color={Colors.brand.darkPink} style={{ marginTop: 2 }} />
-                        <Text style={{ marginLeft: 8, fontSize: 14, fontWeight: '600', color: '#4A4A4A', flex: 1 }}>Unlimited Hearts for Clinical Cases</Text>
+                        <Text style={{ marginLeft: 8, fontSize: 14, fontWeight: '600', color: '#4A4A4A', flex: 1 }}>Unlimited Clinical Cases</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
                         <MaterialCommunityIcons name="checkbox-marked-circle" size={18} color={Colors.brand.darkPink} style={{ marginTop: 2 }} />
