@@ -57,7 +57,6 @@ import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native
 import { loadCaseById } from './src/store/slices/currentGameSlice';
 import LifetimeOfferBanner from './src/components/LifetimeOfferBanner';
 import { identifyAnalyticsUser, trackScreen } from './src/services/analytics';
-import { hasReachedFreeCaseLimit } from './src/services/caseAccess';
 import { getCurrentLifetimeOfferStart } from './src/services/lifetimeOffer';
 
 // Pastel, subtle pink gradient (nearly white to light pink)
@@ -290,6 +289,7 @@ export default function App() {
   const previousRouteRef = React.useRef(null);
   const lifetimeOfferDelayRef = React.useRef(null);
   const lifetimeOfferLaunchCheckedUserRef = React.useRef(null);
+  const premiumHomePromptDelayRef = React.useRef(null);
   const initPurchases = React.useCallback(async () => {
     try {
       if (purchasesConfiguredRef.current) return;
@@ -506,14 +506,19 @@ export default function App() {
     };
   }, [dispatch]);
 
-  const scheduleLifetimeOffer = React.useCallback(() => {
-    if (!user || isPremium || userData?.isPremium || !hasReachedFreeCaseLimit(userData)) return;
+  const scheduleLifetimeOffer = React.useCallback((delayMs = 2000) => {
+    if (!user || isPremium || userData?.isPremium) return;
 
     if (lifetimeOfferDelayRef.current) {
       clearTimeout(lifetimeOfferDelayRef.current);
     }
 
     lifetimeOfferDelayRef.current = setTimeout(() => {
+      if (premiumHomePromptDelayRef.current) {
+        clearTimeout(premiumHomePromptDelayRef.current);
+        premiumHomePromptDelayRef.current = null;
+      }
+
       const storedStart = storage.getNumber('lifetimeOfferStartTime') || 0;
       const startTime = getCurrentLifetimeOfferStart(storedStart) || Date.now();
 
@@ -523,22 +528,64 @@ export default function App() {
       setOfferStartTime(startTime);
       setShowLifetimeOffer(true);
       lifetimeOfferDelayRef.current = null;
-    }, 3000);
+    }, delayMs);
+  }, [isPremium, user, userData]);
+
+  const schedulePremiumPromptOnHome = React.useCallback(() => {
+    if (premiumHomePromptDelayRef.current) {
+      clearTimeout(premiumHomePromptDelayRef.current);
+      premiumHomePromptDelayRef.current = null;
+    }
+
+    if (!user || isPremium || userData?.isPremium) return;
+
+    const userId = userData?.userId || userData?._id || userData?.id;
+    if (!userId) return;
+
+    const completedCount = (userData?.completedCases || []).length
+      + (userData?.completedDailyChallenges || []).length;
+    if (completedCount < 1 || completedCount > 2) return;
+
+    const promptStorageKey = `premiumHomePromptedCompletion:${userId}`;
+    const lastPromptedCount = storage.getNumber(promptStorageKey) || 0;
+    if (lastPromptedCount >= completedCount) return;
+
+    premiumHomePromptDelayRef.current = setTimeout(() => {
+      premiumHomePromptDelayRef.current = null;
+      if (navigationRef.getCurrentRoute()?.name !== 'Home') return;
+
+      storage.set(promptStorageKey, completedCount);
+      navigationRef.navigate('Premium', {
+        source: 'completed_case_home_prompt',
+        completedCaseCount: completedCount,
+      });
+    }, 5000);
   }, [isPremium, user, userData]);
 
   useEffect(() => () => {
     if (lifetimeOfferDelayRef.current) {
       clearTimeout(lifetimeOfferDelayRef.current);
     }
+    if (premiumHomePromptDelayRef.current) {
+      clearTimeout(premiumHomePromptDelayRef.current);
+    }
   }, []);
+
+  useEffect(() => {
+    if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name === 'Home') {
+      schedulePremiumPromptOnHome();
+    }
+  }, [schedulePremiumPromptOnHome]);
 
   useEffect(() => {
     const userId = userData?.userId || userData?._id || userData?.id;
     if (!user || !userId || lifetimeOfferLaunchCheckedUserRef.current === userId) return;
 
     lifetimeOfferLaunchCheckedUserRef.current = userId;
-    if (!isPremium && !userData?.isPremium && hasReachedFreeCaseLimit(userData)) {
-      scheduleLifetimeOffer();
+    const completedCount = (userData?.completedCases || []).length
+      + (userData?.completedDailyChallenges || []).length;
+    if (!isPremium && !userData?.isPremium && completedCount >= 2) {
+      scheduleLifetimeOffer(3000);
     }
   }, [isPremium, scheduleLifetimeOffer, user, userData]);
 
@@ -616,6 +663,13 @@ export default function App() {
 
             if (previousRoute?.name === 'Premium' && route?.name !== 'Premium') {
               scheduleLifetimeOffer();
+            }
+
+            if (route?.name === 'Home') {
+              schedulePremiumPromptOnHome();
+            } else if (premiumHomePromptDelayRef.current) {
+              clearTimeout(premiumHomePromptDelayRef.current);
+              premiumHomePromptDelayRef.current = null;
             }
 
             previousRouteRef.current = route || null;

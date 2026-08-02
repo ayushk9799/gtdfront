@@ -321,13 +321,9 @@
   },
   "notification": {
     "title": "Don't miss case of the day",
-    "description": "We'll remind you once a day to keep your clinical skills sharp.",
-    "enable": "Allow notifications",
-    "notNow": "Not now",
-    "whyEnable": "Why enable notifications?",
-    "benefit1": "Daily reminder",
-    "benefit2": "Turn on/off anytime from Account → Settings",
-    "finePrint": "You can change this anytime in Settings. One reminder per day — no spam."
+    "description": "Get one daily reminder to keep your clinical skills sharp.",
+    "enable": "Continue",
+    "notNow": "Not now"
   },
   "login": {
     "title": "Diagnose It",
@@ -370,10 +366,14 @@
     "endsIn": "Ends in"
   },
   "getReady": {
-    "title": "Your first clinical case",
-    "subtitle": "Think like a doctor—from symptoms to treatment.",
+    "title": "Here’s how it works",
+    "subtitle": "Explore each step of solving a clinical case.",
     "cardStoryTitle": "Meet the patient",
-    "cardStoryDesc": "Review symptoms, history and vital signs.",
+    "cardStoryDesc": "Review key patient information in order:",
+    "subsectionComplaint": "Patient complaint",
+    "subsectionVitals": "Vitals",
+    "subsectionSymptoms": "Symptoms",
+    "subsectionHistory": "History",
     "cardTestsTitle": "Order key tests",
     "cardTestsDesc": "Narrow down the possibilities.",
     "cardDiagnosisTitle": "Make your diagnosis",
@@ -382,9 +382,7 @@
     "cardTreatmentDesc": "Build the right treatment plan.",
     "cardInsightsTitle": "Review clinical insights",
     "cardInsightsDesc": "Learn from detailed feedback.",
-    "preparingCase": "Preparing your case…",
-    "startCase": "Start first case",
-    "maybeLater": "Maybe later"
+    "continue": "Continue"
   },
   "common": {
     "loading": "Loading...",

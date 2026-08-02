@@ -321,13 +321,9 @@
   },
   "notification": {
     "title": "No te pierdas el caso del día",
-    "description": "Te recordaremos una vez al día para mantener tus habilidades clínicas al día.",
-    "enable": "Permitir notificaciones",
-    "notNow": "Ahora no",
-    "whyEnable": "¿Por qué activar las notificaciones?",
-    "benefit1": "Recordatorio diario",
-    "benefit2": "Actívalas o desactívalas en cualquier momento desde Cuenta → Configuración",
-    "finePrint": "Puedes cambiar esto en cualquier momento en Configuración. Un recordatorio al día — sin spam."
+    "description": "Recibe un recordatorio diario para mantener tus habilidades clínicas al día.",
+    "enable": "Continuar",
+    "notNow": "Ahora no"
   },
   "login": {
     "title": "Diagnose It",
@@ -370,10 +366,14 @@
     "endsIn": "Termina en"
   },
   "getReady": {
-    "title": "Tu primer caso clínico",
-    "subtitle": "Piensa como un médico: de los síntomas al tratamiento.",
+    "title": "Así funciona",
+    "subtitle": "Descubre cada paso para resolver un caso clínico.",
     "cardStoryTitle": "Conoce al paciente",
-    "cardStoryDesc": "Revisa los síntomas, los antecedentes y los signos vitales.",
+    "cardStoryDesc": "Revisa la información clave del paciente en este orden:",
+    "subsectionComplaint": "Motivo de consulta",
+    "subsectionVitals": "Signos vitales",
+    "subsectionSymptoms": "Síntomas",
+    "subsectionHistory": "Antecedentes",
     "cardTestsTitle": "Solicita pruebas clave",
     "cardTestsDesc": "Reduce las posibilidades.",
     "cardDiagnosisTitle": "Haz tu diagnóstico",
@@ -382,9 +382,7 @@
     "cardTreatmentDesc": "Crea el plan de tratamiento adecuado.",
     "cardInsightsTitle": "Revisa los conocimientos clínicos",
     "cardInsightsDesc": "Aprende de comentarios detallados.",
-    "preparingCase": "Preparando tu caso…",
-    "startCase": "Empezar el primer caso",
-    "maybeLater": "Quizás más tarde"
+    "continue": "Continuar"
   },
   "common": {
     "loading": "Cargando...",

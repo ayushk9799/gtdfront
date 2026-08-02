@@ -309,10 +309,9 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
       appearsOnIndex={0}
       disappearsOnIndex={-1}
       opacity={0.52}
-      pressBehavior="close"
-      accessibilityLabel={t('common.close')}
+      pressBehavior="none"
     />
-  ), [t]);
+  ), []);
 
   return (
     <BottomSheetModal

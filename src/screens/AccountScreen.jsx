@@ -533,6 +533,47 @@ export default function AccountScreen() {
           </View>
         )}
 
+        {/* Temporary preview button — remove after the notification flow is verified. */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('NotificationPermission')}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Preview notification permission screen"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16,
+            paddingVertical: 14,
+            paddingHorizontal: 18,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: Colors.brand.darkPink,
+            backgroundColor: '#FFF5F8',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="bell-outline"
+            size={22}
+            color={Colors.brand.darkPink}
+          />
+          <Text
+            style={{
+              flex: 1,
+              marginLeft: 12,
+              color: Colors.brand.darkPink,
+              fontSize: 15,
+              fontWeight: '800',
+            }}
+          >
+            Preview Notification Screen (Temporary)
+          </Text>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={22}
+            color={Colors.brand.darkPink}
+          />
+        </TouchableOpacity>
+
         {/* Settings Card */}
         <View style={{
           marginHorizontal: 0,

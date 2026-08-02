@@ -321,13 +321,9 @@
   },
   "notification": {
     "title": "Verpasse keinen Fall des Tages",
-    "description": "Wir erinnern dich einmal täglich, um deine klinischen Fähigkeiten zu schärfen.",
-    "enable": "Benachrichtigungen erlauben",
-    "notNow": "Nicht jetzt",
-    "whyEnable": "Warum Benachrichtigungen aktivieren?",
-    "benefit1": "Tägliche Erinnerung",
-    "benefit2": "Jederzeit an-/ausschaltbar unter Konto → Einstellungen",
-    "finePrint": "Du kannst dies jederzeit in den Einstellungen ändern. Eine Erinnerung pro Tag – kein Spam."
+    "description": "Erhalte eine tägliche Erinnerung, um deine klinischen Fähigkeiten zu schärfen.",
+    "enable": "Weiter",
+    "notNow": "Nicht jetzt"
   },
   "login": {
     "title": "Diagnose It",
@@ -370,10 +366,14 @@
     "endsIn": "Endet in"
   },
   "getReady": {
-    "title": "Dein erster klinischer Fall",
-    "subtitle": "Denke wie ein Arzt – von den Symptomen bis zur Behandlung.",
+    "title": "So funktioniert es",
+    "subtitle": "Entdecke jeden Schritt beim Lösen eines klinischen Falls.",
     "cardStoryTitle": "Patienten kennenlernen",
-    "cardStoryDesc": "Prüfe Symptome, Vorgeschichte und Vitalzeichen.",
+    "cardStoryDesc": "Prüfe die wichtigsten Patienteninformationen in dieser Reihenfolge:",
+    "subsectionComplaint": "Beschwerden des Patienten",
+    "subsectionVitals": "Vitalzeichen",
+    "subsectionSymptoms": "Symptome",
+    "subsectionHistory": "Vorgeschichte",
     "cardTestsTitle": "Wichtige Untersuchungen anordnen",
     "cardTestsDesc": "Grenze die Möglichkeiten ein.",
     "cardDiagnosisTitle": "Diagnose stellen",
@@ -382,9 +382,7 @@
     "cardTreatmentDesc": "Erstelle den richtigen Behandlungsplan.",
     "cardInsightsTitle": "Klinische Erkenntnisse ansehen",
     "cardInsightsDesc": "Lerne aus detailliertem Feedback.",
-    "preparingCase": "Dein Fall wird vorbereitet…",
-    "startCase": "Ersten Fall starten",
-    "maybeLater": "Vielleicht später"
+    "continue": "Weiter"
   },
   "common": {
     "loading": "Laden...",

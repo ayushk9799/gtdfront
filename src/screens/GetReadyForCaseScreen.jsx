@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   AccessibilityInfo,
-  ActivityIndicator,
   Animated,
   Image,
   ScrollView,
@@ -13,24 +12,25 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { MMKV } from 'react-native-mmkv';
 import { useTranslation } from 'react-i18next';
-import { API_BASE } from '../../constants/Api';
 import { Colors } from '../../constants/Colors';
 import loginDoctor from '../../constants/logindoctor.png';
-import { clearCurrentGame, loadCaseById } from '../store/slices/currentGameSlice';
 
-const storage = new MMKV();
 const CASE_STEPS = [
   {
     key: 'story',
     titleKey: 'getReady.cardStoryTitle',
     title: 'Meet the patient',
     descKey: 'getReady.cardStoryDesc',
-    desc: 'Review symptoms, history and vital signs.',
+    desc: 'Review key patient information in order:',
+    subsections: [
+      { key: 'complaint', labelKey: 'getReady.subsectionComplaint', label: 'Patient complaint' },
+      { key: 'vitals', labelKey: 'getReady.subsectionVitals', label: 'Vitals' },
+      { key: 'symptoms', labelKey: 'getReady.subsectionSymptoms', label: 'Symptoms' },
+      { key: 'history', labelKey: 'getReady.subsectionHistory', label: 'History' },
+    ],
   },
   {
     key: 'tests',
@@ -64,9 +64,7 @@ const CASE_STEPS = [
 
 export default function GetReadyForCaseScreen() {
   const navigation = useNavigation();
-  const dispatch = useDispatch();
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
   const { height } = useWindowDimensions();
   const isCompact = height < 760;
   const heroAnimation = useRef(new Animated.Value(0)).current;
@@ -153,32 +151,8 @@ export default function GetReadyForCaseScreen() {
     ],
   };
 
-  const handleStartCase = async () => {
-    if (loading) return;
-
-    try {
-      setLoading(true);
-      const userDataString = storage.getString('user');
-      const userData = userDataString ? JSON.parse(userDataString) : null;
-      const userId = userData?.userId || userData?._id || userData?.id;
-      const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
-      const res = await fetch(`${API_BASE}/api/cases/first${query}`);
-      const data = await res.json();
-      const firstCaseId = data?.case?.id;
-
-      if (!res.ok || !firstCaseId) {
-        throw new Error(data?.error || 'First case not found');
-      }
-
-      dispatch(clearCurrentGame());
-      await dispatch(loadCaseById(firstCaseId)).unwrap();
-      navigation.replace('ClinicalInfo');
-    } catch (e) {
-      console.warn('Failed to start first case', e);
-      navigation.replace('Tabs');
-    } finally {
-      setLoading(false);
-    }
+  const handleContinue = () => {
+    navigation.replace('Tabs', { screen: 'Home' });
   };
 
   return (
@@ -193,6 +167,7 @@ export default function GetReadyForCaseScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.content, isCompact && styles.contentCompact]}
+        contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         bounces
       >
@@ -206,13 +181,13 @@ export default function GetReadyForCaseScreen() {
               pointerEvents="none"
             />
             <Text style={[styles.title, styles.heroTitle]}>
-              {t('getReady.title', { defaultValue: 'Your first clinical case' })}
+              {t('getReady.title', { defaultValue: 'Here’s how it works' })}
             </Text>
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.subtitle}>
               {t('getReady.subtitle', {
-                defaultValue: 'Think like a doctor—from symptoms to treatment.',
+                defaultValue: 'Explore each step of solving a clinical case.',
               })}
             </Text>
           </View>
@@ -252,6 +227,20 @@ export default function GetReadyForCaseScreen() {
                   <Text style={styles.stepDesc}>
                     {t(step.descKey, { defaultValue: step.desc })}
                   </Text>
+                  {step.subsections && (
+                    <View style={styles.subsectionList}>
+                      {step.subsections.map((subsection, subsectionIndex) => (
+                        <View key={subsection.key} style={styles.subsectionRow}>
+                          <View style={styles.subsectionNumber}>
+                            <Text style={styles.subsectionNumberText}>{subsectionIndex + 1}</Text>
+                          </View>
+                          <Text style={styles.subsectionText}>
+                            {t(subsection.labelKey, { defaultValue: subsection.label })}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               </Animated.View>
             );
@@ -261,10 +250,9 @@ export default function GetReadyForCaseScreen() {
 
       <Animated.View style={[styles.footer, footerAnimatedStyle]}>
         <TouchableOpacity
-          style={[styles.primaryButton, loading && styles.primaryButtonLoading]}
-          onPress={handleStartCase}
+          style={styles.primaryButton}
+          onPress={handleContinue}
           activeOpacity={0.9}
-          disabled={loading}
         >
           <LinearGradient
             colors={['#FF407D', '#FB7185']}
@@ -273,32 +261,12 @@ export default function GetReadyForCaseScreen() {
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.buttonGlow} />
-          {loading ? (
-            <View style={styles.primaryButtonInner}>
-              <ActivityIndicator color="#FFFFFF" size="small" />
-              <Text style={styles.loadingButtonText}>
-                {t('getReady.preparingCase', { defaultValue: 'Preparing your case…' })}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.primaryButtonInner}>
-              <Text style={styles.primaryButtonText}>
-                {t('getReady.startCase', { defaultValue: 'Start first case' })}
-              </Text>
-              <MaterialCommunityIcons name="arrow-right" size={21} color="#FFFFFF" />
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.laterButton, loading && styles.laterButtonDisabled]}
-          onPress={() => navigation.replace('Tabs')}
-          activeOpacity={0.7}
-          disabled={loading}
-        >
-          <Text style={styles.laterButtonText}>
-            {t('getReady.maybeLater', { defaultValue: 'Maybe later' })}
-          </Text>
+          <View style={styles.primaryButtonInner}>
+            <Text style={styles.primaryButtonText}>
+              {t('getReady.continue', { defaultValue: 'Continue' })}
+            </Text>
+            <MaterialCommunityIcons name="arrow-right" size={21} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>
@@ -316,11 +284,11 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 10,
+    paddingTop: 0,
     paddingBottom: 18,
   },
   contentCompact: {
-    paddingTop: 4,
+    paddingTop: 0,
   },
   hero: {
     alignItems: 'center',
@@ -329,7 +297,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     height: 245,
     marginHorizontal: -24,
-    marginTop: -10,
+    marginTop: -8,
     overflow: 'hidden',
   },
   heroImage: {
@@ -339,7 +307,7 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   heroCopy: {
-    marginTop: 2,
+    marginTop: -10,
     paddingHorizontal: 4,
     alignItems: 'center',
   },
@@ -355,7 +323,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 24,
     right: 24,
-    bottom: 2,
+    bottom: 14,
   },
   subtitle: {
     fontSize: 15,
@@ -365,7 +333,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   timeline: {
-    marginTop: 23,
+    marginTop: 17,
     paddingHorizontal: 3,
   },
   stepRow: {
@@ -438,6 +406,36 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '600',
   },
+  subsectionList: {
+    marginTop: 9,
+  },
+  subsectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  subsectionNumber: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FFD1DF',
+  },
+  subsectionNumberText: {
+    color: Colors.brand.darkPink,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  subsectionText: {
+    marginLeft: 8,
+    color: '#475569',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
   footer: {
     paddingTop: 10,
     paddingHorizontal: 22,
@@ -463,9 +461,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 9 },
     elevation: 6,
   },
-  primaryButtonLoading: {
-    opacity: 0.8,
-  },
   buttonGlow: {
     position: 'absolute',
     top: 0,
@@ -484,24 +479,5 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
     marginRight: 9,
-  },
-  loadingButtonText: {
-    marginLeft: 9,
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  laterButton: {
-    alignSelf: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-  },
-  laterButtonDisabled: {
-    opacity: 0.45,
-  },
-  laterButtonText: {
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '800',
   },
 });

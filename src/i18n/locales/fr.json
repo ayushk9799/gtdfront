@@ -321,13 +321,9 @@
   },
   "notification": {
     "title": "Ne manquez pas le cas du jour",
-    "description": "Nous vous enverrons un rappel quotidien pour maintenir vos compétences cliniques.",
-    "enable": "Autoriser les notifications",
-    "notNow": "Pas maintenant",
-    "whyEnable": "Pourquoi activer les notifications ?",
-    "benefit1": "Rappel quotidien",
-    "benefit2": "Activez/désactivez à tout moment depuis Compte → Paramètres",
-    "finePrint": "Vous pouvez modifier cela à tout moment dans les Paramètres. Un rappel par jour — pas de spam."
+    "description": "Recevez un rappel quotidien pour maintenir vos compétences cliniques.",
+    "enable": "Continuer",
+    "notNow": "Pas maintenant"
   },
   "login": {
     "title": "Diagnose It",
@@ -370,10 +366,14 @@
     "endsIn": "Se termine dans"
   },
   "getReady": {
-    "title": "Votre premier cas clinique",
-    "subtitle": "Raisonnez comme un médecin, des symptômes au traitement.",
+    "title": "Voici comment ça marche",
+    "subtitle": "Découvrez chaque étape de la résolution d’un cas clinique.",
     "cardStoryTitle": "Rencontrer le patient",
-    "cardStoryDesc": "Examinez les symptômes, les antécédents et les signes vitaux.",
+    "cardStoryDesc": "Examinez les informations clés du patient dans cet ordre :",
+    "subsectionComplaint": "Motif de consultation",
+    "subsectionVitals": "Signes vitaux",
+    "subsectionSymptoms": "Symptômes",
+    "subsectionHistory": "Antécédents",
     "cardTestsTitle": "Prescrire les examens clés",
     "cardTestsDesc": "Réduisez les possibilités.",
     "cardDiagnosisTitle": "Poser votre diagnostic",
@@ -382,9 +382,7 @@
     "cardTreatmentDesc": "Élaborez le bon plan de traitement.",
     "cardInsightsTitle": "Consulter les enseignements cliniques",
     "cardInsightsDesc": "Apprenez grâce à des commentaires détaillés.",
-    "preparingCase": "Préparation de votre cas…",
-    "startCase": "Commencer le premier cas",
-    "maybeLater": "Peut-être plus tard"
+    "continue": "Continuer"
   },
   "common": {
     "loading": "Chargement...",

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid, SafeAreaView, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/Colors';
 import { MMKV } from 'react-native-mmkv';
@@ -15,6 +15,7 @@ import { handleFCMTokenUpdate } from '../../App';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
+import LottieView from 'lottie-react-native';
 
 const storage = new MMKV();
 
@@ -108,67 +109,67 @@ export default function NotificationPermission() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#FFF7FA', '#FFEAF2']}
+        colors={['#FFF3F7', '#FFFFFF', '#FFF8FA']}
+        locations={[0, 0.56, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.headerBg}
+        style={StyleSheet.absoluteFillObject}
       />
-      <View style={styles.header}>
-        <View style={styles.logoBadge}>
-          <MaterialCommunityIcons name="bell-ring" size={28} color="#ffffff" />
+      <View style={styles.glowTop} pointerEvents="none" />
+      <View style={styles.glowSide} pointerEvents="none" />
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View style={styles.mainContent}>
+          <View style={styles.hero}>
+            <View style={styles.animationWrap}>
+              <LottieView
+                source={require('../../assets/bell.lottie')}
+                autoPlay
+                loop
+                resizeMode="contain"
+                style={styles.bellAnimation}
+              />
+              <View style={[styles.sparkle, styles.sparkleLeft]}>
+                <MaterialCommunityIcons name="star-four-points" size={16} color="#FF8BA7" />
+              </View>
+              <View style={[styles.sparkle, styles.sparkleRight]}>
+                <MaterialCommunityIcons name="star-four-points" size={12} color="#C2185B" />
+              </View>
+            </View>
+
+            <Text
+              style={styles.title}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}
+            >
+              {t('notification.title')}
+            </Text>
+            <Text style={styles.subtitle}>{t('notification.description')}</Text>
+          </View>
         </View>
-        <Text style={styles.title}>{t('notification.title')}</Text>
-        <Text style={styles.subtitle}>{t('notification.description')}</Text>
-      </View>
 
-      <View style={[styles.infoCard, styles.cardShadow]}>
-        <Text style={styles.sectionTitle}>{t('notification.whyEnable')}</Text>
-        <View style={styles.benefits}>
-          <View style={styles.benefitRow}>
-            <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
-            <Text style={styles.benefitText}>{t('notification.benefit1')}</Text>
-          </View>
-          <View style={styles.benefitRow}>
-            <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
-            <Text style={styles.benefitText}>{t('notification.benefit2')}</Text>
-          </View>
-          {/* <View style={styles.benefitRow}>
-            <MaterialCommunityIcons name="check-circle" size={18} color={Colors.brand.darkPink} />
-            <Text style={styles.benefitText}>We never spam. Just a single nudge per day</Text>
-          </View> */}
+        <View style={styles.bottomActions}>
+          <TouchableOpacity style={styles.primaryButton} onPress={proceed} activeOpacity={0.88}>
+            <LinearGradient
+              colors={['#F472B6', '#FB7185']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={styles.buttonContent}>
+              <Text style={styles.primaryButtonText}>{t('notification.enable')}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={skip} activeOpacity={0.7}>
+            <Text style={styles.secondaryButtonText}>{t('notification.notNow')}</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* <View style={[styles.previewCard, styles.cardShadow]}>
-          <View style={styles.previewIconWrap}>
-            <Image source={require('../../constants/inappicon.png')} style={styles.previewIcon} resizeMode="contain" />
-          </View>
-          <View style={styles.previewTexts}>
-            <Text style={styles.previewTitle}>Practice time</Text>
-            <Text style={styles.previewBody}>Your daily case awaits. Ready for today’s challenge?</Text>
-          </View>
-          <Text style={styles.previewTime}>9:00 AM</Text>
-        </View> */}
-
-        <View style={styles.finePrintRow}>
-          <MaterialCommunityIcons name="shield-lock-outline" size={14} color="#6B7280" />
-          <Text style={styles.finePrint}>  {t('notification.finePrint')}</Text>
-        </View>
-      </View>
-
-      <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.primaryButton} onPress={proceed} activeOpacity={0.9}>
-          <LinearGradient
-            colors={["#F472B6", "#FB7185"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.primaryButtonGradient}
-          />
-          <Text style={styles.primaryButtonText}>{t('notification.enable')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={skip} activeOpacity={0.9}>
-          <Text style={styles.secondaryButtonText}>{t('notification.notNow')}</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -176,183 +177,123 @@ export default function NotificationPermission() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 48,
+    backgroundColor: '#FFF8FA',
   },
-  headerBg: {
+  glowTop: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 220,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    top: -150,
+    right: -70,
+    backgroundColor: 'rgba(255,64,125,0.10)',
   },
-  header: {
-    paddingHorizontal: 16,
+  glowSide: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    top: 210,
+    left: -135,
+    backgroundColor: 'rgba(194,24,91,0.05)',
+  },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 6,
+    paddingBottom: 16,
+  },
+  mainContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  hero: {
     alignItems: 'center',
   },
-  logoBadge: {
-    height: 56,
-    width: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.brand.darkPink,
+  animationWrap: {
+    width: 250,
+    height: 250,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
+  },
+  bellAnimation: {
+    width: 220,
+    height: 220,
+  },
+  sparkle: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#C2185B',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  sparkleLeft: {
+    left: 10,
+    top: 58,
+  },
+  sparkleRight: {
+    right: 8,
+    bottom: 48,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     lineHeight: 34,
     fontWeight: '900',
-    color: '#1F2937',
-    letterSpacing: -0.2,
+    color: '#172033',
+    letterSpacing: -0.45,
     textAlign: 'center',
   },
   subtitle: {
-    marginTop: 18,
-    fontSize: 16,
-    color: '#4B5563',
-    fontWeight: '700',
-    letterSpacing: -0.1,
-    textAlign: 'center',
-  },
-  infoCard: {
-    marginTop: 24,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#F1F5F9',
-    backgroundColor: '#ffffff',
-    padding: 30,
-    // width: '90%',
-    alignSelf: 'center',
-    margin: 20,
-  },
-  cardShadow: {
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 10,
-  },
-  benefits: {
-    marginTop: 4,
-  },
-  benefitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginTop: 8,
-  },
-  benefitText: {
-    marginLeft: 8,
-    color: '#334155',
+    paddingHorizontal: 8,
     fontSize: 15,
-    fontWeight: '600',
-  },
-  previewCard: {
-    marginTop: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#EEF2F7',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  previewIconWrap: {
-    height: 44,
-    width: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF1F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewIcon: {
-    height: 28,
-    width: 28,
-  },
-  previewTexts: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  previewTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  previewBody: {
-    marginTop: 2,
-    fontSize: 13,
-    color: '#475569',
-    fontWeight: '600',
-  },
-  previewTime: {
-    marginLeft: 8,
+    lineHeight: 21,
     color: '#64748B',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  finePrintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  finePrint: {
-    marginTop: 12,
-    color: '#6B7280',
+    fontWeight: '600',
     textAlign: 'center',
-    fontSize: 12,
   },
   bottomActions: {
-    marginTop: 'auto',
-    paddingTop: 8,
-    paddingBottom: 40,
-    gap: 10,
+    marginTop: 16,
   },
   primaryButton: {
-    // width: '90%',
-    backgroundColor: 'transparent',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
+    minHeight: 56,
+    borderRadius: 999,
     overflow: 'hidden',
-    marginHorizontal: 20,
+    justifyContent: 'center',
+    shadowColor: Colors.brand.darkPink,
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  primaryButtonGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 14,
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
   primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '900',
+    textAlign: 'center',
   },
   secondaryButton: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 14,
+    alignSelf: 'center',
+    paddingHorizontal: 22,
+    paddingVertical: 13,
     alignItems: 'center',
-    // backgroundColor: '#F8FAFC',
-    // borderWidth: 1,
-    // borderColor: '#E5E7EB',
   },
   secondaryButtonText: {
-    color: '#0F172A',
+    color: '#64748B',
     fontSize: 14,
     fontWeight: '800',
-    opacity: 0.4,
   },
 });

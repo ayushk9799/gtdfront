@@ -321,13 +321,9 @@
   },
   "notification": {
     "title": "Non perdere il caso del giorno",
-    "description": "Ti ricorderemo una volta al giorno di mantenere allenate le tue competenze cliniche.",
-    "enable": "Consenti notifiche",
-    "notNow": "Non ora",
-    "whyEnable": "Perche abilitare le notifiche?",
-    "benefit1": "Promemoria giornaliero",
-    "benefit2": "Attiva/disattiva quando vuoi da Account → Impostazioni",
-    "finePrint": "Puoi cambiarlo in qualsiasi momento nelle Impostazioni. Un promemoria al giorno, niente spam."
+    "description": "Ricevi un promemoria al giorno per mantenere allenate le tue competenze cliniche.",
+    "enable": "Continua",
+    "notNow": "Non ora"
   },
   "login": {
     "title": "Diagnose It",
@@ -370,10 +366,14 @@
     "endsIn": "Termina tra"
   },
   "getReady": {
-    "title": "Il tuo primo caso clinico",
-    "subtitle": "Ragiona come un medico, dai sintomi al trattamento.",
+    "title": "Ecco come funziona",
+    "subtitle": "Scopri ogni fase della risoluzione di un caso clinico.",
     "cardStoryTitle": "Incontra il paziente",
-    "cardStoryDesc": "Esamina sintomi, anamnesi e parametri vitali.",
+    "cardStoryDesc": "Esamina le informazioni principali del paziente in questo ordine:",
+    "subsectionComplaint": "Disturbo del paziente",
+    "subsectionVitals": "Parametri vitali",
+    "subsectionSymptoms": "Sintomi",
+    "subsectionHistory": "Anamnesi",
     "cardTestsTitle": "Richiedi gli esami chiave",
     "cardTestsDesc": "Restringi le possibilità.",
     "cardDiagnosisTitle": "Fai la tua diagnosi",
@@ -382,9 +382,7 @@
     "cardTreatmentDesc": "Crea il piano di trattamento giusto.",
     "cardInsightsTitle": "Rivedi gli approfondimenti clinici",
     "cardInsightsDesc": "Impara da un feedback dettagliato.",
-    "preparingCase": "Preparazione del caso…",
-    "startCase": "Inizia il primo caso",
-    "maybeLater": "Forse più tardi"
+    "continue": "Continua"
   },
   "common": {
     "loading": "Caricamento...",
