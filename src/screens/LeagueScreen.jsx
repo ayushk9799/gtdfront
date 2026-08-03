@@ -124,6 +124,7 @@ export default function LeagueScreen() {
             points: Math.round(player?.score ?? 0),
             casesPlayed: null,
             createdAt: null,
+            isPremium: !!player?.isPremium,
         });
         setProfileError(null);
         setProfileLoading(true);
@@ -147,6 +148,7 @@ export default function LeagueScreen() {
                 points: Math.round(user?.cumulativePoints?.total ?? player?.score ?? 0),
                 casesPlayed: regularCases + dailyCases,
                 createdAt: user?.createdAt || null,
+                isPremium: !!user?.isPremium,
             });
         } catch {
             if (profileRequestRef.current === requestId) {
@@ -176,11 +178,11 @@ export default function LeagueScreen() {
             const dateText = dailyDate ? formatDate(dailyDate) : 'today';
             const title = challengeTitle || 'Daily Challenge';
             const appLink = 'https://diagnoseit.in'; // Replace with actual app link
+            const message = `Can you solve today's medical case?\n\n"${title}"\n📅 ${dateText}\n\n👉 ${appLink}\n\nI just completed this daily challenge on Diagnose It! Download the app and see if you can beat my score! 🎯`;
 
             await Share.share({
-                message: `Can you solve today's medical case?\n\n"${title}"\n📅 \n\nI just completed this daily challenge on Diagnose It! Download the app and see if you can beat my score! 🎯\n\n👉 ${appLink}\n\n#DiagnoseIt #MedicalCase #DailyChallenge`,
+                message,
                 title: 'Challenge your friends!',
-                url: appLink, // iOS will use this as the shared URL
             });
         } catch (error) {
         }
@@ -628,6 +630,14 @@ export default function LeagueScreen() {
                     <Text style={styles.profileName} numberOfLines={2}>
                         {selectedProfile?.name || t('league.player')}
                     </Text>
+                    {selectedProfile?.isPremium && (
+                        <View style={styles.profilePremiumBadge}>
+                            <MaterialCommunityIcons name="crown" size={14} color="#B7791F" />
+                            <Text style={styles.profilePremiumBadgeText}>
+                                {t('league.premiumMember')}
+                            </Text>
+                        </View>
+                    )}
                     <Text style={styles.profileHeading}>
                         {t('league.playerProfile', { defaultValue: 'Player profile' })}
                     </Text>
@@ -1181,6 +1191,23 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
         fontSize: 12,
         fontWeight: '700',
+    },
+    profilePremiumBadge: {
+        marginTop: 7,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#F6D675',
+        borderRadius: 14,
+        backgroundColor: '#FFF8D9',
+    },
+    profilePremiumBadgeText: {
+        marginLeft: 5,
+        color: '#8A5A10',
+        fontSize: 11,
+        fontWeight: '900',
     },
     profileStateContainer: {
         minHeight: 112,

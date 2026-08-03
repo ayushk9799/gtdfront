@@ -202,6 +202,7 @@
     "allow": "Erlauben",
     "rateTheApp": "App bewerten",
     "contactUs": "Kontakt",
+    "joinRedditCommunity": "Tritt unserer Reddit-Community bei",
     "privacyPolicy": "Datenschutzrichtlinie",
     "termsOfService": "Nutzungsbedingungen",
     "logOut": "Abmelden",
@@ -252,6 +253,7 @@
     "participants_one": "{{count}} Teilnehmer",
     "participants_other": "{{count}} Teilnehmer",
     "playerProfile": "Spielerprofil",
+    "premiumMember": "Premium-Mitglied",
     "casesPlayed": "Gespielte Fälle",
     "memberSince": "Mitglied seit",
     "profileLoadError": "Dieses Profil konnte nicht geladen werden.",
@@ -269,7 +271,9 @@
   "pastChallenges": {
     "title": "Vergangene Herausforderungen",
     "noHistory": "Keine vergangenen Herausforderungen gefunden",
-    "premiumOnly": "Vergangene Herausforderungen sind nur für Premium-Nutzer verfügbar"
+    "premiumOnly": "Vergangene Herausforderungen sind nur für Premium-Nutzer verfügbar",
+    "practiceModeNotice": "Übungsmodus: Punkte zählen nicht für die Rangliste oder Gesamtpunktzahl",
+    "premiumRequiredNotice": "Vergangene Herausforderungen erfordern Premium"
   },
   "departmentNames": {
     "cardiology": "Kardiologie",
@@ -349,6 +353,12 @@
     "expiresIn": "Angebot endet in",
     "foreverAccess": "Einmalzahlung • Dauerhafter Zugriff",
     "getPass": "Lebenslangen Pass holen",
+    "regularPrice": "Regulärer Preis",
+    "todayPrice": "Heutiger Preis",
+    "percentOff": "{{percentage}} % RABATT",
+    "saveAmountOnly": "Spare {{amount}}",
+    "savePercent": "Spare {{percentage}} %",
+    "getPassFor": "Lebenslangen Pass für {{price}} sichern",
     "maybeLater": "Vielleicht später",
     "welcomeTitle": "Willkommen bei Pro! 👑",
     "welcomeMsg": "Vielen Dank! Dein lebenslanger Pass ist jetzt aktiv. Du hast dauerhaften Zugriff auf alle Premium-Funktionen.",

@@ -400,8 +400,9 @@ export default function PastChallengesScreen() {
                     <View style={styles.rowCenter}>
                         <MaterialCommunityIcons name="information-outline" size={20} color={Colors.brand.darkPink} />
                         <Text style={{ marginLeft: 8, color: themeColors.text, fontSize: 13, flex: 1 }}>
-                            Practice mode: Points won't count towards leaderboard or cumulative score
-                            <Text style={{ fontWeight: 'bold' }}> Requires Premium</Text>
+                            {isPremium
+                                ? t('pastChallenges.practiceModeNotice')
+                                : t('pastChallenges.premiumRequiredNotice')}
                         </Text>
                     </View>
                 </View>

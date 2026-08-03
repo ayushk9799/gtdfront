@@ -202,6 +202,7 @@
     "allow": "Consenti",
     "rateTheApp": "Valuta l'app",
     "contactUs": "Contattaci",
+    "joinRedditCommunity": "Unisciti alla nostra community Reddit",
     "privacyPolicy": "Informativa sulla privacy",
     "termsOfService": "Termini di servizio",
     "logOut": "Esci",
@@ -252,6 +253,7 @@
     "participants_one": "{{count}} partecipante",
     "participants_other": "{{count}} partecipanti",
     "playerProfile": "Profilo giocatore",
+    "premiumMember": "Membro Premium",
     "casesPlayed": "Casi giocati",
     "memberSince": "Membro dal",
     "profileLoadError": "Impossibile caricare questo profilo.",
@@ -269,7 +271,9 @@
   "pastChallenges": {
     "title": "Sfide passate",
     "noHistory": "Nessuna sfida passata trovata",
-    "premiumOnly": "Le sfide passate sono disponibili solo per utenti Premium"
+    "premiumOnly": "Le sfide passate sono disponibili solo per utenti Premium",
+    "practiceModeNotice": "Modalità pratica: i punti non contano per la classifica o il punteggio cumulativo",
+    "premiumRequiredNotice": "Le sfide passate richiedono Premium"
   },
   "departmentNames": {
     "cardiology": "Cardiologia",
@@ -349,6 +353,12 @@
     "expiresIn": "L'offerta scade tra",
     "foreverAccess": "Pagamento unico • Accesso per sempre",
     "getPass": "Ottieni Pass a vita",
+    "regularPrice": "Prezzo normale",
+    "todayPrice": "Prezzo di oggi",
+    "percentOff": "{{percentage}}% DI SCONTO",
+    "saveAmountOnly": "Risparmia {{amount}}",
+    "savePercent": "Risparmia il {{percentage}}%",
+    "getPassFor": "Ottieni il Pass a vita a {{price}}",
     "maybeLater": "Forse piu tardi",
     "welcomeTitle": "Benvenuto in Pro! 👑",
     "welcomeMsg": "Grazie! Il tuo Pass a vita e ora attivo. Hai accesso permanente a tutte le funzionalita Premium.",

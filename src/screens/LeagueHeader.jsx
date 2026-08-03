@@ -42,10 +42,16 @@ export default function LeagueHeader() {
           )}
         </TouchableOpacity>
 
-        <View style={pillStyle()}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => navigation.navigate('Ranking')}
+          style={pillStyle()}
+          accessibilityRole="button"
+          accessibilityLabel="Open ranking"
+        >
           <Image source={coinIcon} style={styles.coinIcon} />
           <Text style={pillText()}>{parseInt(userData?.cumulativePoints?.total || 0, 10)}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );

@@ -732,11 +732,11 @@ export default function ClinicalInsight() {
             onPress={handleBackPress}
             style={({ pressed }) => [
               styles.headerBackButton,
-              pressed && { opacity: 0.75, transform: [{ scale: 0.94 }] },
+              pressed && { opacity: 0.65 },
             ]}
             hitSlop={8}
           >
-            <MaterialCommunityIcons name="arrow-left" size={21} color={Colors.brand.darkPink} />
+            <MaterialCommunityIcons name="arrow-left" size={24} color={themeColors.text} />
           </Pressable>
 
           <Text style={styles.fixedHeaderTitle}>{t('insight.clinicalInsight')}</Text>
@@ -1946,7 +1946,6 @@ const styles = StyleSheet.create({
     color: '#2C1C23',
     fontSize: 17,
     fontWeight: '900',
-    marginLeft: 8,
   },
   fixedHeaderLeft: {
     flexDirection: 'row',
@@ -1954,17 +1953,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   headerBackButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#4A1028',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    marginRight: 12,
   },
   scoreBoardWrap: { width: '100%' },
   scoreBoardBg: { width: '100%', aspectRatio: 1, maxHeight: 450 },

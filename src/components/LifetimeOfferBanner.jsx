@@ -15,14 +15,14 @@ import {
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetScrollView,
+  BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import LottieView from 'lottie-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import Purchases from 'react-native-purchases';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { updateUser, setCustomerInfo } from '../store/slices/userSlice';
 import { trackEvent } from '../services/analytics';
 import { LIFETIME_OFFER_DURATION_MS } from '../services/lifetimeOffer';
@@ -38,7 +38,7 @@ function formatCountdown(ms) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
-function getLifetimePackage(offering) {
+function getLifetimePackage(offering, allowFallback = true) {
   if (offering?.lifetime) return offering.lifetime;
 
   const packages = offering?.availablePackages || [];
@@ -46,14 +46,13 @@ function getLifetimePackage(offering) {
     pkg?.packageType === 'LIFETIME'
     || pkg?.identifier === '$rc_lifetime'
     || String(pkg?.product?.identifier || '').toLowerCase().includes('lifetime')
-  )) || packages[0] || null;
+  )) || (allowFallback ? packages[0] : null) || null;
 }
 
 export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, offerStartTime }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const { userData } = useSelector(state => state.user);
-  const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const bottomSheetRef = useRef(null);
   const hasPresentedRef = useRef(false);
@@ -65,7 +64,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
   const [loadFailed, setLoadFailed] = useState(false);
   const [remaining, setRemaining] = useState(LIFETIME_OFFER_DURATION_MS);
 
-  const sheetMaxHeight = Math.min(height * 0.68, 610);
+  const sheetMaxHeight = Math.min(height * 0.84, 740);
   const offerPrice = lifetimePackage?.product?.priceString || '';
   const regularPrice = regularLifetimePackage?.product?.priceString || '';
   const discountPercentage = useMemo(() => {
@@ -86,6 +85,24 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
 
     return Math.round(((regularAmount - offerAmount) / regularAmount) * 100);
   }, [lifetimePackage, regularLifetimePackage]);
+  const savingsPrice = useMemo(() => {
+    if (!discountPercentage) return '';
+
+    const offerAmount = Number(lifetimePackage?.product?.price);
+    const regularAmount = Number(regularLifetimePackage?.product?.price);
+    const currency = lifetimePackage?.product?.currencyCode;
+    if (!Number.isFinite(offerAmount) || !Number.isFinite(regularAmount) || !currency) return '';
+
+    try {
+      return new Intl.NumberFormat(i18n.resolvedLanguage || i18n.language || 'en', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(regularAmount - offerAmount);
+    } catch (_) {
+      return '';
+    }
+  }, [discountPercentage, i18n.language, i18n.resolvedLanguage, lifetimePackage, regularLifetimePackage]);
 
   useEffect(() => {
     if (!visible || !offerStartTime) return undefined;
@@ -118,7 +135,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
       try {
         const offerings = await Purchases.getOfferings();
         const offerPackage = getLifetimePackage(offerings?.all?.[LIFETIME_OFFERING_ID]);
-        const regularPackage = getLifetimePackage(offerings?.all?.[REGULAR_OFFERING_ID]);
+        const regularPackage = getLifetimePackage(offerings?.all?.[REGULAR_OFFERING_ID], false);
 
         if (!cancelled) {
           if (offerPackage) {
@@ -324,6 +341,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
       handleComponent={null}
       onDismiss={handleSheetDismiss}
     >
+      <SafeAreaView edges={['bottom']} style={s.safeArea}>
       <LinearGradient
         pointerEvents="none"
         colors={['#FFF3F7', '#FFFFFF', '#FFF8FA']}
@@ -333,8 +351,10 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
 
       <View style={s.handle} />
       {discountPercentage ? (
-        <View style={s.discountBadge}>
-          <Text style={s.discountText}>−{discountPercentage}%</Text>
+        <View style={s.topDiscountBadge}>
+          <Text style={s.topDiscountText}>
+            {t('lifetime.percentOff', { percentage: discountPercentage })}
+          </Text>
         </View>
       ) : null}
       <TouchableOpacity
@@ -347,14 +367,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
         <MaterialCommunityIcons name="close" size={22} color="#B51D55" />
       </TouchableOpacity>
 
-      <BottomSheetScrollView
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          s.content,
-          { paddingBottom: Math.max(insets.bottom, 14) + 16 },
-        ]}
-      >
+      <BottomSheetView style={s.content}>
         <View style={s.animationWrap}>
           <View style={s.pinkGlow} />
           <LottieView
@@ -374,6 +387,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
         </View>
 
         <Text style={s.title}>{t('lifetime.title')}</Text>
+        <Text style={s.subtitle}>{t('lifetime.subtitle')}</Text>
 
         {loadFailed ? (
           <View style={s.offerStatusCard}>
@@ -384,9 +398,24 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
             </TouchableOpacity>
           </View>
         ) : lifetimePackage ? (
-          <View style={s.priceSection}>
-            <View style={s.priceRow}>
-              {discountPercentage && regularPrice ? (
+          <View style={[s.priceSection, discountPercentage && s.priceSectionWithSavings]}>
+            {discountPercentage ? (
+              <View style={s.savingsPill}>
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  numberOfLines={1}
+                  style={s.savingsText}
+                >
+                  {savingsPrice
+                    ? t('lifetime.saveAmountOnly', { amount: savingsPrice })
+                    : t('lifetime.savePercent', { percentage: discountPercentage })}
+                </Text>
+              </View>
+            ) : null}
+            {discountPercentage && regularPrice ? (
+              <View style={s.regularPriceRow}>
+                <Text style={s.priceLabel}>{t('lifetime.regularPrice')}</Text>
                 <Text
                   adjustsFontSizeToFit
                   minimumFontScale={0.8}
@@ -395,16 +424,17 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
                 >
                   {regularPrice}
                 </Text>
-              ) : null}
-              <Text
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
-                numberOfLines={1}
-                style={s.offerPrice}
-              >
-                {offerPrice}
-              </Text>
-            </View>
+              </View>
+            ) : null}
+            <Text style={s.todayPriceLabel}>{t('lifetime.todayPrice')}</Text>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              numberOfLines={1}
+              style={s.offerPrice}
+            >
+              {offerPrice}
+            </Text>
             <Text style={s.priceNote}>{t('lifetime.foreverAccess')}</Text>
           </View>
         ) : (
@@ -434,7 +464,7 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <View style={s.ctaContent}>
-              <Text style={s.ctaText}>{t('lifetime.getPass')}</Text>
+              <Text style={s.ctaText}>{t('lifetime.getPassFor', { price: offerPrice })}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -445,12 +475,16 @@ export default function LifetimeOfferBanner({ visible, onDismiss, onExpired, off
           <Text style={s.countdownValue}>{formatCountdown(remaining)}</Text>
         </View>
 
-      </BottomSheetScrollView>
+      </BottomSheetView>
+      </SafeAreaView>
     </BottomSheetModal>
   );
 }
 
 const s = StyleSheet.create({
+  safeArea: {
+    width: '100%',
+  },
   sheetGradient: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
@@ -488,17 +522,17 @@ const s = StyleSheet.create({
     borderRadius: 21,
     backgroundColor: '#FFE7EF',
   },
-  discountBadge: {
+  topDiscountBadge: {
     position: 'absolute',
     top: 20,
     left: 20,
     zIndex: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: 14,
     backgroundColor: '#D72566',
   },
-  discountText: {
+  topDiscountText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '900',
@@ -507,6 +541,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
     paddingHorizontal: 22,
+    paddingBottom: 30,
   },
   animationWrap: {
     width: 190,
@@ -568,6 +603,15 @@ const s = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
+  subtitle: {
+    maxWidth: 300,
+    marginTop: 4,
+    color: '#75636B',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   offerStatusCard: {
     width: '100%',
     minHeight: 76,
@@ -614,30 +658,75 @@ const s = StyleSheet.create({
     width: '100%',
     marginTop: 13,
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#F1DDE4',
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
   },
-  priceRow: {
-    width: '100%',
+  priceSectionWithSavings: {
+    marginTop: 26,
+    paddingTop: 20,
+  },
+  regularPriceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  priceLabel: {
+    marginRight: 7,
+    color: '#75636B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   regularPrice: {
     flexShrink: 1,
-    marginRight: 10,
     color: '#A8999F',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     textDecorationLine: 'line-through',
+  },
+  todayPriceLabel: {
+    marginTop: 4,
+    color: '#B51D55',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   offerPrice: {
     flexShrink: 1,
     color: '#2E1520',
-    fontSize: 31,
-    lineHeight: 36,
+    fontSize: 36,
+    lineHeight: 41,
+    fontWeight: '900',
+  },
+  savingsPill: {
+    position: 'absolute',
+    top: -15,
+    right: 16,
+    zIndex: 2,
+    maxWidth: '58%',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 14,
+    backgroundColor: '#D72566',
+    shadowColor: '#8F153F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  savingsText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '900',
   },
   priceNote: {
-    marginTop: 1,
+    marginTop: 7,
     color: '#75636B',
     fontSize: 11,
     fontWeight: '600',

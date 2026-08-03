@@ -202,6 +202,7 @@
     "allow": "Allow",
     "rateTheApp": "Rate the App",
     "contactUs": "Contact us",
+    "joinRedditCommunity": "Join our Reddit community",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
     "logOut": "Log out",
@@ -252,6 +253,7 @@
     "participants_one": "{{count}} participant",
     "participants_other": "{{count}} participants",
     "playerProfile": "Player profile",
+    "premiumMember": "Premium member",
     "casesPlayed": "Cases played",
     "memberSince": "Member since",
     "profileLoadError": "Unable to load this profile.",
@@ -269,7 +271,9 @@
   "pastChallenges": {
     "title": "Past Challenges",
     "noHistory": "No past challenges found",
-    "premiumOnly": "Past challenges are only available for Premium users"
+    "premiumOnly": "Past challenges are only available for Premium users",
+    "practiceModeNotice": "Practice mode: Points won't count towards leaderboard or cumulative score",
+    "premiumRequiredNotice": "Past challenges require Premium"
   },
   "departmentNames": {
     "cardiology": "Cardiology",
@@ -349,6 +353,12 @@
     "expiresIn": "Offer expires in",
     "foreverAccess": "One-time payment • Forever access",
     "getPass": "Get Lifetime Pass",
+    "regularPrice": "Regular price",
+    "todayPrice": "Today's price",
+    "percentOff": "{{percentage}}% OFF",
+    "saveAmountOnly": "Save {{amount}}",
+    "savePercent": "Save {{percentage}}% OFF",
+    "getPassFor": "Claim Lifetime Pass for {{price}}",
     "maybeLater": "Maybe Later",
     "welcomeTitle": "Welcome to Pro! 👑",
     "welcomeMsg": "Thank you! Your Lifetime Pass is now active. You have permanent access to all premium features.",

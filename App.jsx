@@ -509,6 +509,10 @@ export default function App() {
   const scheduleLifetimeOffer = React.useCallback((delayMs = 2000) => {
     if (!user || isPremium || userData?.isPremium) return;
 
+    const completedCount = (userData?.completedCases || []).length
+      + (userData?.completedDailyChallenges || []).length;
+    if (completedCount < 2) return;
+
     if (lifetimeOfferDelayRef.current) {
       clearTimeout(lifetimeOfferDelayRef.current);
     }

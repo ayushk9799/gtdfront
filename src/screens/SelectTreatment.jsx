@@ -400,7 +400,7 @@ export default function SelectTreatment() {
               incrementGamesPlayed();
               setFirstPlayedCaseId(caseData?.caseId || caseData?._id);
               const submission = dispatch(submitGameplay());
-              navigation.navigate('ClinicalInsight', { caseData, initialTab: 'Treatment Plan', from: 'SelectTreatment' });
+              navigation.navigate('ClinicalInsight', { caseData, from: 'SelectTreatment' });
               const resultAction = await submission;
               if (submitGameplay.fulfilled.match(resultAction)) {
                 trackEvent('case_completed', {

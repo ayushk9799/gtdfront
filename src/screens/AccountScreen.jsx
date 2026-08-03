@@ -533,47 +533,6 @@ export default function AccountScreen() {
           </View>
         )}
 
-        {/* Temporary preview button — remove after the notification flow is verified. */}
-        <TouchableOpacity
-          onPress={() => navigation.navigate('NotificationPermission')}
-          activeOpacity={0.75}
-          accessibilityRole="button"
-          accessibilityLabel="Preview notification permission screen"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 16,
-            paddingVertical: 14,
-            paddingHorizontal: 18,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: Colors.brand.darkPink,
-            backgroundColor: '#FFF5F8',
-          }}
-        >
-          <MaterialCommunityIcons
-            name="bell-outline"
-            size={22}
-            color={Colors.brand.darkPink}
-          />
-          <Text
-            style={{
-              flex: 1,
-              marginLeft: 12,
-              color: Colors.brand.darkPink,
-              fontSize: 15,
-              fontWeight: '800',
-            }}
-          >
-            Preview Notification Screen (Temporary)
-          </Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={22}
-            color={Colors.brand.darkPink}
-          />
-        </TouchableOpacity>
-
         {/* Settings Card */}
         <View style={{
           marginHorizontal: 0,
@@ -686,6 +645,40 @@ export default function AccountScreen() {
               {t('account.contactUs')}
             </Text>
             <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#F0F0F2', marginLeft: 72 }} />
+
+          {/* Reddit Community */}
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://www.reddit.com/r/DiagnoseItApp/')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 16,
+              paddingHorizontal: 18,
+              backgroundColor: '#FFFFFF',
+            }}
+            activeOpacity={0.6}
+            accessibilityRole="link"
+            accessibilityLabel={t('account.joinRedditCommunity')}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: '#FFF3EE',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}>
+              <MaterialCommunityIcons name="reddit" size={24} color="#FF4500" />
+            </View>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#1E1E1E' }}>
+              {t('account.joinRedditCommunity')}
+            </Text>
+            <MaterialCommunityIcons name="open-in-new" size={20} color="#C0C0C0" />
           </TouchableOpacity>
 
           {/* Divider */}

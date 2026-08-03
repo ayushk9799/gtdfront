@@ -148,7 +148,7 @@ export default function OnboardingScreen() {
     }
     play();
     return () => { isMounted = false; };
-  }, [shouldPlayExperience, fade, flicker, optionOpacities, script, playAudio]);
+  }, [shouldPlayExperience, fade, flicker, optionOpacities, script, playAudio, t]);
 
   useEffect(() => {
     if (!showCTA) {
@@ -164,7 +164,7 @@ export default function OnboardingScreen() {
   }, [showCTA, shimmerAnim]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }} edges={['top','left','right']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }} edges={['top', 'bottom', 'left', 'right']}>
       <View style={{ flex: 1 }}>
         <View style={{ height: '58%', width: '100%' }}>
           <ImageBackground
@@ -300,5 +300,3 @@ export default function OnboardingScreen() {
     </SafeAreaView>
   );
 }
-
-
