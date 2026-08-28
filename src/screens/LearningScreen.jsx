@@ -159,7 +159,11 @@ export default function LearningScreen() {
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const key = `${y}-${m}-${day}`;
-      const label = d.toLocaleDateString(i18n.language === 'de' ? 'de-DE' : 'en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const label = d.toLocaleDateString(i18n.resolvedLanguage || i18n.language || 'en', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
       return { key, label };
     };
     const map = new Map();
@@ -171,7 +175,7 @@ export default function LearningScreen() {
     return Array.from(map.entries())
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([, v]) => v);
-  }, [i18n.language, items]);
+  }, [i18n.language, i18n.resolvedLanguage, items]);
 
   // Helper to get title based on sourceType
   const getItemTitle = (it) => {

@@ -63,6 +63,9 @@ export default function AccountScreen() {
     { code: 'fr', label: 'Français', secondary: 'French', flag: '🇫🇷' },
     { code: 'es', label: 'Español', secondary: 'Spanish', flag: '🇪🇸' },
     { code: 'it', label: 'Italiano', secondary: 'Italian', flag: '🇮🇹' },
+    { code: 'ru', label: 'Русский', secondary: 'Russian', flag: '🇷🇺' },
+    { code: 'ja', label: '日本語', secondary: 'Japanese', flag: '🇯🇵' },
+    { code: 'ko', label: '한국어', secondary: 'Korean', flag: '🇰🇷' },
   ];
   const currentLangObj = LANGUAGES.find(l => l.code === currentLang) || LANGUAGES[0];
 

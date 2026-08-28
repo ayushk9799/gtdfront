@@ -7,6 +7,9 @@ import de from './locales/de.json';
 import fr from './locales/fr.json';
 import es from './locales/es.json';
 import it from './locales/it.json';
+import ru from './locales/ru.json';
+import ja from './locales/ja.json';
+import ko from './locales/ko.json';
 
 const storage = new MMKV();
 
@@ -24,7 +27,7 @@ const getDeviceLanguage = () => {
 };
 
 // Available languages in our app
-const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'es', 'it'];
+const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'es', 'it', 'ru', 'ja', 'ko'];
 
 // 1. Get stored language. 
 // 2. If no stored language, get device language.
@@ -42,6 +45,9 @@ i18n.use(initReactI18next).init({
     fr: { translation: fr },
     es: { translation: es },
     it: { translation: it },
+    ru: { translation: ru },
+    ja: { translation: ja },
+    ko: { translation: ko },
   },
   lng: savedLang,
   fallbackLng: 'en',
@@ -52,7 +58,7 @@ i18n.use(initReactI18next).init({
 
 /**
  * Change the app language. Persists to MMKV so it survives restarts.
- * @param {'en' | 'de' | 'fr' | 'es' | 'it'} lang
+ * @param {'en' | 'de' | 'fr' | 'es' | 'it' | 'ru' | 'ja' | 'ko'} lang
  */
 export const changeLanguage = (lang) => {
   i18n.changeLanguage(lang);
@@ -61,7 +67,7 @@ export const changeLanguage = (lang) => {
 
 /**
  * Get the currently active language code.
- * @returns {'en' | 'de' | 'fr' | 'es' | 'it'}
+ * @returns {'en' | 'de' | 'fr' | 'es' | 'it' | 'ru' | 'ja' | 'ko'}
  */
 export const getLanguage = () => i18n.language || 'en';
 

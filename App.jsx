@@ -563,7 +563,7 @@ export default function App() {
         source: 'completed_case_home_prompt',
         completedCaseCount: completedCount,
       });
-    }, 5000);
+    }, 2000);
   }, [isPremium, user, userData]);
 
   useEffect(() => () => {
