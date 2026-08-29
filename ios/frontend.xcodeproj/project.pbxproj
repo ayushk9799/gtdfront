@@ -38,6 +38,10 @@
 		A1B2C3D42F00000000000001 /* onboardingspeech1_fr.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000011 /* onboardingspeech1_fr.mp3 */; };
 		A1B2C3D42F00000000000002 /* onboardingspeech1_de.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000012 /* onboardingspeech1_de.mp3 */; };
 		A1B2C3D42F00000000000003 /* onboardingspeech1_es.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000013 /* onboardingspeech1_es.mp3 */; };
+		A1B2C3D42F00000000000004 /* onboardingspeech1_it.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000014 /* onboardingspeech1_it.mp3 */; };
+		A1B2C3D42F00000000000005 /* onboardingspeech1_ru.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000015 /* onboardingspeech1_ru.mp3 */; };
+		A1B2C3D42F00000000000006 /* onboardingspeech1_ja.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000016 /* onboardingspeech1_ja.mp3 */; };
+		A1B2C3D42F00000000000007 /* onboardingspeech1_ko.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000000000017 /* onboardingspeech1_ko.mp3 */; };
 		ACEADF6829FA2886D6C58312 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		E2BE5145997C4B81AE184F4E /* NotoSerif-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3CA17443C79E4A6A8F5E257D /* NotoSerif-Italic.ttf */; };
 /* End PBXBuildFile section */
@@ -88,6 +92,10 @@
 		A1B2C3D42F00000000000011 /* onboardingspeech1_fr.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_fr.mp3; sourceTree = "<group>"; };
 		A1B2C3D42F00000000000012 /* onboardingspeech1_de.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_de.mp3; sourceTree = "<group>"; };
 		A1B2C3D42F00000000000013 /* onboardingspeech1_es.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_es.mp3; sourceTree = "<group>"; };
+		A1B2C3D42F00000000000014 /* onboardingspeech1_it.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_it.mp3; sourceTree = "<group>"; };
+		A1B2C3D42F00000000000015 /* onboardingspeech1_ru.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_ru.mp3; sourceTree = "<group>"; };
+		A1B2C3D42F00000000000016 /* onboardingspeech1_ja.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_ja.mp3; sourceTree = "<group>"; };
+		A1B2C3D42F00000000000017 /* onboardingspeech1_ko.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = onboardingspeech1_ko.mp3; sourceTree = "<group>"; };
 		A5BC9A7AC7F1E35F450C0A4C /* Pods-frontend.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-frontend.release.xcconfig"; path = "Target Support Files/Pods-frontend/Pods-frontend.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FF3896F8D1C44FCEBFE3EEDC /* Bright Chalk.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Bright Chalk.ttf"; path = "../assets/fonts/Bright Chalk.ttf"; sourceTree = "<group>"; };
@@ -188,6 +196,10 @@
 				A1B2C3D42F00000000000011 /* onboardingspeech1_fr.mp3 */,
 				A1B2C3D42F00000000000012 /* onboardingspeech1_de.mp3 */,
 				A1B2C3D42F00000000000013 /* onboardingspeech1_es.mp3 */,
+				A1B2C3D42F00000000000014 /* onboardingspeech1_it.mp3 */,
+				A1B2C3D42F00000000000015 /* onboardingspeech1_ru.mp3 */,
+				A1B2C3D42F00000000000016 /* onboardingspeech1_ja.mp3 */,
+				A1B2C3D42F00000000000017 /* onboardingspeech1_ko.mp3 */,
 				1777549C2EA0F75D0026B425 /* GoogleService-Info.plist */,
 				13B07FAE1A68108700A75B9A /* frontend */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
@@ -311,6 +323,10 @@
 				A1B2C3D42F00000000000001 /* onboardingspeech1_fr.mp3 in Resources */,
 				A1B2C3D42F00000000000002 /* onboardingspeech1_de.mp3 in Resources */,
 				A1B2C3D42F00000000000003 /* onboardingspeech1_es.mp3 in Resources */,
+				A1B2C3D42F00000000000004 /* onboardingspeech1_it.mp3 in Resources */,
+				A1B2C3D42F00000000000005 /* onboardingspeech1_ru.mp3 in Resources */,
+				A1B2C3D42F00000000000006 /* onboardingspeech1_ja.mp3 in Resources */,
+				A1B2C3D42F00000000000007 /* onboardingspeech1_ko.mp3 in Resources */,
 				276B33289091494AAD84DBEA /* Colors.xcassets in Resources */,
 				3E8271D5AF374154A78859A9 /* NotoSerif-BoldItalic.ttf in Resources */,
 				6B16432D66FA4228B4386A1D /* NotoSerif-Regular.ttf in Resources */,

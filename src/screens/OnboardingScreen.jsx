@@ -72,7 +72,15 @@ export default function OnboardingScreen() {
   // Audio playback - plays the onboarding narration in the user's language
   const playAudio = React.useCallback(() => {
     // Map language code to the corresponding audio file
-    const langSuffix = { fr: '_fr', de: '_de', es: '_es' };
+    const langSuffix = {
+      fr: '_fr',
+      de: '_de',
+      es: '_es',
+      it: '_it',
+      ru: '_ru',
+      ja: '_ja',
+      ko: '_ko',
+    };
     const suffix = langSuffix[i18n.language] || '';
     const audioFile = `onboardingspeech1${suffix}.mp3`;
 
