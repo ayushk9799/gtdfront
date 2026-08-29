@@ -1,4 +1,24 @@
 {
-  "name": "DiagnoseIt",
-  "displayName": "Diagnose It"
+  "expo": {
+    "name": "Diagnose It",
+    "slug": "diagnose-it",
+    "version": "1.0.0",
+    "runtimeVersion": "1",
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/a7c485d5-5ac4-406e-83b9-cfbaedda400e"
+    },
+    "android": {
+      "package": "com.thousandways.gtd"
+    },
+    "ios": {
+      "bundleIdentifier": "com.thousandways.gtd1"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a7c485d5-5ac4-406e-83b9-cfbaedda400e"
+      }
+    }
+  }
 }
