@@ -5,9 +5,9 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated'; // add this line
 import { AppRegistry } from 'react-native';
+import { registerRootComponent } from 'expo';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import App from './App';
-import { name as appName } from './app.json';
 import { enableScreens } from 'react-native-screens';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
@@ -33,4 +33,6 @@ const Root = () => (
   </SafeAreaProvider>
 );
 
-AppRegistry.registerComponent("frontend", () => Root);
+registerRootComponent(Root);
+AppRegistry.registerComponent('frontend', () => Root);
+AppRegistry.registerComponent('GuessTheDisease', () => Root);

@@ -274,8 +274,14 @@ function RootTabs() {
 
 /* ---------- root component ---------- */
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = storage.getString('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [showLifetimeOffer, setShowLifetimeOffer] = useState(false);
   const [offerStartTime, setOfferStartTime] = useState(null);
   const themeColors = Colors.light;
@@ -325,21 +331,6 @@ export default function App() {
       // swallow; UI can still work, and Premium screen will retry fetching
     }
   }, [getCustomerInfo, initPurchases]);
-
-  /* load stored credential once */
-  useEffect(() => {
-    try {
-      const stored = storage.getString('user');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setUser(parsed);
-      }
-    } catch (e) {
-      console.warn('Failed to load user from storage', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [dispatch]);
 
   useEffect(() => {
     if (__DEV__) {
@@ -621,10 +612,6 @@ export default function App() {
 
   const baseTheme = DefaultTheme;
   const shouldForceLogin = storage.getBoolean && storage.getBoolean('forceLogin');
-  if (loading) {
-    // Keep native bootsplash visible while we read local storage.
-    return null;
-  }
   const mergedTheme = {
     ...baseTheme,
     colors: {

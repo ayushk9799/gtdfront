@@ -12,9 +12,17 @@ const sanitizeParams = (params = {}) => {
   );
 };
 
+let currentAnalyticsUserId;
+
 export const identifyAnalyticsUser = async (userId) => {
+  const normalizedId = userId ? String(userId) : null;
+  if (currentAnalyticsUserId === normalizedId) {
+    return;
+  }
+  currentAnalyticsUserId = normalizedId;
+
   try {
-    await setUserId(analytics, userId ? String(userId) : null);
+    await setUserId(analytics, normalizedId);
   } catch (error) {
     if (__DEV__) console.warn('Failed to set analytics user id', error);
   }
